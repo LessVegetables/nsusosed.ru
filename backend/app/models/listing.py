@@ -1,7 +1,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey, Text, func, CheckConstraint, UniqueConstraint
+from sqlalchemy import Integer, String, Boolean, DateTime, ForeignKey, Text, func, text, CheckConstraint, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -15,7 +15,10 @@ class Listing(Base):
         CheckConstraint("kind IN ('dorm', 'apartment')", name="ck_listings_kind"),
         CheckConstraint("status IN ('active', 'paused')", name="ck_listings_status"),
         CheckConstraint("contact_type IN ('telegram', 'whatsapp', 'max', 'phone', 'other')", name="ck_listings_contact_type"),
-        UniqueConstraint("building", "room_number", name="uq_listings_dorm_address"),
+        # Одна карточка на комнату общежития (у квартир building/room_number пустые).
+        Index("uq_listings_dorm_addr", "building", "room_number", unique=True,
+              postgresql_where=text("building IS NOT NULL AND room_number IS NOT NULL")),
+        Index("ix_listings_kind_status_confirmed", "kind", "status", "confirmed_at"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
