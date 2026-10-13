@@ -37,17 +37,18 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     rid = str(uuid.uuid4())
     fields = {}
+    # fields: {"путь.к.полю": "КОД_ПРИЧИНЫ"}. Коды стабильны, фронтенд переводит их сам.
     for err in exc.errors():
+        loc = ".".join(str(l) for l in err.get("loc", []) if l != "body")
         ctx_error = (err.get("ctx") or {}).get("error")
         if isinstance(ctx_error, FieldErrors):
-            fields.update(ctx_error.fields)
+            # Ключи FieldErrors заданы относительно места, где сработал валидатор.
+            for key, reason in ctx_error.fields.items():
+                path = ".".join(p for p in (loc, key) if p)
+                fields[path or "_"] = reason
             continue
-        loc = ".".join(str(l) for l in err.get("loc", []) if l != "body")
-        msg = err.get("msg", "Неверное значение")
-        if msg.startswith("Value error, "):
-            msg = msg[len("Value error, "):]
-        if loc:
-            fields[loc] = msg
+        # Встроенные ошибки pydantic: missing → MISSING, less_than_equal → LESS_THAN_EQUAL и т.п.
+        fields[loc or "_"] = str(err.get("type", "invalid")).upper()
     logger.warning("Validation error %s: %s", rid, fields)
     return make_error_response(422, "VALIDATION_ERROR", "Проверьте заполненные поля", fields, rid)
 

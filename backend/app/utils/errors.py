@@ -44,8 +44,8 @@ def auth_required():
     return AppError(401, "AUTH_REQUIRED", "Нет действующей сессии. Войдите.")
 
 
-def invalid_credentials():
-    return AppError(401, "INVALID_CREDENTIALS", "Неверный email или пароль.")
+def invalid_code():
+    return AppError(401, "INVALID_CODE", "Неверный или просроченный код.")
 
 
 def forbidden(msg: str = "Действие недоступно."):
@@ -60,12 +60,28 @@ def version_conflict():
     return AppError(409, "VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию.")
 
 
-def listing_exists(msg: str = "Карточка уже существует."):
-    return AppError(409, "LISTING_EXISTS", msg)
+def listing_exists():
+    return AppError(409, "LISTING_EXISTS", "У вас уже есть карточка.")
 
 
-def membership_conflict(msg: str = "Присоединение невозможно."):
-    return AppError(409, "MEMBERSHIP_CONFLICT", msg)
+def room_taken(building: str, room_number: int):
+    return AppError(409, "ROOM_TAKEN", f"Карточка для {building}, комн. {room_number} уже существует.")
+
+
+def already_in_room():
+    return AppError(409, "ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате.")
+
+
+def room_full():
+    return AppError(409, "ROOM_FULL", "Достигнуто максимальное число привязанных жильцов.")
+
+
+def invite_invalid():
+    return AppError(404, "INVITE_INVALID", "Приглашение не найдено или недействительно.")
+
+
+def invite_expired():
+    return AppError(404, "INVITE_EXPIRED", "Приглашение истекло.")
 
 
 def occupancy_conflict():

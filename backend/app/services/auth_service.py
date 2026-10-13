@@ -13,7 +13,7 @@ from app.schemas.auth import (
 from app.schemas.user import UserSelf, UserUpdate
 from app.utils.security import normalize_email, validate_email_domain
 from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session
-from app.utils.errors import AppError, validation_error, invalid_credentials
+from app.utils.errors import AppError, validation_error, invalid_code
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp
 from app.services import rate_limit_service as rl
@@ -25,10 +25,8 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
 
     # 1. Проверка домена
     if not validate_email_domain(email, settings.email_domains):
-        raise validation_error(
-            "Недопустимый домен электронной почты.",
-            {"email": f"Требуется домен: {', '.join(settings.email_domains)}"},
-        )
+        reason = "DOMAIN_NOT_ALLOWED" if "@" in email else "INVALID_EMAIL"
+        raise validation_error("Недопустимый адрес электронной почты.", {"email": reason})
 
     ip = rl.client_ip(request)
     await rl.check_request_code(db, email, ip)
@@ -67,7 +65,7 @@ async def verify_code(
         await rl.record(db, "verify_fail", email, ip)
         # Сохраняем счётчик попыток и событие до ошибки: иначе get_db откатит транзакцию.
         await db.commit()
-        raise invalid_credentials()
+        raise invalid_code()
 
     await rl.record(db, "verify_ok", email, ip)
 

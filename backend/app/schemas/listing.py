@@ -19,33 +19,33 @@ VIEWS = ("forest", "road", "yard", "other", "unknown")
 
 
 def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
-    """Проверки, общие для создания и изменения карточки. Возвращает {поле: сообщение}."""
+    """Проверки, общие для создания и изменения карточки. Возвращает {поле: КОД_ПРИЧИНЫ}."""
     errors: Dict[str, str] = {}
     if kind == "dorm":
         for f in DORM_REQUIRED:
             if getattr(data, f) in (None, ""):
-                errors[f] = "Обязательно для общежития"
+                errors[f] = "REQUIRED"
         for f in APARTMENT_FIELDS:
             if getattr(data, f) is not None:
-                errors[f] = "Для общежития должно быть пустым"
+                errors[f] = "MUST_BE_EMPTY"
         if data.view is not None and data.view not in VIEWS:
-            errors["view"] = "Допустимо: " + ", ".join(VIEWS)
+            errors["view"] = "INVALID_CHOICE"
     elif kind == "apartment":
         for f in APARTMENT_FIELDS:
             if getattr(data, f) is None:
-                errors[f] = "Обязательно для квартиры"
+                errors[f] = "REQUIRED"
         for f in DORM_FIELDS:
             if getattr(data, f) is not None:
-                errors[f] = "Для квартиры должно быть пустым"
+                errors[f] = "MUST_BE_EMPTY"
     else:
-        errors["kind"] = "kind должен быть dorm или apartment"
+        errors["kind"] = "INVALID_CHOICE"
     if data.occupied_count > data.capacity:
-        errors["occupied_count"] = "occupied_count не может превышать capacity"
+        errors["occupied_count"] = "EXCEEDS_CAPACITY"
     contact, contact_error = normalize_contact(data.contact_type, data.contact_value)
     if contact_error:
         errors["contact_type" if data.contact_type not in CONTACT_TYPES else "contact_value"] = contact_error
     if data.status and data.status not in ("active", "paused"):
-        errors["status"] = "status: active или paused"
+        errors["status"] = "INVALID_CHOICE"
     return errors
 
 

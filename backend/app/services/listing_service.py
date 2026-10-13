@@ -9,7 +9,7 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.listing import listing_field_errors, ListingInput, ListingUpdate, ListingOwner, ResidentBrief, InviteResponse, MineListingResponse
 from app.utils.security import generate_token, sha256_hex, normalize_building
-from app.utils.errors import AppError, not_found, forbidden, version_conflict, listing_exists, occupancy_conflict, profile_required, validation_error
+from app.utils.errors import not_found, forbidden, version_conflict, listing_exists, room_taken, already_in_room, occupancy_conflict, profile_required, validation_error
 
 
 def _free_places(l: Listing) -> int:
@@ -74,10 +74,10 @@ async def create_listing(db, user: User, body: ListingInput) -> ListingOwner:
         raise profile_required()
     existing = await db.execute(select(Listing).where(Listing.owner_id == user.id))
     if existing.scalar_one_or_none() is not None:
-        raise listing_exists("У вас уже есть карточка.")
+        raise listing_exists()
     mem = await db.execute(select(Membership).where(Membership.user_id == user.id))
     if mem.scalar_one_or_none() is not None:
-        raise AppError(409, "MEMBERSHIP_CONFLICT", "Вы уже участвуете в другой комнате.")
+        raise already_in_room()
 
     building = None
     room_number = body.room_number
@@ -85,7 +85,7 @@ async def create_listing(db, user: User, body: ListingInput) -> ListingOwner:
         building = normalize_building(body.building)
         dup = await db.execute(select(Listing).where(Listing.building == building, Listing.room_number == room_number))
         if dup.scalar_one_or_none() is not None:
-            raise listing_exists(f"Карточка для {building}, комн. {room_number} уже существует.")
+            raise room_taken(building, room_number)
 
     now = datetime.now(timezone.utc)
     listing = Listing(
@@ -133,7 +133,7 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
             dup = await db.execute(select(Listing.id).where(
                 Listing.building == building, Listing.room_number == body.room_number, Listing.id != listing.id))
             if dup.scalar_one_or_none() is not None:
-                raise listing_exists(f"Карточка для {building}, комн. {body.room_number} уже существует.")
+                raise room_taken(building, body.room_number)
         listing.building = building
         listing.room_number = body.room_number
         listing.floor = body.floor

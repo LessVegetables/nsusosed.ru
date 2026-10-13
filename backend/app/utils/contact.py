@@ -23,24 +23,24 @@ def _normalize_phone(value: str) -> Optional[str]:
 
 
 def normalize_contact(contact_type: str, value: str) -> Tuple[Optional[str], Optional[str]]:
-    """Вернуть (нормализованное значение, None) или (None, сообщение об ошибке)."""
+    """Вернуть (нормализованное значение, None) или (None, код причины ошибки)."""
     value = value.strip()
     if contact_type not in CONTACT_TYPES:
-        return None, "Допустимо: " + ", ".join(CONTACT_TYPES)
+        return None, "INVALID_CHOICE"
     if contact_type == "telegram":
         username = _TELEGRAM_PREFIX_RE.sub("", value).lstrip("@")
         if not _TELEGRAM_RE.match(username):
-            return None, "Telegram: 5-32 символа, латинские буквы, цифры, _"
+            return None, "INVALID_TELEGRAM"
         return username, None
     if contact_type in ("phone", "whatsapp"):
         phone = _normalize_phone(value)
         if phone is None:
-            return None, "Неверный номер телефона"
+            return None, "INVALID_PHONE"
         return phone, None
     if not value:
-        return None, "Укажите контакт"
+        return None, "REQUIRED"
     if len(value) > CONTACT_VALUE_MAX:
-        return None, f"Не длиннее {CONTACT_VALUE_MAX} символов"
+        return None, "TOO_LONG"
     return value, None
 
 
