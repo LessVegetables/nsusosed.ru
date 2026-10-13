@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     postbox_api_url: str = "https://postbox.cloud.yandex.net/api/v1/send"
 
     # ── OTP ─────────────────────────────────────────────
-    otp_ttl_seconds: int = 600
+    otp_ttl_seconds: int = 120
     otp_max_attempts: int = 5
     otp_code_length: int = 6
 

@@ -8,15 +8,26 @@ from app.config import settings
 logger = logging.getLogger("nsusosed.email")
 
 
+def _minutes_ru(n: int) -> str:
+    if n % 10 == 1 and n % 100 != 11:
+        word = "минуту"
+    elif 2 <= n % 10 <= 4 and not 12 <= n % 100 <= 14:
+        word = "минуты"
+    else:
+        word = "минут"
+    return f"{n} {word}"
+
+
 async def send_otp_email(to_email: str, code: str) -> bool:
     """
     Отправить код подтверждения через Postbox API.
     При EMAIL_MODE=log код пишется в лог (только для разработки).
     """
     subject = "Код подтверждения nsusosed"
+    ttl = _minutes_ru(max(1, settings.otp_ttl_seconds // 60))
     text = (
         f"Ваш код для входа в nsusosed: {code}\n\n"
-        f"Код действителен {settings.otp_ttl_seconds // 60} минут.\n"
+        f"Код действителен {ttl}.\n"
         f"Никому его не сообщайте."
     )
     html = f"""
@@ -28,7 +39,7 @@ async def send_otp_email(to_email: str, code: str) -> bool:
                     border-radius: 8px; margin: 16px 0;">
             {code}
         </div>
-        <p>Код действителен <b>{settings.otp_ttl_seconds // 60} минут</b>.</p>
+        <p>Код действителен <b>{ttl}</b>.</p>
         <p>Если вы не запрашивали код — проигнорируйте это письмо.</p>
     </div>
     """
