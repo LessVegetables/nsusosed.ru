@@ -7,9 +7,9 @@ from app.models.listing import Listing
 from app.models.membership import Membership
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.listing import ListingInput, ListingUpdate, ListingOwner, ResidentBrief, InviteResponse, MineListingResponse
+from app.schemas.listing import listing_field_errors, ListingInput, ListingUpdate, ListingOwner, ResidentBrief, InviteResponse, MineListingResponse
 from app.utils.security import generate_token, sha256_hex, normalize_building
-from app.utils.errors import AppError, not_found, forbidden, version_conflict, listing_exists, occupancy_conflict, profile_required
+from app.utils.errors import AppError, not_found, forbidden, version_conflict, listing_exists, occupancy_conflict, profile_required, validation_error
 
 
 def _free_places(l: Listing) -> int:
@@ -121,27 +121,32 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
     if body.occupied_count < mem_count:
         raise occupancy_conflict()
 
-    listing.capacity = body.capacity
-    listing.occupied_count = body.occupied_count
-    listing.contact_username = body.contact_username
-    listing.description = body.description
+    errors = listing_field_errors(listing.kind, body)
+    if errors:
+        raise validation_error("Проверьте заполненные поля", errors)
 
     if listing.kind == "dorm":
-        if body.building:
-            listing.building = normalize_building(body.building)
-        if body.room_number is not None:
-            listing.room_number = body.room_number
-        if body.floor is not None:
-            listing.floor = body.floor
+        building = normalize_building(body.building)
+        if (building, body.room_number) != (listing.building, listing.room_number):
+            dup = await db.execute(select(Listing.id).where(
+                Listing.building == building, Listing.room_number == body.room_number, Listing.id != listing.id))
+            if dup.scalar_one_or_none() is not None:
+                raise listing_exists(f"Карточка для {building}, комн. {body.room_number} уже существует.")
+        listing.building = building
+        listing.room_number = body.room_number
+        listing.floor = body.floor
         listing.is_corner = body.is_corner
         listing.windows_count = body.windows_count
         listing.view = body.view
         listing.layout = body.layout
     else:
-        if body.district is not None:
-            listing.district = body.district
-        if body.monthly_cost_per_person_rub is not None:
-            listing.monthly_cost_per_person_rub = body.monthly_cost_per_person_rub
+        listing.district = body.district
+        listing.monthly_cost_per_person_rub = body.monthly_cost_per_person_rub
+
+    listing.capacity = body.capacity
+    listing.occupied_count = body.occupied_count
+    listing.contact_username = body.contact_username
+    listing.description = body.description
 
     free = listing.capacity - listing.occupied_count
     if free == 0:

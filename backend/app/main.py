@@ -6,7 +6,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.routers import auth, users, profiles, listings, memberships, matching
-from app.utils.errors import AppError, make_error_response
+from app.utils.errors import AppError, FieldErrors, make_error_response
 
 logger = logging.getLogger("nsusosed")
 logging.basicConfig(level=logging.INFO)
@@ -38,6 +38,10 @@ async def validation_error_handler(request: Request, exc: RequestValidationError
     rid = str(uuid.uuid4())
     fields = {}
     for err in exc.errors():
+        ctx_error = (err.get("ctx") or {}).get("error")
+        if isinstance(ctx_error, FieldErrors):
+            fields.update(ctx_error.fields)
+            continue
         loc = ".".join(str(l) for l in err.get("loc", []) if l != "body")
         msg = err.get("msg", "Неверное значение")
         if msg.startswith("Value error, "):

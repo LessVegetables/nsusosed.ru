@@ -19,6 +19,15 @@ def make_error_response(status_code: int, code: str, message: str,
     return JSONResponse(status_code=status_code, content=envelope.model_dump(), headers=headers)
 
 
+class FieldErrors(ValueError):
+    """Ошибка валидации с привязкой к полям. Бросается из model_validator,
+    обработчик RequestValidationError раскладывает её по полям ответа."""
+
+    def __init__(self, fields: Dict[str, str]):
+        self.fields = fields
+        super().__init__("; ".join(f"{k}: {v}" for k, v in fields.items()))
+
+
 class AppError(Exception):
     def __init__(self, status_code: int, code: str, message: str,
                  fields: Optional[Dict[str, str]] = None,
