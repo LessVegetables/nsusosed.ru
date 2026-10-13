@@ -29,23 +29,10 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
             {"email": f"Требуется домен: {', '.join(settings.email_domains)}"},
         )
 
-    # 2. Найти или создать пользователя (автоматическая регистрация)
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(
-            email=email,
-            display_name="Пользователь",
-            privacy_version=1,
-            privacy_accepted_at=datetime.now(timezone.utc),
-        )
-        db.add(user)
-        await db.flush()
+    # 2. Сгенерировать OTP. Пользователь создаётся только после проверки кода.
+    code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
 
-    # 3. Сгенерировать OTP
-    code = await create_otp(db, user.id, email)
-
-    # 4. Отправить email
+    # 3. Отправить email
     sent = await send_otp_email(email, code)
     if not sent and settings.postbox_api_key:
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
@@ -71,11 +58,18 @@ async def verify_code(
     if otp is None:
         raise invalid_credentials()
 
-    # Находим пользователя
+    # Находим пользователя или регистрируем нового
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
-        raise invalid_credentials()
+        user = User(
+            email=email,
+            display_name="Пользователь",
+            privacy_version=1,
+            privacy_accepted_at=otp.privacy_accepted_at or datetime.now(timezone.utc),
+        )
+        db.add(user)
+        await db.flush()
 
     # Профиль заполнен?
     prof_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
