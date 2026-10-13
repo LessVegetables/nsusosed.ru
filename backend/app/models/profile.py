@@ -1,6 +1,6 @@
 from __future__ import annotations
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Integer, String, DateTime, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,6 +16,6 @@ class Profile(Base):
     situation: Mapped[str] = mapped_column(String(30), nullable=False)
     budget_max_rub: Mapped[int | None] = mapped_column(Integer, nullable=True)
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=lambda: datetime.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=lambda: datetime.now(timezone.utc))
 
     user: Mapped["User"] = relationship(back_populates="profile")
