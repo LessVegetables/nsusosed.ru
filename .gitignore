@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
@@ -222,3 +223,13 @@ __marimo__/
 # Other
 .DS_Store
 *.un~
+=======
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+nginx/certs/*.pem
+nginx/certs/*.key
+nginx/certs/*.crt
+>>>>>>> backend
