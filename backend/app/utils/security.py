@@ -45,6 +45,3 @@ def validate_email_domain(email: str, allowed_domains: list[str]) -> bool:
     domain = normalized.rsplit("@", 1)[1]
     return domain in allowed_domains
 
-
-def make_telegram_url(username: str) -> str:
-    return f"https://t.me/{username}"

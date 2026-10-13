@@ -51,7 +51,7 @@ async def _to_owner_dto(db, l: Listing) -> ListingOwner:
         is_corner=l.is_corner, windows_count=l.windows_count,
         view=l.view, layout=l.layout,
         district=l.district, monthly_cost_per_person_rub=l.monthly_cost_per_person_rub,
-        description=l.description, contact_username=l.contact_username,
+        description=l.description, contact_type=l.contact_type, contact_value=l.contact_value,
         status=l.status, version=l.version,
         residents=residents, confirmed_at=l.confirmed_at, created_at=l.created_at,
     )
@@ -89,7 +89,7 @@ async def create_listing(db, user: User, body: ListingInput) -> ListingOwner:
     listing = Listing(
         owner_id=user.id, kind=body.kind,
         capacity=body.capacity, occupied_count=body.occupied_count,
-        contact_username=body.contact_username, description=body.description,
+        contact_type=body.contact_type, contact_value=body.contact_value, description=body.description,
         status="active", version=1, confirmed_at=now,
         building=building, room_number=room_number, floor=body.floor,
         is_corner=body.is_corner, windows_count=body.windows_count,
@@ -145,7 +145,8 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
 
     listing.capacity = body.capacity
     listing.occupied_count = body.occupied_count
-    listing.contact_username = body.contact_username
+    listing.contact_type = body.contact_type
+    listing.contact_value = body.contact_value
     listing.description = body.description
 
     free = listing.capacity - listing.occupied_count

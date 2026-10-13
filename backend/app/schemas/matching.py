@@ -68,4 +68,6 @@ class ListingDetail(BaseModel):
 
 
 class ContactResponse(BaseModel):
-    telegram_url: str
+    type: str
+    value: str
+    url: Optional[str] = None

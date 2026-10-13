@@ -1,9 +1,9 @@
 from __future__ import annotations
-import re
 from datetime import datetime
 from typing import Dict, List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
+from app.utils.contact import CONTACT_TYPES, CONTACT_VALUE_MAX, normalize_contact
 from app.utils.errors import FieldErrors
 
 
@@ -16,7 +16,6 @@ DORM_FIELDS = ("building", "room_number", "floor", "is_corner", "windows_count",
 DORM_REQUIRED = ("building", "room_number", "floor")
 APARTMENT_FIELDS = ("district", "monthly_cost_per_person_rub")
 VIEWS = ("forest", "road", "yard", "other", "unknown")
-CONTACT_USERNAME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9_]{4,31}$")
 
 
 def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
@@ -42,8 +41,9 @@ def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
         errors["kind"] = "kind должен быть dorm или apartment"
     if data.occupied_count > data.capacity:
         errors["occupied_count"] = "occupied_count не может превышать capacity"
-    if not CONTACT_USERNAME_RE.match(data.contact_username):
-        errors["contact_username"] = "5-32 символа, латинские буквы, цифры, _"
+    contact, contact_error = normalize_contact(data.contact_type, data.contact_value)
+    if contact_error:
+        errors["contact_type" if data.contact_type not in CONTACT_TYPES else "contact_value"] = contact_error
     if data.status and data.status not in ("active", "paused"):
         errors["status"] = "status: active или paused"
     return errors
@@ -52,7 +52,8 @@ def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
 class ListingFields(BaseModel):
     capacity: int = Field(..., ge=1, le=10)
     occupied_count: int = Field(..., ge=1)
-    contact_username: str = Field(..., min_length=5, max_length=32)
+    contact_type: str
+    contact_value: str = Field(..., min_length=1, max_length=CONTACT_VALUE_MAX)
     description: Optional[str] = Field(default=None, max_length=1000)
     status: Optional[str] = Field(default="active")
     building: Optional[str] = Field(default=None, max_length=20)
@@ -64,6 +65,14 @@ class ListingFields(BaseModel):
     layout: Optional[str] = Field(default=None, max_length=300)
     district: Optional[str] = Field(default=None, max_length=80)
     monthly_cost_per_person_rub: Optional[int] = Field(default=None, ge=1, le=200000)
+
+    @model_validator(mode="after")
+    def normalize_contact_value(self) -> "ListingFields":
+        # Ошибки формата контакта собирает listing_field_errors, здесь только нормализация.
+        normalized, _ = normalize_contact(self.contact_type, self.contact_value)
+        if normalized is not None:
+            self.contact_value = normalized
+        return self
 
 
 class ListingInput(ListingFields):
@@ -100,7 +109,8 @@ class ListingOwner(BaseModel):
     district: Optional[str] = None
     monthly_cost_per_person_rub: Optional[int] = None
     description: Optional[str] = None
-    contact_username: str
+    contact_type: str
+    contact_value: str
     status: str
     version: int
     residents: List[ResidentBrief] = []

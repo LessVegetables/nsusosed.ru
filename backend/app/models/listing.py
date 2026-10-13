@@ -14,6 +14,7 @@ class Listing(Base):
         CheckConstraint("occupied_count BETWEEN 1 AND capacity", name="ck_listings_occupied"),
         CheckConstraint("kind IN ('dorm', 'apartment')", name="ck_listings_kind"),
         CheckConstraint("status IN ('active', 'paused')", name="ck_listings_status"),
+        CheckConstraint("contact_type IN ('telegram', 'whatsapp', 'max', 'phone', 'other')", name="ck_listings_contact_type"),
         UniqueConstraint("building", "room_number", name="uq_listings_dorm_address"),
     )
 
@@ -22,7 +23,8 @@ class Listing(Base):
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     occupied_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    contact_username: Mapped[str] = mapped_column(String(32), nullable=False)
+    contact_type: Mapped[str] = mapped_column(String(10), nullable=False)
+    contact_value: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="active")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))

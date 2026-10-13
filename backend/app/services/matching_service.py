@@ -11,7 +11,7 @@ from app.models.profile import Profile
 from app.models.user import User
 from app.schemas.matching import MatchItem, MatchListResponse, Compatibility, DimensionDetail, ContactResponse
 from app.schemas.listing import ResidentBrief
-from app.utils.security import make_telegram_url
+from app.utils.contact import contact_url
 from app.utils.errors import not_found, profile_required, budget_required
 
 QUESTION_KEYS = [q["key"] for q in QUESTIONNAIRE_V1["questions"]]
@@ -275,4 +275,5 @@ async def get_contact(db, user, listing_id: uuid.UUID) -> ContactResponse:
                 if not _check_hard(cand.answers, p.answers):
                     raise not_found("Карточка недоступна.")
 
-    return ContactResponse(telegram_url=make_telegram_url(l.contact_username))
+    return ContactResponse(type=l.contact_type, value=l.contact_value,
+                           url=contact_url(l.contact_type, l.contact_value))
