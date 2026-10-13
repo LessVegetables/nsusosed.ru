@@ -6,6 +6,15 @@ from pydantic import BaseModel
 from app.schemas.listing import ResidentBrief
 
 
+class MatchWarning(BaseModel):
+    # PARTIAL_ANSWERS: ответили не все жильцы (answered из occupied)
+    # RESIDENTS_DISAGREE: ответы жильцов на вопрос key сильно расходятся
+    code: str
+    answered: Optional[int] = None
+    occupied: Optional[int] = None
+    key: Optional[str] = None
+
+
 class DimensionDetail(BaseModel):
     key: str
     candidate_value: int
@@ -13,14 +22,14 @@ class DimensionDetail(BaseModel):
     similarity: float
     weight: float
     contribution_points: float
-    label: str
+    label: str  # similar | minor_difference | noticeable_difference
 
 
 class Compatibility(BaseModel):
     score: int
     score_raw: float
     score_version: int
-    warnings: List[str] = []
+    warnings: List[MatchWarning] = []
     dimensions: List[DimensionDetail] = []
 
 
