@@ -56,6 +56,8 @@ async def verify_code(
 
     otp = await verify_otp(db, email, body.code.strip())
     if otp is None:
+        # Сохраняем счётчик попыток до ошибки: иначе get_db откатит транзакцию.
+        await db.commit()
         raise invalid_credentials()
 
     # Находим пользователя или регистрируем нового
