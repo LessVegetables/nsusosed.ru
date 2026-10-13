@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="title.login">Вход — nsusosed</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/pages/login.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main" class="container narrow" tabindex="-1">
+    <h1 data-i18n="login.title">Вход и регистрация</h1>
+
+    <section id="step-email" aria-labelledby="step-email-title">
+      <h2 id="step-email-title" class="visually-hidden" data-i18n="login.stepEmail">Почта</h2>
+      <p class="lead" data-i18n="login.lead">Паролей нет: мы пришлём на почту одноразовый код.</p>
+      <form id="email-form" class="stack" novalidate>
+        <div class="field" data-field="email">
+          <label for="email" data-i18n="login.email">Университетская почта</label>
+          <input id="email" type="email" autocomplete="email" inputmode="email"
+                 autocapitalize="off" spellcheck="false" maxlength="254" required
+                 aria-describedby="email-hint" placeholder="i.ivanov@g.nsu.ru">
+          <p id="email-hint" class="hint" data-i18n="login.emailHint">Только адреса @g.nsu.ru.</p>
+        </div>
+        <div class="field field-check" data-field="privacy_accepted">
+          <input id="privacy" type="checkbox" required>
+          <label for="privacy">
+            <span data-i18n="login.privacyBefore">Я согласен(на) с</span>
+            <a href="/privacy" target="_blank" rel="noopener" data-i18n="login.privacyLink">политикой обработки персональных данных</a>
+          </label>
+        </div>
+        <div id="email-error" hidden></div>
+        <div class="actions">
+          <button class="btn" type="submit" disabled data-i18n="login.getCode">Получить код</button>
+        </div>
+      </form>
+    </section>
+
+    <section id="step-code" aria-labelledby="step-code-title" hidden>
+      <h2 id="step-code-title" class="visually-hidden" data-i18n="login.stepCode">Код</h2>
+      <p id="code-sent" class="lead" role="status"></p>
+      <form id="code-form" class="stack" novalidate>
+        <div class="field" data-field="code">
+          <label for="code" data-i18n="login.code">Код из письма</label>
+          <input id="code" class="input-code" inputmode="numeric" autocomplete="one-time-code"
+                 pattern="[0-9]{6}" maxlength="6" required aria-describedby="code-timer">
+          <p id="code-timer" class="hint"></p>
+        </div>
+        <div id="code-error" hidden></div>
+        <div class="actions">
+          <button class="btn" type="submit" disabled data-i18n="login.submit">Войти</button>
+        </div>
+        <div class="actions">
+          <button id="resend" class="btn btn-link" type="button"></button>
+          <button id="change-email" class="btn btn-link" type="button" data-i18n="login.changeEmail">Изменить почту</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <footer id="site-footer" class="site-footer"></footer>
+</body>
+</html>
