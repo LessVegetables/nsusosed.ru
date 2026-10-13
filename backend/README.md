@@ -39,6 +39,17 @@ docker compose exec app alembic upgrade head
 docker compose exec app alembic revision --autogenerate -m "description"
 ```
 
+## Тесты
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+# Отдельная пустая БД: таблицы очищаются перед каждым тестом
+TEST_DATABASE_URL=postgresql+asyncpg://nsusosed:PASSWORD@localhost:5432/nsusosed_test pytest
+```
+
+Без `TEST_DATABASE_URL` запускаются только юнит-тесты формулы совместимости, остальные пропускаются.
+
 ## Коды ошибок API (API error codes)
 
 Every error response looks like this:
