@@ -9,13 +9,15 @@ import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import Request
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.auth_event import AuthEvent
 from app.utils.errors import rate_limited
 
 HOUR = 3600
+# Должно быть не меньше самого длинного окна лимитов (час).
+EVENTS_RETENTION = timedelta(days=1)
 
 
 def client_ip(request: Request) -> Optional[str]:
@@ -75,6 +77,13 @@ async def check_verify(db: AsyncSession, email: str, ip: Optional[str]) -> None:
     fails = await _times(db, now - timedelta(seconds=HOUR), email=email, kind="verify_fail")
     if len(fails) >= settings.otp_max_failed_verifies_per_hour:
         raise rate_limited(_retry_after(fails[0], HOUR, now))
+
+
+async def cleanup_old_events(db: AsyncSession) -> int:
+    result = await db.execute(
+        delete(AuthEvent).where(AuthEvent.created_at < datetime.now(timezone.utc) - EVENTS_RETENTION)
+    )
+    return result.rowcount
 
 
 async def record(db: AsyncSession, kind: str, email: str, ip: Optional[str]) -> None:

@@ -12,10 +12,10 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserSelf, UserUpdate
 from app.utils.security import normalize_email, validate_email_domain
-from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session
+from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
 from app.utils.errors import AppError, validation_error, invalid_code
 from app.services.email_service import send_otp_email
-from app.services.otp_service import create_otp, verify_otp
+from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
 from app.services import rate_limit_service as rl
 
 
@@ -88,6 +88,11 @@ async def verify_code(
 
     # Создаём сессию
     token = await create_session(db, user.id, request)
+
+    # Попутно чистим просроченное (индексы по времени есть у всех трёх таблиц)
+    await cleanup_expired_sessions(db)
+    await cleanup_expired_otps(db)
+    await rl.cleanup_old_events(db)
     set_session_cookie(response, token)
 
     return AuthResponse(
