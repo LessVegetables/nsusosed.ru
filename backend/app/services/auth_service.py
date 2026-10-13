@@ -16,6 +16,7 @@ from app.utils.session import create_session, set_session_cookie, clear_session_
 from app.utils.errors import AppError, validation_error, invalid_credentials
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp
+from app.services import rate_limit_service as rl
 
 
 async def request_code(db, body: RequestCodeRequest, request: Request) -> RequestCodeResponse:
@@ -28,6 +29,10 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
             "Недопустимый домен электронной почты.",
             {"email": f"Требуется домен: {', '.join(settings.email_domains)}"},
         )
+
+    ip = rl.client_ip(request)
+    await rl.check_request_code(db, email, ip)
+    await rl.record(db, "code_request", email, ip)
 
     # 2. Сгенерировать OTP. Пользователь создаётся только после проверки кода.
     code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
@@ -54,11 +59,17 @@ async def verify_code(
     """Проверить код и создать сессию."""
     email = normalize_email(body.email)
 
+    ip = rl.client_ip(request)
+    await rl.check_verify(db, email, ip)
+
     otp = await verify_otp(db, email, body.code.strip())
     if otp is None:
-        # Сохраняем счётчик попыток до ошибки: иначе get_db откатит транзакцию.
+        await rl.record(db, "verify_fail", email, ip)
+        # Сохраняем счётчик попыток и событие до ошибки: иначе get_db откатит транзакцию.
         await db.commit()
         raise invalid_credentials()
+
+    await rl.record(db, "verify_ok", email, ip)
 
     # Находим пользователя или регистрируем нового
     result = await db.execute(select(User).where(User.email == email))

@@ -27,6 +27,13 @@ class Settings(BaseSettings):
     otp_max_attempts: int = 5
     otp_code_length: int = 6
 
+    # ── Ограничение частоты входа ───────────────────────
+    otp_resend_cooldown_seconds: int = 60
+    otp_max_requests_per_hour: int = 5
+    otp_max_failed_verifies_per_hour: int = 10
+    auth_ip_max_requests: int = 20
+    auth_ip_window_seconds: int = 600
+
     @property
     def email_domains(self) -> List[str]:
         return [d.strip().lower() for d in self.allowed_email_domains.split(",") if d.strip()]

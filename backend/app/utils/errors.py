@@ -71,5 +71,10 @@ def budget_required():
     return AppError(422, "BUDGET_REQUIRED", "Укажите месячный бюджет.")
 
 
+def rate_limited(retry_after: int):
+    return AppError(429, "RATE_LIMITED", f"Слишком много попыток. Повторите через {retry_after} с.",
+                    retry_after=retry_after)
+
+
 def validation_error(message: str, fields: Optional[Dict[str, str]] = None):
     return AppError(422, "VALIDATION_ERROR", message, fields)
