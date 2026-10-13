@@ -1,7 +1,8 @@
 from __future__ import annotations
 import json
 from pathlib import Path
-from typing import List
+from typing import List, Literal
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     cookie_name: str = "__Host-nsusosed"
 
     # ── Yandex Cloud Postbox ────────────────────────────
+    # postbox — отправлять письма; log — писать коды в лог (только для разработки)
+    email_mode: Literal["postbox", "log"] = "postbox"
     postbox_api_key: str = ""
     postbox_sender_email: str = ""
     postbox_api_url: str = "https://postbox.cloud.yandex.net/api/v1/send"
@@ -33,6 +36,15 @@ class Settings(BaseSettings):
     otp_max_failed_verifies_per_hour: int = 10
     auth_ip_max_requests: int = 20
     auth_ip_window_seconds: int = 600
+
+    @model_validator(mode="after")
+    def check_email_settings(self) -> "Settings":
+        if self.email_mode == "postbox" and not (self.postbox_api_key and self.postbox_sender_email):
+            raise ValueError(
+                "EMAIL_MODE=postbox requires POSTBOX_API_KEY and POSTBOX_SENDER_EMAIL "
+                "(set EMAIL_MODE=log for local development)"
+            )
+        return self
 
     @property
     def email_domains(self) -> List[str]:

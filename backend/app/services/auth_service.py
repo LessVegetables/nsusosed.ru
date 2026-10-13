@@ -39,7 +39,7 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
 
     # 3. Отправить email
     sent = await send_otp_email(email, code)
-    if not sent and settings.postbox_api_key:
+    if not sent:
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
 
     # Маскируем email для ответа

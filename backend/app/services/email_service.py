@@ -11,7 +11,7 @@ logger = logging.getLogger("nsusosed.email")
 async def send_otp_email(to_email: str, code: str) -> bool:
     """
     Отправить код подтверждения через Postbox API.
-    Если POSTBOX_API_KEY пустой — код пишется в лог (тестовый режим).
+    При EMAIL_MODE=log код пишется в лог (только для разработки).
     """
     subject = "Код подтверждения nsusosed"
     text = (
@@ -34,7 +34,7 @@ async def send_otp_email(to_email: str, code: str) -> bool:
     """
 
     # ── Тестовый режим ──────────────────────────────────
-    if not settings.postbox_api_key:
+    if settings.email_mode == "log":
         logger.warning("[EMAIL TEST MODE] To: %s | Code: %s", to_email, code)
         return True
 
