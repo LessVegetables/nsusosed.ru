@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="title.account">Аккаунт — nsusosed</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/css/style.css">
+  <script type="module" src="/js/pages/account.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header id="site-header" class="site-header"></header>
+
+  <main id="main" class="container narrow stack" tabindex="-1">
+    <h1 data-i18n="account.title">Аккаунт</h1>
+
+    <section class="card stack" aria-labelledby="name-title">
+      <h2 id="name-title" data-i18n="account.profileTitle">Профиль</h2>
+      <p><span class="muted" data-i18n="account.email">Почта:</span> <span id="email"></span></p>
+      <form id="name-form" class="stack" novalidate>
+        <div class="field" data-field="display_name">
+          <label for="display-name" data-i18n="account.displayName">Имя</label>
+          <input id="display-name" type="text" autocomplete="nickname"
+                 minlength="2" maxlength="60" required aria-describedby="display-name-hint">
+          <p id="display-name-hint" class="hint" data-i18n="account.displayNameHint">Его видят соседи по комнате и автор карточки, в которую вы вступили. 2–60 символов.</p>
+        </div>
+        <div id="name-error" hidden></div>
+        <div class="actions">
+          <button type="submit" class="btn" disabled data-i18n="common.save">Сохранить</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card stack" aria-labelledby="room-title">
+      <h2 id="room-title" data-i18n="account.roomTitle">Комната, в которую вы вступили</h2>
+      <p data-i18n="account.roomText">Если вы присоединились к чужой карточке по приглашению, здесь можно из неё выйти. Автор карточки выйти не может: ему нужно удалить карточку.</p>
+      <div id="leave-error" hidden></div>
+      <div class="actions">
+        <button id="leave" type="button" class="btn btn-secondary" data-i18n="account.leave">Выйти из комнаты</button>
+      </div>
+    </section>
+
+    <section class="card stack" aria-labelledby="session-title">
+      <h2 id="session-title" data-i18n="account.sessionTitle">Выход</h2>
+      <div id="logout-error" hidden></div>
+      <div class="actions">
+        <button id="logout" type="button" class="btn btn-secondary" data-i18n="account.logout">Выйти из аккаунта</button>
+      </div>
+    </section>
+
+    <section class="card card-danger stack" aria-labelledby="delete-title">
+      <h2 id="delete-title" data-i18n="account.deleteTitle">Удаление аккаунта</h2>
+      <p data-i18n="account.deleteText">Мы удалим аккаунт, анкету, вашу карточку и участие в комнате. Отменить это нельзя.</p>
+      <form id="delete-form" class="stack" novalidate>
+        <div class="field" data-field="confirm">
+          <label for="delete-confirm" data-i18n="account.deleteLabel">Чтобы подтвердить, введите DELETE</label>
+          <input id="delete-confirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false">
+        </div>
+        <div id="delete-error" hidden></div>
+        <div class="actions">
+          <button type="submit" class="btn btn-danger" disabled data-i18n="account.delete">Удалить аккаунт навсегда</button>
+        </div>
+      </form>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" hidden></div>
+  <footer id="site-footer" class="site-footer"></footer>
+</body>
+</html>
