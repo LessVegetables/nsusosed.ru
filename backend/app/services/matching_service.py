@@ -8,6 +8,7 @@ from app.config import QUESTIONNAIRE_V1, MATCHING_CONFIG, settings
 from app.models.listing import Listing
 from app.models.membership import Membership
 from app.models.profile import Profile
+from app.models.user import User
 from app.schemas.matching import MatchItem, MatchListResponse, Compatibility, DimensionDetail, ContactResponse
 from app.schemas.listing import ResidentBrief
 from app.utils.security import make_telegram_url
