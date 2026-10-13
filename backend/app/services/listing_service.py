@@ -53,7 +53,9 @@ async def _to_owner_dto(db, l: Listing) -> ListingOwner:
         district=l.district, monthly_cost_per_person_rub=l.monthly_cost_per_person_rub,
         description=l.description, contact_type=l.contact_type, contact_value=l.contact_value,
         status=l.status, version=l.version,
-        residents=residents, confirmed_at=l.confirmed_at, created_at=l.created_at,
+        residents=residents, confirmed_at=l.confirmed_at,
+        expires_at=l.confirmed_at + timedelta(days=settings.listing_ttl_days),
+        created_at=l.created_at,
     )
 
 
@@ -158,6 +160,28 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
     if listing.status == "active":
         listing.confirmed_at = datetime.now(timezone.utc)
 
+    listing.version += 1
+    await db.flush()
+    return await _to_owner_dto(db, listing)
+
+
+async def confirm_listing(db, user: User, listing_id: uuid.UUID, expected_version: int) -> ListingOwner:
+    """Автор подтверждает, что карточка актуальна: продлевает показ ещё на LISTING_TTL_DAYS."""
+    result = await db.execute(select(Listing).where(Listing.id == listing_id))
+    listing = result.scalar_one_or_none()
+    if listing is None:
+        raise not_found("Карточка не найдена.")
+    if listing.owner_id != user.id:
+        raise forbidden("Только автор может подтвердить карточку.")
+
+    await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
+
+    if expected_version != listing.version:
+        raise version_conflict()
+
+    listing.confirmed_at = datetime.now(timezone.utc)
+    if _free_places(listing) > 0:
+        listing.status = "active"
     listing.version += 1
     await db.flush()
     return await _to_owner_dto(db, listing)

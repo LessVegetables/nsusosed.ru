@@ -115,7 +115,12 @@ class ListingOwner(BaseModel):
     version: int
     residents: List[ResidentBrief] = []
     confirmed_at: datetime
+    expires_at: datetime  # confirmed_at + LISTING_TTL_DAYS: после этого карточка скрыта
     created_at: datetime
+
+
+class ConfirmRequest(BaseModel):
+    expected_version: int
 
 
 class InviteRequest(BaseModel):
