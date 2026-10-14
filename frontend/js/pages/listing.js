@@ -44,7 +44,7 @@ function breakdown(compat, questions) {
 }
 
 function contactSection(listingId) {
-  const result = h('div', { class: 'contact-result', 'aria-live': 'polite' });
+  const result = h('div', { class: 'contact-result', 'aria-live': 'polite', 'data-private': true });
   const error = h('div', { hidden: true });
   const button = h('button', { type: 'button', class: 'btn', i18n: 'detail.showContact' });
 
@@ -127,7 +127,7 @@ function render(detail, questions) {
       { class: 'card', 'aria-labelledby': 'about-title' },
       h('h2', { id: 'about-title', i18n: 'detail.about' }),
       facts(detail),
-      detail.description ? h('p', { class: 'description' }, detail.description) : null,
+      detail.description ? h('p', { class: 'description', 'data-private': true }, detail.description) : null,
     ),
 
     h(

@@ -62,7 +62,7 @@ function confirmStep() {
   content.replaceChildren(
     h('div', { class: 'card stack' },
       h('p', { i18n: 'join.question' }),
-      h('p', { class: 'muted', i18n: 'join.explain', i18nArgs: { name: me.display_name } }),
+      h('p', { class: 'muted', 'data-private': true, i18n: 'join.explain', i18nArgs: { name: me.display_name } }),
       h('div', { class: 'actions' }, button),
       error),
   );

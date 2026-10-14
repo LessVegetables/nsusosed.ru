@@ -7,6 +7,8 @@
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/css/style.css">
   <script type="module" src="/js/pages/login.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
@@ -42,7 +44,7 @@
 
     <section id="step-code" aria-labelledby="step-code-title" hidden>
       <h2 id="step-code-title" class="visually-hidden" data-i18n="login.stepCode">Код</h2>
-      <p id="code-sent" class="lead" role="status"></p>
+      <p id="code-sent" class="lead" role="status" data-private></p>
       <form id="code-form" class="stack" novalidate>
         <div class="field" data-field="code">
           <label for="code" data-i18n="login.code">Код из письма</label>
