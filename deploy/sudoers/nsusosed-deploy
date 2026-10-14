@@ -1,0 +1,10 @@
+# Lets the GitHub Actions user rebuild/restart the stack and nothing else.
+# Install with:  sudo visudo -f /etc/sudoers.d/nsusosed-deploy
+# (visudo checks the syntax; a broken sudoers file can lock you out of sudo.)
+# The trailing "" means "no arguments allowed".
+#
+# Why not just add gh_deploy to the docker group? Anyone in that group is root
+# in practice (docker run -v /:/host …). This way the GitHub key can only run
+# one fixed, root-owned script.
+gh_deploy ALL=(root) NOPASSWD: /usr/local/bin/nsusosed-redeploy ""
+

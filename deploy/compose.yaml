@@ -1,0 +1,93 @@
+# Production stack for nsusosed.ru: Postgres + the FastAPI app.
+# (The repo-root docker-compose.yml is the dev stack and isn't used here.)
+#
+# Install by hand, root-owned:  /opt/nsusosed/compose.yaml
+# The workflow only updates /opt/nsusosed/app (the build context) and warns
+# when this file in the repo differs from the server's copy.
+#
+# Exposure: the VPS runs UFW, and Docker writes its own iptables rules that
+# go around UFW. So nothing here is published on a public address:
+#   - db publishes no ports and sits on an internal-only network;
+#   - api publishes only on 127.0.0.1:1231, for the host nginx.
+
+name: nsusosed
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in /etc/nsusosed.env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in /etc/nsusosed.env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in /etc/nsusosed.env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [db]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    security_opt: ["no-new-privileges:true"]
+    logging: *logging
+
+  api:
+    build: ./app
+    image: nsusosed-api:latest
+    restart: unless-stopped
+    env_file: /etc/nsusosed.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      PYTHONUNBUFFERED: "1"
+      PYTHONDONTWRITEBYTECODE: "1"
+    # Migrations first, then uvicorn. "upgrade head" does nothing when there's
+    # nothing new; if a migration fails, the container never gets healthy and
+    # the deploy goes red.
+    # --forwarded-allow-ips '*': requests reach this port only from the host's
+    # loopback, i.e. from nginx (Docker's proxy makes them arrive from the
+    # bridge gateway, whose address isn't fixed). nginx sets X-Forwarded-For.
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head &&
+        exec uvicorn app.main:app
+        --host 0.0.0.0 --port 8000
+        --workers 2
+        --proxy-headers --forwarded-allow-ips '*'
+        --no-server-header
+    ports:
+      - "127.0.0.1:1231:8000"
+    networks: [db, egress]
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    # The app writes nothing to disk.
+    user: "10001:10001"
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: *logging
+
+networks:
+  # internal: no route to the outside world, no published ports possible.
+  db:
+    internal: true
+  # Outbound internet for the api (Yandex Postbox) and the 127.0.0.1 port.
+  egress: {}
+
+volumes:
+  pgdata: {}
