@@ -28,6 +28,6 @@ async def api_delete_me(body: UserDeleteRequest, response: Response,
                         db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
     if not body.is_confirmed():
         raise AppError(422, "VALIDATION_ERROR", "Для подтверждения введите DELETE",
-                       {"confirm": "Должно быть DELETE"})
+                       {"confirm": "MUST_BE_DELETE"})
     await delete_me(db, user, response)
     return Response(status_code=204)

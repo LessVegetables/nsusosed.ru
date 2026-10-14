@@ -17,9 +17,10 @@ def generate_code() -> str:
     return str(secrets.randbelow(upper + 1)).zfill(n)
 
 
-async def create_otp(db: AsyncSession, user_id, email: str) -> str:
+async def create_otp(db: AsyncSession, email: str, privacy_accepted_at: datetime | None = None) -> str:
     """
-    Создать новый OTP для пользователя. Инвалидирует все предыдущие коды.
+    Создать новый OTP для email. Инвалидирует все предыдущие коды.
+    privacy_accepted_at сохраняется до проверки кода: пользователь создаётся только после неё.
     Возвращает plaintext-код (отправляется пользователю, не хранится).
     """
     email = normalize_email(email)
@@ -33,13 +34,13 @@ async def create_otp(db: AsyncSession, user_id, email: str) -> str:
     expires_at = now + timedelta(seconds=settings.otp_ttl_seconds)
 
     otp = OtpCode(
-        user_id=user_id,
         email=email,
         code_hash=code_hash,
         attempts=0,
         created_at=now,
         expires_at=expires_at,
         verified=False,
+        privacy_accepted_at=privacy_accepted_at,
     )
     db.add(otp)
     await db.flush()
@@ -62,7 +63,7 @@ async def verify_otp(db: AsyncSession, email: str, code: str):
                 OtpCode.code_hash == code_hash,
                 OtpCode.verified == False,  # noqa: E712
             )
-        )
+        ).with_for_update()
     )
     otp = result.scalar_one_or_none()
 
@@ -71,7 +72,7 @@ async def verify_otp(db: AsyncSession, email: str, code: str):
         last_result = await db.execute(
             select(OtpCode).where(
                 and_(OtpCode.email == email, OtpCode.verified == False)  # noqa: E712
-            ).order_by(OtpCode.created_at.desc()).limit(1)
+            ).order_by(OtpCode.created_at.desc()).limit(1).with_for_update()
         )
         last_otp = last_result.scalar_one_or_none()
         if last_otp:

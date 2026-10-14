@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
+from app.utils.errors import FieldErrors
 
 QUESTION_KEYS = ["sleep", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature"]
 SITUATIONS = ["looking", "dorm_resident", "apartment_host"]
@@ -17,11 +18,11 @@ class AnswerItem(BaseModel):
     @model_validator(mode="after")
     def check_hard_allowed(self) -> "AnswerItem":
         if self.hard and len(self.allowed) == 0:
-            raise ValueError("Для hard=true список allowed не может быть пустым")
+            raise FieldErrors({"allowed": "REQUIRED_WHEN_HARD"})
         if not self.hard and len(self.allowed) > 0:
-            raise ValueError("Для hard=false список allowed должен быть пустым")
+            raise FieldErrors({"allowed": "MUST_BE_EMPTY"})
         if len(self.allowed) != len(set(self.allowed)):
-            raise ValueError("allowed должен содержать уникальные значения")
+            raise FieldErrors({"allowed": "DUPLICATES"})
         return self
 
 
@@ -35,24 +36,26 @@ class ProfileInput(BaseModel):
     @model_validator(mode="after")
     def validate_answers(self) -> "ProfileInput":
         if self.questionnaire_version != 1:
-            raise ValueError("Поддерживается только версия анкеты 1")
+            raise FieldErrors({"questionnaire_version": "UNSUPPORTED_VERSION"})
         if set(self.answers.keys()) != set(QUESTION_KEYS):
-            raise ValueError("Неверный набор вопросов")
+            raise FieldErrors({"answers": "INVALID_QUESTION_SET"})
         from app.config import QUESTIONNAIRE_V1
         q_map = {q["key"]: q for q in QUESTIONNAIRE_V1["questions"]}
+        errors: Dict[str, str] = {}
         for key, ans in self.answers.items():
             q = q_map[key]
             if not (q["min_value"] <= ans.value <= q["max_value"]):
-                raise ValueError(f"{key}.value: допустимо от {q['min_value']} до {q['max_value']}")
-            for a in ans.allowed:
-                if not (q["min_value"] <= a <= q["max_value"]):
-                    raise ValueError(f"{key}.allowed: значение {a} вне шкалы")
+                errors[f"answers.{key}.value"] = "OUT_OF_SCALE"
+            if any(not (q["min_value"] <= a <= q["max_value"]) for a in ans.allowed):
+                errors[f"answers.{key}.allowed"] = "OUT_OF_SCALE"
+        if errors:
+            raise FieldErrors(errors)
         return self
 
     @model_validator(mode="after")
     def validate_situation(self) -> "ProfileInput":
         if self.situation not in SITUATIONS:
-            raise ValueError(f"situation должен быть одним из: {SITUATIONS}")
+            raise FieldErrors({"situation": "INVALID_CHOICE"})
         return self
 
 

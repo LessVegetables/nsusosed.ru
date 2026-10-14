@@ -32,6 +32,11 @@ async def create_session(db: AsyncSession, user_id, request: Request) -> str:
     return token
 
 
+async def cleanup_expired_sessions(db: AsyncSession) -> int:
+    result = await db.execute(delete(Session).where(Session.expires_at < datetime.now(timezone.utc)))
+    return result.rowcount
+
+
 def set_session_cookie(response: Response, token: str) -> None:
     response.set_cookie(
         key=settings.cookie_name,

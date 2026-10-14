@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
-from app.schemas.listing import ListingInput, ListingUpdate, ListingOwner, InviteRequest, InviteResponse, MineListingResponse
-from app.services.listing_service import get_mine, create_listing, update_listing, delete_listing, generate_invite
+from app.schemas.listing import ListingInput, ListingUpdate, ListingOwner, InviteRequest, InviteResponse, MineListingResponse, ConfirmRequest
+from app.services.listing_service import get_mine, create_listing, update_listing, delete_listing, generate_invite, confirm_listing
 from app.utils.deps import require_user, check_origin
 
 router = APIRouter(prefix="/api/listings", tags=["listings"])
@@ -26,6 +26,12 @@ async def api_create(body: ListingInput, user: User = Depends(require_user),
 async def api_update(listing_id: uuid.UUID, body: ListingUpdate, user: User = Depends(require_user),
                      db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
     return await update_listing(db, user, listing_id, body)
+
+
+@router.post("/{listing_id}/confirm", response_model=ListingOwner)
+async def api_confirm(listing_id: uuid.UUID, body: ConfirmRequest, user: User = Depends(require_user),
+                      db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+    return await confirm_listing(db, user, listing_id, body.expected_version)
 
 
 @router.delete("/{listing_id}", status_code=204)

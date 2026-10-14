@@ -1,7 +1,18 @@
 from __future__ import annotations
+from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel
+from app.schemas.listing import ResidentBrief
+
+
+class MatchWarning(BaseModel):
+    # PARTIAL_ANSWERS: ответили не все жильцы (answered из occupied)
+    # RESIDENTS_DISAGREE: ответы жильцов на вопрос key сильно расходятся
+    code: str
+    answered: Optional[int] = None
+    occupied: Optional[int] = None
+    key: Optional[str] = None
 
 
 class DimensionDetail(BaseModel):
@@ -11,14 +22,14 @@ class DimensionDetail(BaseModel):
     similarity: float
     weight: float
     contribution_points: float
-    label: str
+    label: str  # similar | minor_difference | noticeable_difference
 
 
 class Compatibility(BaseModel):
     score: int
     score_raw: float
     score_version: int
-    warnings: List[str] = []
+    warnings: List[MatchWarning] = []
     dimensions: List[DimensionDetail] = []
 
 
@@ -42,5 +53,30 @@ class MatchListResponse(BaseModel):
     score_version: int
 
 
+class ListingDetail(BaseModel):
+    id: UUID
+    kind: str
+    building: Optional[str] = None
+    room_number: Optional[int] = None
+    floor: Optional[int] = None
+    capacity: int
+    occupied_count: int
+    free_places: int
+    answered_count: int
+    is_corner: Optional[bool] = None
+    windows_count: Optional[int] = None
+    view: Optional[str] = None
+    layout: Optional[str] = None
+    district: Optional[str] = None
+    monthly_cost_per_person_rub: Optional[int] = None
+    description: Optional[str] = None
+    status: str
+    residents: List[ResidentBrief] = []
+    confirmed_at: datetime
+    compatibility: Optional[Compatibility] = None
+
+
 class ContactResponse(BaseModel):
-    telegram_url: str
+    type: str
+    value: str
+    url: Optional[str] = None

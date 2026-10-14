@@ -5,10 +5,5 @@
     "similar": 0.85,
     "minor_difference": 0.60
   },
-  "labels": {
-    "similar": "похожие привычки",
-    "minor_difference": "небольшое расхождение",
-    "noticeable_difference": "заметное расхождение"
-  },
   "dispersion_threshold": 3
 }

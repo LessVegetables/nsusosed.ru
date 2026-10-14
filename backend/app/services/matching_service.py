@@ -8,16 +8,16 @@ from app.config import QUESTIONNAIRE_V1, MATCHING_CONFIG, settings
 from app.models.listing import Listing
 from app.models.membership import Membership
 from app.models.profile import Profile
-from app.schemas.matching import MatchItem, MatchListResponse, Compatibility, DimensionDetail, ContactResponse
+from app.models.user import User
+from app.schemas.matching import MatchItem, MatchWarning, MatchListResponse, Compatibility, DimensionDetail, ContactResponse
 from app.schemas.listing import ResidentBrief
-from app.utils.security import make_telegram_url
+from app.utils.contact import contact_url
 from app.utils.errors import not_found, profile_required, budget_required
 
 QUESTION_KEYS = [q["key"] for q in QUESTIONNAIRE_V1["questions"]]
 Q_MAP = {q["key"]: q for q in QUESTIONNAIRE_V1["questions"]}
 SCORE_VERSION = MATCHING_CONFIG["score_version"]
 THRESHOLDS = MATCHING_CONFIG["explanation_thresholds"]
-LABELS = MATCHING_CONFIG["labels"]
 DISPERSION_THRESHOLD = MATCHING_CONFIG["dispersion_threshold"]
 
 
@@ -39,7 +39,7 @@ def _check_hard(candidate: Dict[str, Any], resident: Dict[str, Any]) -> bool:
 def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], occupied: int) -> Compatibility:
     n = len(residents)
     dims: List[DimensionDetail] = []
-    warnings: List[str] = []
+    warnings: List[MatchWarning] = []
     numerator = 0.0
     denominator = 0.0
 
@@ -58,11 +58,11 @@ def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], 
         divisor = Q_MAP[key]["normalize_divisor"]
 
         if similarity >= THRESHOLDS["similar"]:
-            label = LABELS["similar"]
+            label = "similar"
         elif similarity >= THRESHOLDS["minor_difference"]:
-            label = LABELS["minor_difference"]
+            label = "minor_difference"
         else:
-            label = LABELS["noticeable_difference"]
+            label = "noticeable_difference"
 
         dims.append(DimensionDetail(
             key=key, candidate_value=c_ans["value"],
@@ -80,17 +80,17 @@ def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], 
         d.contribution_points = round(100.0 * d.weight * d.similarity / denominator, 6) if denominator > 0 else 0.0
 
     if n < occupied:
-        warnings.append(f"Ответили {n} из {occupied} жильцов. Данные неполные")
+        warnings.append(MatchWarning(code="PARTIAL_ANSWERS", answered=n, occupied=occupied))
 
     for key in QUESTION_KEYS:
         r_values = [r[key]["value"] for r in residents]
         if key == "smoking":
             if len(set(r_values)) > 1:
-                warnings.append("У жильцов разные ответы")
+                warnings.append(MatchWarning(code="RESIDENTS_DISAGREE", key=key))
                 break
         else:
             if max(r_values) - min(r_values) >= DISPERSION_THRESHOLD:
-                warnings.append("У жильцов разные ответы")
+                warnings.append(MatchWarning(code="RESIDENTS_DISAGREE", key=key))
                 break
 
     return Compatibility(
@@ -274,4 +274,5 @@ async def get_contact(db, user, listing_id: uuid.UUID) -> ContactResponse:
                 if not _check_hard(cand.answers, p.answers):
                     raise not_found("Карточка недоступна.")
 
-    return ContactResponse(telegram_url=make_telegram_url(l.contact_username))
+    return ContactResponse(type=l.contact_type, value=l.contact_value,
+                           url=contact_url(l.contact_type, l.contact_value))

@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
-from app.schemas.matching import MatchListResponse, ContactResponse
+from app.schemas.matching import MatchListResponse, ContactResponse, ListingDetail
 from app.services.matching_service import get_matches, get_listing_detail, get_contact
 from app.utils.deps import require_user
 
@@ -20,7 +20,7 @@ async def api_matches(kind: str = Query(..., pattern="^(dorm|apartment)$"),
     return await get_matches(db, user, kind, offset, limit)
 
 
-@router.get("/listings/{listing_id}")
+@router.get("/listings/{listing_id}", response_model=ListingDetail)
 async def api_detail(listing_id: uuid.UUID, user: User = Depends(require_user),
                      db: AsyncSession = Depends(get_db)):
     return await get_listing_detail(db, user, listing_id)

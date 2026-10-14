@@ -12,10 +12,11 @@ from app.schemas.auth import (
 )
 from app.schemas.user import UserSelf, UserUpdate
 from app.utils.security import normalize_email, validate_email_domain
-from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session
-from app.utils.errors import AppError, validation_error, invalid_credentials
+from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
+from app.utils.errors import AppError, validation_error, invalid_code
 from app.services.email_service import send_otp_email
-from app.services.otp_service import create_otp, verify_otp
+from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
+from app.services import rate_limit_service as rl
 
 
 async def request_code(db, body: RequestCodeRequest, request: Request) -> RequestCodeResponse:
@@ -24,30 +25,19 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
 
     # 1. Проверка домена
     if not validate_email_domain(email, settings.email_domains):
-        raise validation_error(
-            "Недопустимый домен электронной почты.",
-            {"email": f"Требуется домен: {', '.join(settings.email_domains)}"},
-        )
+        reason = "DOMAIN_NOT_ALLOWED" if "@" in email else "INVALID_EMAIL"
+        raise validation_error("Недопустимый адрес электронной почты.", {"email": reason})
 
-    # 2. Найти или создать пользователя (автоматическая регистрация)
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
-    if user is None:
-        user = User(
-            email=email,
-            display_name="Пользователь",
-            privacy_version=1,
-            privacy_accepted_at=datetime.now(timezone.utc),
-        )
-        db.add(user)
-        await db.flush()
+    ip = rl.client_ip(request)
+    await rl.check_request_code(db, email, ip)
+    await rl.record(db, "code_request", email, ip)
 
-    # 3. Сгенерировать OTP
-    code = await create_otp(db, user.id, email)
+    # 2. Сгенерировать OTP. Пользователь создаётся только после проверки кода.
+    code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
 
-    # 4. Отправить email
+    # 3. Отправить email
     sent = await send_otp_email(email, code)
-    if not sent and settings.postbox_api_key:
+    if not sent:
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
 
     # Маскируем email для ответа
@@ -67,15 +57,30 @@ async def verify_code(
     """Проверить код и создать сессию."""
     email = normalize_email(body.email)
 
+    ip = rl.client_ip(request)
+    await rl.check_verify(db, email, ip)
+
     otp = await verify_otp(db, email, body.code.strip())
     if otp is None:
-        raise invalid_credentials()
+        await rl.record(db, "verify_fail", email, ip)
+        # Сохраняем счётчик попыток и событие до ошибки: иначе get_db откатит транзакцию.
+        await db.commit()
+        raise invalid_code()
 
-    # Находим пользователя
+    await rl.record(db, "verify_ok", email, ip)
+
+    # Находим пользователя или регистрируем нового
     result = await db.execute(select(User).where(User.email == email))
     user = result.scalar_one_or_none()
     if user is None:
-        raise invalid_credentials()
+        user = User(
+            email=email,
+            display_name="Пользователь",
+            privacy_version=1,
+            privacy_accepted_at=otp.privacy_accepted_at or datetime.now(timezone.utc),
+        )
+        db.add(user)
+        await db.flush()
 
     # Профиль заполнен?
     prof_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
@@ -83,6 +88,11 @@ async def verify_code(
 
     # Создаём сессию
     token = await create_session(db, user.id, request)
+
+    # Попутно чистим просроченное (индексы по времени есть у всех трёх таблиц)
+    await cleanup_expired_sessions(db)
+    await cleanup_expired_otps(db)
+    await rl.cleanup_old_events(db)
     set_session_cookie(response, token)
 
     return AuthResponse(

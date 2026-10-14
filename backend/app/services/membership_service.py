@@ -6,7 +6,7 @@ from app.models.membership import Membership
 from app.models.profile import Profile
 from app.schemas.membership import JoinResponse
 from app.utils.security import sha256_hex
-from app.utils.errors import not_found, forbidden, membership_conflict, profile_required
+from app.utils.errors import AppError, profile_required, invite_invalid, invite_expired, already_in_room, room_full
 
 
 async def join_by_invite(db, user, invite_token: str) -> JoinResponse:
@@ -18,11 +18,11 @@ async def join_by_invite(db, user, invite_token: str) -> JoinResponse:
     result = await db.execute(select(Listing).where(Listing.invite_token_hash == token_hash))
     listing = result.scalar_one_or_none()
     if listing is None:
-        raise not_found("Приглашение не найдено или недействительно.")
+        raise invite_invalid()
 
     now = datetime.now(timezone.utc)
     if listing.invite_expires_at is None or listing.invite_expires_at < now:
-        raise not_found("Приглашение истекло.")
+        raise invite_expired()
 
     await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
 
@@ -34,14 +34,11 @@ async def join_by_invite(db, user, invite_token: str) -> JoinResponse:
 
     other = await db.execute(select(Membership).where(Membership.user_id == user.id))
     if other.scalar_one_or_none() is not None:
-        raise membership_conflict("Вы уже участвуете в другой комнате.")
-
-    if listing.owner_id == user.id:
-        raise membership_conflict("Вы уже являетесь автором этой карточки.")
+        raise already_in_room()
 
     mem_count_result = await db.execute(select(Membership.user_id).where(Membership.listing_id == listing.id))
     if len(mem_count_result.fetchall()) >= listing.occupied_count:
-        raise membership_conflict("Достигнуто максимальное число привязанных жильцов.")
+        raise room_full()
 
     db.add(Membership(listing_id=listing.id, user_id=user.id, joined_at=now))
     listing.version += 1
@@ -58,7 +55,7 @@ async def leave_membership(db, user) -> None:
     listing_r = await db.execute(select(Listing).where(Listing.id == membership.listing_id))
     listing = listing_r.scalar_one_or_none()
     if listing is not None and listing.owner_id == user.id:
-        raise forbidden("Автор не может выйти из своей комнаты. Удалите карточку.")
+        raise AppError(403, "OWNER_CANNOT_LEAVE", "Автор не может выйти из своей комнаты. Удалите карточку.")
 
     if listing is not None:
         await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})

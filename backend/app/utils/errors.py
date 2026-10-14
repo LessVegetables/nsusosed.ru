@@ -19,6 +19,15 @@ def make_error_response(status_code: int, code: str, message: str,
     return JSONResponse(status_code=status_code, content=envelope.model_dump(), headers=headers)
 
 
+class FieldErrors(ValueError):
+    """Ошибка валидации с привязкой к полям. Бросается из model_validator,
+    обработчик RequestValidationError раскладывает её по полям ответа."""
+
+    def __init__(self, fields: Dict[str, str]):
+        self.fields = fields
+        super().__init__("; ".join(f"{k}: {v}" for k, v in fields.items()))
+
+
 class AppError(Exception):
     def __init__(self, status_code: int, code: str, message: str,
                  fields: Optional[Dict[str, str]] = None,
@@ -35,8 +44,8 @@ def auth_required():
     return AppError(401, "AUTH_REQUIRED", "Нет действующей сессии. Войдите.")
 
 
-def invalid_credentials():
-    return AppError(401, "INVALID_CREDENTIALS", "Неверный email или пароль.")
+def invalid_code():
+    return AppError(401, "INVALID_CODE", "Неверный или просроченный код.")
 
 
 def forbidden(msg: str = "Действие недоступно."):
@@ -51,12 +60,28 @@ def version_conflict():
     return AppError(409, "VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию.")
 
 
-def listing_exists(msg: str = "Карточка уже существует."):
-    return AppError(409, "LISTING_EXISTS", msg)
+def listing_exists():
+    return AppError(409, "LISTING_EXISTS", "У вас уже есть карточка.")
 
 
-def membership_conflict(msg: str = "Присоединение невозможно."):
-    return AppError(409, "MEMBERSHIP_CONFLICT", msg)
+def room_taken(building: str, room_number: int):
+    return AppError(409, "ROOM_TAKEN", f"Карточка для {building}, комн. {room_number} уже существует.")
+
+
+def already_in_room():
+    return AppError(409, "ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате.")
+
+
+def room_full():
+    return AppError(409, "ROOM_FULL", "Достигнуто максимальное число привязанных жильцов.")
+
+
+def invite_invalid():
+    return AppError(404, "INVITE_INVALID", "Приглашение не найдено или недействительно.")
+
+
+def invite_expired():
+    return AppError(404, "INVITE_EXPIRED", "Приглашение истекло.")
 
 
 def occupancy_conflict():
@@ -69,6 +94,11 @@ def profile_required():
 
 def budget_required():
     return AppError(422, "BUDGET_REQUIRED", "Укажите месячный бюджет.")
+
+
+def rate_limited(retry_after: int):
+    return AppError(429, "RATE_LIMITED", f"Слишком много попыток. Повторите через {retry_after} с.",
+                    retry_after=retry_after)
 
 
 def validation_error(message: str, fields: Optional[Dict[str, str]] = None):

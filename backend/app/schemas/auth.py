@@ -1,6 +1,7 @@
 from __future__ import annotations
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator
+from app.utils.errors import FieldErrors
 
 
 class RequestCodeRequest(BaseModel):
@@ -11,7 +12,7 @@ class RequestCodeRequest(BaseModel):
     @classmethod
     def must_accept(cls, v: bool) -> bool:
         if not v:
-            raise ValueError("Необходимо принять политику обработки данных")
+            raise FieldErrors({"": "MUST_ACCEPT"})
         return v
 
 
