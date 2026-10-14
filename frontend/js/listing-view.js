@@ -117,7 +117,7 @@ export function residentsList(residents = []) {
   if (!residents.length) return h('p', { class: 'muted', i18n: 'residents.none' });
   return h(
     'ul',
-    { class: 'residents' },
+    { class: 'residents', 'data-private': true },
     residents.map((r) =>
       h(
         'li',
