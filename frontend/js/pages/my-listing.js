@@ -366,7 +366,7 @@ function statusBlock(l) {
 }
 
 function inviteBlock(l) {
-  const result = h('div');
+  const result = h('div', { 'data-private': true });
   const error = h('div', { hidden: true });
   const button = h('button', { type: 'button', class: 'btn btn-secondary', i18n: 'myListing.invite' });
 
@@ -471,11 +471,11 @@ function renderOverview() {
       { class: 'card', 'aria-labelledby': 'about-title' },
       h('h3', { id: 'about-title', i18n: 'detail.about' }),
       facts(l),
-      l.description ? h('p', { class: 'description' }, l.description) : null,
+      l.description ? h('p', { class: 'description', 'data-private': true }, l.description) : null,
       h('p', {},
         h('span', { class: 'muted', i18n: 'myListing.yourContact' }), ' ',
         h('span', { i18n: `contact.${l.contact_type}` }), ': ',
-        h('span', {}, l.contact_type === 'telegram' ? `@${l.contact_value}` : l.contact_value)),
+        h('span', { 'data-private': true }, l.contact_type === 'telegram' ? `@${l.contact_value}` : l.contact_value)),
     ),
     h(
       'section',
