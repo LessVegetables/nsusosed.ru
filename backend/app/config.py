@@ -21,9 +21,13 @@ class Settings(BaseSettings):
     # ── Yandex Cloud Postbox ────────────────────────────
     # postbox — отправлять письма; log — писать коды в лог (только для разработки)
     email_mode: Literal["postbox", "log"] = "postbox"
-    postbox_api_key: str = ""
+    # Статический ключ доступа сервисного аккаунта с ролью postbox.sender
+    # (не API-ключ: API-ключи Postbox принимает только по SMTP).
+    postbox_access_key_id: str = ""
+    postbox_secret_access_key: str = ""
     postbox_sender_email: str = ""
-    postbox_api_url: str = "https://postbox.cloud.yandex.net/api/v1/send"
+    postbox_endpoint: str = "https://postbox.cloud.yandex.net"
+    postbox_region: str = "ru-central1"
 
     # ── OTP ─────────────────────────────────────────────
     otp_ttl_seconds: int = 120
@@ -39,10 +43,12 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def check_email_settings(self) -> "Settings":
-        if self.email_mode == "postbox" and not (self.postbox_api_key and self.postbox_sender_email):
+        if self.email_mode == "postbox" and not (
+            self.postbox_access_key_id and self.postbox_secret_access_key and self.postbox_sender_email
+        ):
             raise ValueError(
-                "EMAIL_MODE=postbox requires POSTBOX_API_KEY and POSTBOX_SENDER_EMAIL "
-                "(set EMAIL_MODE=log for local development)"
+                "EMAIL_MODE=postbox requires POSTBOX_ACCESS_KEY_ID, POSTBOX_SECRET_ACCESS_KEY "
+                "and POSTBOX_SENDER_EMAIL (set EMAIL_MODE=log for local development)"
             )
         return self
 
