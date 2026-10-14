@@ -2,6 +2,8 @@
 # (The repo-root docker-compose.yml is the dev stack and isn't used here.)
 #
 # Install by hand, root-owned:  /opt/nsusosed/compose.yaml
+# ${POSTGRES_*} below come from /etc/nsusosed.env: nsusosed-redeploy passes it
+# with --env-file, and /opt/nsusosed/.env links to it for manual commands.
 # The workflow only updates /opt/nsusosed/app (the build context) and warns
 # when this file in the repo differs from the server's copy.
 #

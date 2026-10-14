@@ -197,6 +197,11 @@ You don't create the database by hand. The Postgres container creates the user a
 sudo install -m 644 -o root -g root compose.yaml /opt/nsusosed/compose.yaml
 sudo install -m 755 -o root -g root nsusosed-redeploy /usr/local/bin/nsusosed-redeploy
 
+# compose.yaml fills in ${POSTGRES_*} from the env file. The redeploy script
+# passes --env-file explicitly; this link makes plain "sudo docker compose …"
+# in /opt/nsusosed find it too (compose reads .env next to compose.yaml).
+sudo ln -s /etc/nsusosed.env /opt/nsusosed/.env
+
 sudo visudo -f /etc/sudoers.d/nsusosed-deploy    # paste sudoers/nsusosed-deploy; visudo checks it
 sudo -l -U gh_deploy                              # should list the one command
 ```
@@ -255,8 +260,10 @@ If a workflow step fails with `gh-deploy-gate: refused`, run `sudo journalctl -t
   - API: `cd /opt/nsusosed && sudo docker compose logs -f api`.
   - nginx: `/var/log/nginx/nsusosed.ru.{access,error}.log`.
   - Refused deploy commands: `sudo journalctl -t gh-deploy-gate`.
-- **Database shell:** `cd /opt/nsusosed && sudo docker compose exec db psql -U nsusosed nsusosed`.
-- **Backup:** `cd /opt/nsusosed && sudo docker compose exec -T db pg_dump -U nsusosed nsusosed | gzip > ~/nsusosed-$(date +%F).sql.gz`. Nothing does this automatically yet.
+- **Database shell:** `cd /opt/nsusosed && sudo docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'`.
+- **Backup:** `cd /opt/nsusosed && sudo docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > ~/nsusosed-$(date +%F).sql.gz`. Nothing does this automatically yet.
+
+If a `docker compose` command complains that `POSTGRES_USER` "is not set", it couldn't find the env file: check the `/opt/nsusosed/.env` link from step 6. Plain `docker` commands (`sudo docker logs nsusosed-api-1`, `sudo docker ps`) don't need it.
 
 Careful with `docker compose down -v`: the `-v` deletes the database volume. A plain `down` (or `stop`) is safe.
 
