@@ -153,6 +153,11 @@ class ConfirmRequest(BaseModel):
     expected_version: int
 
 
+class PhotoOrder(BaseModel):
+    """Все фото жилья в новом порядке; первое — обложка."""
+    photo_ids: List[UUID]
+
+
 class InviteRequest(BaseModel):
     expected_version: int
 

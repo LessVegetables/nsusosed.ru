@@ -1,13 +1,14 @@
 from __future__ import annotations
 import uuid
-from fastapi import APIRouter, Depends, Response
+from fastapi import APIRouter, Depends, File, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
-from app.schemas.listing import ListingInput, ListingUpdate, ListingOwner, InviteRequest, InviteResponse, MineListingResponse, ConfirmRequest
-from app.services.listing_service import get_mine, create_listing, update_listing, delete_listing, generate_invite, confirm_listing
-from app.services.membership_service import set_admin, remove_resident
-from app.utils.deps import require_user, check_origin
+from app.schemas.listing import ListingInput, ListingUpdate, ListingOwner, InviteRequest, InviteResponse, MineListingResponse, ConfirmRequest, PhotoOrder
+from app.services.listing_service import get_mine, create_listing, update_listing, delete_listing, generate_invite, confirm_listing, to_home_dto
+from app.services.membership_service import set_admin, remove_resident, get_listing_as_admin
+from app.services.photo_service import add_photo, delete_photo, reorder_photos, read_upload
+from app.utils.deps import require_user, check_origin, check_origin_upload
 
 router = APIRouter(prefix="/api/listings", tags=["listings"])
 
@@ -67,3 +68,27 @@ async def api_remove_member(listing_id: uuid.UUID, user_id: uuid.UUID, user: Use
                             db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
     await remove_resident(db, user, listing_id, user_id)
     return Response(status_code=204)
+
+
+@router.post("/{listing_id}/photos", response_model=ListingOwner, status_code=201)
+async def api_add_photo(listing_id: uuid.UUID, file: UploadFile = File(...), user: User = Depends(require_user),
+                        db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin_upload)):
+    listing = await get_listing_as_admin(db, user, listing_id)
+    await add_photo(db, listing, await read_upload(file))
+    return await to_home_dto(db, listing.id, user)
+
+
+@router.delete("/{listing_id}/photos/{photo_id}", response_model=ListingOwner)
+async def api_delete_photo(listing_id: uuid.UUID, photo_id: uuid.UUID, user: User = Depends(require_user),
+                           db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+    listing = await get_listing_as_admin(db, user, listing_id)
+    await delete_photo(db, listing, photo_id)
+    return await to_home_dto(db, listing.id, user)
+
+
+@router.put("/{listing_id}/photos/order", response_model=ListingOwner)
+async def api_reorder_photos(listing_id: uuid.UUID, body: PhotoOrder, user: User = Depends(require_user),
+                             db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+    listing = await get_listing_as_admin(db, user, listing_id)
+    await reorder_photos(db, listing, body.photo_ids)
+    return await to_home_dto(db, listing.id, user)

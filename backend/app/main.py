@@ -1,6 +1,7 @@
 from __future__ import annotations
 import logging
 import uuid
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -11,7 +12,21 @@ from app.utils.errors import AppError, FieldErrors, make_error_response
 logger = logging.getLogger("nsusosed")
 logging.basicConfig(level=logging.INFO)
 
-app = FastAPI(title="nsusosed API", version="1.0.0")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    from app.database import async_session_factory
+    from app.services.photo_service import sweep_orphan_folders
+    try:
+        async with async_session_factory() as db:
+            await sweep_orphan_folders(db)
+    except Exception:
+        logger.exception("Photo folder sweep failed")
+    yield
+
+
+app = FastAPI(title="nsusosed API", version="1.0.0", lifespan=lifespan)
 
 app.include_router(auth.router)
 app.include_router(users.router)

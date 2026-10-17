@@ -10,11 +10,13 @@ import itertools
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # До импорта app: настройки читаются при импорте.
 os.environ.setdefault("EMAIL_MODE", "log")
 os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
+os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="nsusosed-media-"))
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 if TEST_DATABASE_URL:
     os.environ["DATABASE_URL"] = TEST_DATABASE_URL
