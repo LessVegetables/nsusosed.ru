@@ -3,10 +3,12 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, model_validator
+from app.config import QUESTIONNAIRE
 from app.utils.errors import FieldErrors
 
-QUESTION_KEYS = ["sleep", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature"]
-SITUATIONS = ["looking", "dorm_resident", "apartment_host"]
+QUESTION_KEYS = [q["key"] for q in QUESTIONNAIRE["questions"]]
+# seeker — ищет жильё; host — живёт в жилье и ищет соседей (участник жилья всегда host).
+SITUATIONS = ["seeker", "host"]
 
 
 class AnswerItem(BaseModel):
@@ -27,7 +29,7 @@ class AnswerItem(BaseModel):
 
 
 class ProfileInput(BaseModel):
-    questionnaire_version: int = Field(default=1)
+    questionnaire_version: int = Field(default=QUESTIONNAIRE["version"])
     expected_version: int = Field(..., ge=0)
     situation: str
     budget_max_rub: Optional[int] = Field(default=None, ge=1, le=200000)
@@ -35,12 +37,11 @@ class ProfileInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_answers(self) -> "ProfileInput":
-        if self.questionnaire_version != 1:
+        if self.questionnaire_version != QUESTIONNAIRE["version"]:
             raise FieldErrors({"questionnaire_version": "UNSUPPORTED_VERSION"})
         if set(self.answers.keys()) != set(QUESTION_KEYS):
             raise FieldErrors({"answers": "INVALID_QUESTION_SET"})
-        from app.config import QUESTIONNAIRE_V1
-        q_map = {q["key"]: q for q in QUESTIONNAIRE_V1["questions"]}
+        q_map = {q["key"]: q for q in QUESTIONNAIRE["questions"]}
         errors: Dict[str, str] = {}
         for key, ans in self.answers.items():
             q = q_map[key]

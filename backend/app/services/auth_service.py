@@ -5,12 +5,12 @@ from sqlalchemy import select, text
 from app.config import settings
 from app.models.user import User
 from app.models.profile import Profile
-from app.models.listing import Listing
 from app.schemas.auth import (
     RequestCodeRequest, RequestCodeResponse,
     VerifyCodeRequest, AuthResponse, UserBrief,
 )
-from app.schemas.user import UserSelf, UserUpdate
+from app.config import QUESTIONNAIRE
+from app.schemas.user import UserSelf, UserUpdate, UserHome
 from app.utils.security import normalize_email, validate_email_domain
 from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
 from app.utils.errors import AppError, validation_error, invalid_code
@@ -110,21 +110,34 @@ async def logout(db, request: Request, response: Response) -> None:
 
 
 async def get_me(db, user: User) -> UserSelf:
-    return UserSelf(id=user.id, email=user.email, display_name=user.display_name)
+    from app.services.membership_service import get_membership
+    prof = await db.execute(select(Profile).where(Profile.user_id == user.id))
+    profile = prof.scalar_one_or_none()
+    membership = await get_membership(db, user.id)
+    return UserSelf(
+        id=user.id, email=user.email, display_name=user.display_name, language=user.language,
+        situation=profile.situation if profile else None,
+        # Анкета старой версии годится для подбора, но новые вопросы ещё не отвечены.
+        profile_complete=profile is not None and profile.questionnaire_version == QUESTIONNAIRE["version"],
+        home=UserHome(id=membership.listing_id, is_admin=membership.is_admin) if membership else None,
+    )
 
 
 async def update_me(db, user: User, body: UserUpdate) -> UserSelf:
-    user.display_name = body.display_name
+    if body.display_name is not None:
+        user.display_name = body.display_name
+    if body.language is not None:
+        user.language = body.language
     await db.flush()
-    return UserSelf(id=user.id, email=user.email, display_name=user.display_name)
+    return await get_me(db, user)
 
 
 async def delete_me(db, user: User, response: Response) -> None:
     await db.execute(text("SELECT id FROM users WHERE id = :uid FOR UPDATE"), {"uid": user.id})
-    listing_result = await db.execute(select(Listing).where(Listing.owner_id == user.id))
-    owned = listing_result.scalar_one_or_none()
-    if owned:
-        await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": owned.id})
+    from app.services.membership_service import get_membership, remove_member
+    membership = await get_membership(db, user.id)
+    if membership is not None:
+        await remove_member(db, membership)
     await db.delete(user)
     await db.flush()
     clear_session_cookie(response)

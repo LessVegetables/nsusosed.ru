@@ -24,8 +24,8 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-QUESTION_KEYS = ["sleep", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature"]
-TABLES = ["auth_events", "otp_codes", "sessions", "memberships", "listings", "profiles", "users"]
+QUESTION_KEYS = ["sleep", "wake", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature"]
+TABLES = ["auth_events", "otp_codes", "sessions", "memberships", "listing_contacts", "listing_photos", "listings", "profiles", "users"]
 
 
 def answers(**overrides) -> dict:
@@ -94,7 +94,7 @@ async def make_client(db):
 def login(codes):
     """Войти по коду и (по умолчанию) заполнить анкету."""
     async def _login(client: httpx.AsyncClient, email: str, *, profile: dict | None = None,
-                     budget: int | None = 30000, situation: str = "looking", fill_profile: bool = True):
+                     budget: int | None = 30000, situation: str = "seeker", fill_profile: bool = True):
         r = await client.post("/api/auth/request-code", json={"email": email, "privacy_accepted": True})
         assert r.status_code == 200, r.text
         r = await client.post("/api/auth/verify-code", json={"email": email, "code": codes[email]})

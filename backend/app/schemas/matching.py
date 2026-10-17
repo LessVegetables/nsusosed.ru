@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import List, Optional
 from uuid import UUID
 from pydantic import BaseModel
-from app.schemas.listing import ResidentBrief
+from app.schemas.listing import ResidentBrief, ContactOut, PhotoOut
 
 
 class MatchWarning(BaseModel):
@@ -13,6 +13,18 @@ class MatchWarning(BaseModel):
     answered: Optional[int] = None
     occupied: Optional[int] = None
     key: Optional[str] = None
+
+
+class MatchReason(BaseModel):
+    """Почему жильё не подходит.
+    HARD_CONDITION: ответ на вопрос key нарушает жёсткое условие — ваше (side=yours)
+                    или кого-то из жильцов (side=theirs).
+    OVER_BUDGET: цена за человека (price) выше вашего бюджета (budget)."""
+    code: str
+    key: Optional[str] = None
+    side: Optional[str] = None
+    price: Optional[int] = None
+    budget: Optional[int] = None
 
 
 class DimensionDetail(BaseModel):
@@ -39,9 +51,13 @@ class MatchItem(BaseModel):
     building: Optional[str] = None
     room_number: Optional[int] = None
     district: Optional[str] = None
+    monthly_cost_per_person_rub: Optional[int] = None
+    cover_url: Optional[str] = None
     free_places: int
     answered_count: int
     occupied_count: int
+    fits: bool = True
+    reasons: List[MatchReason] = []
     compatibility: Compatibility
 
 
@@ -71,12 +87,15 @@ class ListingDetail(BaseModel):
     monthly_cost_per_person_rub: Optional[int] = None
     description: Optional[str] = None
     status: str
+    photos: List[PhotoOut] = []
     residents: List[ResidentBrief] = []
     confirmed_at: datetime
+    you_live_here: bool = False
+    # Для жильцов этого жилья совместимость не считается: compatibility = None.
+    fits: bool = True
+    reasons: List[MatchReason] = []
     compatibility: Optional[Compatibility] = None
 
 
-class ContactResponse(BaseModel):
-    type: str
-    value: str
-    url: Optional[str] = None
+class ContactListResponse(BaseModel):
+    items: List[ContactOut]

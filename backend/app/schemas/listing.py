@@ -7,9 +7,37 @@ from app.utils.contact import CONTACT_TYPES, CONTACT_VALUE_MAX, normalize_contac
 from app.utils.errors import FieldErrors
 
 
+MAX_CONTACTS = 10
+
+
 class ResidentBrief(BaseModel):
     display_name: str
     profile_complete: bool
+    is_admin: bool = False
+
+
+class HomeResident(ResidentBrief):
+    """Жилец в том виде, в каком его видят другие жильцы (с id для действий админа)."""
+    user_id: UUID
+    joined_at: datetime
+
+
+class ContactItem(BaseModel):
+    type: str
+    value: str = Field(..., max_length=CONTACT_VALUE_MAX)
+
+
+class ContactOut(BaseModel):
+    type: str
+    value: str
+    url: Optional[str] = None
+
+
+class PhotoOut(BaseModel):
+    id: UUID
+    url: str
+    width: int
+    height: int
 
 
 DORM_FIELDS = ("building", "room_number", "floor", "is_corner", "windows_count", "view", "layout")
@@ -41,9 +69,10 @@ def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
         errors["kind"] = "INVALID_CHOICE"
     if data.occupied_count > data.capacity:
         errors["occupied_count"] = "EXCEEDS_CAPACITY"
-    contact, contact_error = normalize_contact(data.contact_type, data.contact_value)
-    if contact_error:
-        errors["contact_type" if data.contact_type not in CONTACT_TYPES else "contact_value"] = contact_error
+    for i, contact in enumerate(data.contacts):
+        _, contact_error = normalize_contact(contact.type, contact.value)
+        if contact_error:
+            errors[f"contacts.{i}.{'type' if contact.type not in CONTACT_TYPES else 'value'}"] = contact_error
     if data.status and data.status not in ("active", "paused"):
         errors["status"] = "INVALID_CHOICE"
     return errors
@@ -52,8 +81,7 @@ def listing_field_errors(kind: str, data: "ListingFields") -> Dict[str, str]:
 class ListingFields(BaseModel):
     capacity: int = Field(..., ge=1, le=10)
     occupied_count: int = Field(..., ge=1)
-    contact_type: str
-    contact_value: str = Field(..., min_length=1, max_length=CONTACT_VALUE_MAX)
+    contacts: List[ContactItem] = Field(..., min_length=1, max_length=MAX_CONTACTS)
     description: Optional[str] = Field(default=None, max_length=1000)
     status: Optional[str] = Field(default="active")
     building: Optional[str] = Field(default=None, max_length=20)
@@ -67,11 +95,12 @@ class ListingFields(BaseModel):
     monthly_cost_per_person_rub: Optional[int] = Field(default=None, ge=1, le=200000)
 
     @model_validator(mode="after")
-    def normalize_contact_value(self) -> "ListingFields":
-        # Ошибки формата контакта собирает listing_field_errors, здесь только нормализация.
-        normalized, _ = normalize_contact(self.contact_type, self.contact_value)
-        if normalized is not None:
-            self.contact_value = normalized
+    def normalize_contact_values(self) -> "ListingFields":
+        # Ошибки формата контактов собирает listing_field_errors, здесь только нормализация.
+        for contact in self.contacts:
+            normalized, _ = normalize_contact(contact.type, contact.value)
+            if normalized is not None:
+                contact.value = normalized
         return self
 
 
@@ -92,8 +121,8 @@ class ListingUpdate(ListingFields):
 
 
 class ListingOwner(BaseModel):
+    """Жильё глазами его жильца. Менять его могут только админы (you_are_admin)."""
     id: UUID
-    owner_id: UUID
     kind: str
     building: Optional[str] = None
     room_number: Optional[int] = None
@@ -109,11 +138,12 @@ class ListingOwner(BaseModel):
     district: Optional[str] = None
     monthly_cost_per_person_rub: Optional[int] = None
     description: Optional[str] = None
-    contact_type: str
-    contact_value: str
+    contacts: List[ContactOut] = []
+    photos: List[PhotoOut] = []
     status: str
     version: int
-    residents: List[ResidentBrief] = []
+    residents: List[HomeResident] = []
+    you_are_admin: bool
     confirmed_at: datetime
     expires_at: datetime  # confirmed_at + LISTING_TTL_DAYS: после этого карточка скрыта
     created_at: datetime

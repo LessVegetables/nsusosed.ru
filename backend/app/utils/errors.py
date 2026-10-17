@@ -60,10 +60,6 @@ def version_conflict():
     return AppError(409, "VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию.")
 
 
-def listing_exists():
-    return AppError(409, "LISTING_EXISTS", "У вас уже есть карточка.")
-
-
 def room_taken(building: str, room_number: int):
     return AppError(409, "ROOM_TAKEN", f"Карточка для {building}, комн. {room_number} уже существует.")
 
@@ -103,3 +99,35 @@ def rate_limited(retry_after: int):
 
 def validation_error(message: str, fields: Optional[Dict[str, str]] = None):
     return AppError(422, "VALIDATION_ERROR", message, fields)
+
+
+def not_admin():
+    return AppError(403, "NOT_ADMIN", "Это могут сделать только админы жилья.")
+
+
+def not_member():
+    return AppError(404, "NOT_MEMBER", "Этот человек не живёт в этом жилье.")
+
+
+def last_admin():
+    return AppError(409, "LAST_ADMIN", "В жилье должен остаться хотя бы один админ.")
+
+
+def target_profile_required():
+    return AppError(422, "TARGET_PROFILE_REQUIRED", "Админом можно сделать только того, кто заполнил анкету.")
+
+
+def leave_home_first():
+    return AppError(409, "LEAVE_HOME_FIRST", "Чтобы искать жильё, сначала покиньте своё.")
+
+
+def photo_bad_type():
+    return AppError(415, "PHOTO_BAD_TYPE", "Поддерживаются фото в форматах JPEG, PNG и WebP.")
+
+
+def photo_too_large():
+    return AppError(413, "PHOTO_TOO_LARGE", "Фото слишком большое.")
+
+
+def too_many_photos():
+    return AppError(409, "TOO_MANY_PHOTOS", "Достигнуто максимальное число фото.")

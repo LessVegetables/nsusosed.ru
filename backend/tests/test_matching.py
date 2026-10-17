@@ -1,6 +1,6 @@
 """Юнит-тесты формулы совместимости (без базы)."""
 
-from app.services.matching_service import _check_hard, _compute_compat
+from app.services.matching_service import _check_hard, _compute_compat, _hard_conflicts
 from tests.conftest import answers
 
 
@@ -21,11 +21,11 @@ def test_identical_answers_score_100():
 
 def test_weighting_by_importance_of_both_sides():
     # sleep: полностью разные ответы (similarity 0), вес (10+10)/2 = 10;
-    # остальные 8 вопросов совпадают, вес 5 каждый -> 100 * 40 / 50 = 80
+    # остальные 9 вопросов совпадают, вес 5 каждый -> 100 * 45 / 55 = 81.8 -> 82
     cand = answers(sleep={"value": 0, "importance": 10})
     res = answers(sleep={"value": 4, "importance": 10})
     c = _compute_compat(cand, [res], occupied=1)
-    assert c.score == 80
+    assert c.score == 82
     sleep = next(d for d in c.dimensions if d.key == "sleep")
     assert sleep.similarity == 0 and sleep.weight == 10 and sleep.label == "noticeable_difference"
 
@@ -46,11 +46,29 @@ def test_partial_answers_warning():
 
 
 def test_rounding_is_half_up_not_bankers():
-    # sleep: разница 3 из 4 (similarity 0.25), вес (6+10)/2 = 8; остальные вес 1:
-    # 100 * (8 + 0.25*8) / (8 + 8) = 62.5 -> 63 (round() дал бы 62)
-    low = {k: {"importance": 1} for k in ("noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature")}
-    cand = answers(sleep={"value": 0, "importance": 6}, **low)
+    # sleep: разница 3 из 4 (similarity 0.25), вес (8+10)/2 = 9; остальные 9 вопросов вес 1:
+    # 100 * (9 + 0.25*9) / (9 + 9) = 62.5 -> 63 (round() дал бы 62)
+    low = {k: {"importance": 1} for k in ("wake", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature")}
+    cand = answers(sleep={"value": 0, "importance": 8}, **low)
     res = answers(sleep={"value": 3, "importance": 10}, **low)
     c = _compute_compat(cand, [res], occupied=1)
     assert c.score_raw == 62.5
     assert c.score == 63
+
+
+def test_hard_conflicts_name_the_question_and_whose_condition():
+    non_smoker = answers(smoking={"value": 0, "hard": True, "allowed": [0]})
+    smoker = answers(smoking={"value": 1})
+    assert _hard_conflicts(non_smoker, smoker) == [("smoking", "yours")]
+    assert _hard_conflicts(smoker, non_smoker) == [("smoking", "theirs")]
+
+
+def test_question_missing_on_one_side_is_skipped():
+    # Анкета первой версии: вопроса wake нет. Жёсткое условие по нему не срабатывает,
+    # а в оценке участвуют только общие вопросы.
+    old = {k: v for k, v in answers().items() if k != "wake"}
+    strict = answers(wake={"value": 0, "hard": True, "allowed": [0]})
+    assert _check_hard(strict, old) is True
+    c = _compute_compat(answers(wake={"value": 4}), [old], occupied=1)
+    assert c.score == 100
+    assert "wake" not in {d.key for d in c.dimensions}
