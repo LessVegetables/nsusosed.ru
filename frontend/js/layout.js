@@ -1,34 +1,39 @@
-// Shared page frame: the language switch, which menu links to show, the
-// mock-API banner and the login check. Every page script starts with
+// Shared page frame: which menu links to show, the account's language, the
+// mock-API banner, the login check and sending unfinished accounts to
+// onboarding. Every page script starts with
 //   const { me } = await initPage({ auth: 'required' });
 
 import { api } from './api.js';
 import { MOCK_LOGIN_CODE, USE_MOCK } from './config.js';
-import { applyI18n, getLang, setLang } from './i18n.js';
+import { applyI18n, setLang } from './i18n.js';
 import { h, loadFailed, loginUrl } from './ui.js';
 
-// The header and footer are static markup in every page. On pages that work
-// both logged in and logged out (/, /login, /join, /privacy, 404) the menu has
-// both sets of links, all hidden: data-auth="in" for users, "out" for guests.
-function showNav(me) {
-  for (const item of document.querySelectorAll('.site-nav [data-auth]')) {
-    item.hidden = item.dataset.auth !== (me ? 'in' : 'out');
-  }
-  if (me) document.querySelector('.brand')?.setAttribute('href', '/matches');
+// Seekers look for a place; hosts live in a home (or are about to list one).
+export function roleOf(me) {
+  if (!me) return 'guest';
+  return me.home || me.situation === 'host' ? 'host' : 'seeker';
 }
 
-// The button is labelled in the language it switches to.
-function initLangSwitch() {
-  const button = document.querySelector('.lang-switch');
-  if (!button) return;
-  const update = () => {
-    const other = getLang() === 'ru' ? 'en' : 'ru';
-    button.textContent = other === 'en' ? 'English' : 'Русский';
-    button.lang = other;
-  };
-  button.addEventListener('click', () => setLang(getLang() === 'ru' ? 'en' : 'ru'));
-  window.addEventListener('langchange', update);
-  update();
+// Where "home" is for this user: the logo and the end of onboarding go there.
+export function startPage(me) {
+  return roleOf(me) === 'host' ? '/home' : '/matches';
+}
+
+// The account still needs onboarding: a language, a role and a questionnaire
+// of the current version.
+export function needsOnboarding(me) {
+  return Boolean(me) && (!me.language || !me.situation || !me.profile_complete);
+}
+
+// The header and footer are static markup in every page. Menu items carry
+// data-show="guest | seeker | host | onboarding" (several allowed) and start hidden.
+function showNav(me) {
+  // During onboarding there's no role yet: only Account (to log out).
+  const role = needsOnboarding(me) ? 'onboarding' : roleOf(me);
+  for (const item of document.querySelectorAll('.site-nav [data-show]')) {
+    item.hidden = !item.dataset.show.split(' ').includes(role);
+  }
+  if (me) document.querySelector('.brand')?.setAttribute('href', startPage(me));
 }
 
 function renderMockBanner() {
@@ -47,10 +52,12 @@ function renderMockBanner() {
 // auth: 'required' → redirect to /login when logged out;
 //       'optional' → load the user if there is one;
 //       'none'     → don't ask the API at all.
-export async function initPage({ auth = 'required' } = {}) {
+// onboarding: true on pages an unfinished account may use as they are
+// (the questionnaire itself, /join, Account, static pages); everywhere else
+// such an account is sent to the questionnaire first.
+export async function initPage({ auth = 'required', onboarding = false } = {}) {
   applyI18n();
   renderMockBanner();
-  initLangSwitch();
 
   let me = null;
   if (auth !== 'none') {
@@ -67,6 +74,12 @@ export async function initPage({ auth = 'required' } = {}) {
         return new Promise(() => {});
       }
     }
+  }
+  if (me?.language) setLang(me.language);
+  if (needsOnboarding(me) && !onboarding) {
+    const next = location.pathname + location.search;
+    location.replace(`/questionnaire?next=${encodeURIComponent(next)}`);
+    return new Promise(() => {});
   }
   showNav(me);
   return { me };

@@ -1,5 +1,5 @@
 // Pieces shared by the matches list and the listing detail: titles, the score,
-// the short explanation and the warnings.
+// the short explanation, the warnings and why a place doesn't fit.
 
 import { h } from './ui.js';
 
@@ -57,6 +57,24 @@ export function explanation(dimensions, { maxSimilar = 3 } = {}) {
     );
   }
   return list;
+}
+
+// Why a place doesn't fit (shown when "Show places I don't match with" is on).
+export function reasons(items = []) {
+  if (!items.length) return null;
+  return h(
+    'ul',
+    { class: 'reasons' },
+    items.map((r) => {
+      if (r.code === 'HARD_CONDITION') {
+        return h('li', { i18n: `reason.hard.${r.side}`, i18nArgs: { topic: topic(r.key) } });
+      }
+      if (r.code === 'OVER_BUDGET') {
+        return h('li', { i18n: 'reason.overBudget', i18nArgs: { diff: { num: r.price - r.budget } } });
+      }
+      return h('li', { i18n: 'reason.other' });
+    }),
+  );
 }
 
 export function warnings(items = []) {
@@ -123,6 +141,7 @@ export function residentsList(residents = []) {
         'li',
         {},
         h('span', {}, r.display_name),
+        r.is_admin ? h('span', { class: 'badge badge-admin', i18n: 'residents.admin' }) : null,
         h('span', {
           class: r.profile_complete ? 'badge badge-ok' : 'badge',
           i18n: r.profile_complete ? 'residents.answered' : 'residents.notAnswered',

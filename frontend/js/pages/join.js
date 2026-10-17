@@ -5,9 +5,9 @@
 // and removed from the address bar right away.
 
 import { api } from '../api.js';
-import { initPage } from '../layout.js';
+import { initPage, needsOnboarding } from '../layout.js';
 import { session } from '../storage.js';
-import { busy, h, loadFailed, loading, showError } from '../ui.js';
+import { busy, h, showError } from '../ui.js';
 
 const TOKEN_KEY = 'nsusosed.invite';
 
@@ -18,7 +18,7 @@ if (fromHash) {
 }
 const token = fromHash || session.get(TOKEN_KEY);
 
-const { me } = await initPage({ auth: 'optional' });
+const { me } = await initPage({ auth: 'optional', onboarding: true });
 const content = document.getElementById('content');
 
 function step(textKey, href, buttonKey, args) {
@@ -29,13 +29,12 @@ function step(textKey, href, buttonKey, args) {
   );
 }
 
-function joined(listingId) {
+function joined() {
   content.replaceChildren(
     h('div', { class: 'alert alert-success stack', role: 'status' },
       h('p', { i18n: 'join.done' }),
       h('p', { class: 'actions' },
-        h('a', { class: 'btn', href: `/listing?id=${encodeURIComponent(listingId)}`, i18n: 'join.toListing' }),
-        h('a', { class: 'btn btn-secondary', href: '/questionnaire', i18n: 'join.toQuestionnaire' }))),
+        h('a', { class: 'btn', href: '/home', i18n: 'join.toHome' }))),
   );
 }
 
@@ -45,9 +44,9 @@ function confirmStep() {
   button.addEventListener('click', async () => {
     const done = busy(button);
     try {
-      const result = await api.joinRoom(token);
+      await api.joinRoom(token);
       session.remove(TOKEN_KEY);
-      joined(result.listing_id);
+      joined();
     } catch (err) {
       done();
       if (err.code === 'INVITE_INVALID' || err.code === 'INVITE_EXPIRED') {
@@ -55,7 +54,7 @@ function confirmStep() {
         button.remove();
       }
       showError(error, err);
-      if (err.code === 'ALREADY_IN_ROOM') error.append(h('p', {}, h('a', { href: '/account', i18n: 'nav.account' })));
+      if (err.code === 'ALREADY_IN_ROOM') error.append(h('p', {}, h('a', { href: '/home', i18n: 'nav.home' })));
       if (err.code === 'PROFILE_REQUIRED') error.append(h('p', {}, h('a', { href: '/questionnaire?next=/join', i18n: 'matches.fillIn' })));
     }
   });
@@ -77,14 +76,9 @@ async function start() {
     step('join.needLogin', '/login?next=/join', 'nav.login');
     return;
   }
-  loading(content);
-  try {
-    const { profile } = await api.getProfile();
-    if (!profile) step('join.needProfile', '/questionnaire?next=/join', 'matches.fillIn');
-    else confirmStep();
-  } catch (err) {
-    loadFailed(content, err, start);
-  }
+  // A new account answers the questionnaire first; it then comes back here.
+  if (needsOnboarding(me)) step('join.needProfile', '/questionnaire?next=/join', 'matches.fillIn');
+  else confirmStep();
 }
 
 await start();

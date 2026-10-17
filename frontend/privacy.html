@@ -17,14 +17,13 @@
       <a class="brand" href="/">nsusosed</a>
       <nav class="site-nav" aria-label="Основное меню" data-i18n-attr="aria-label:nav.label">
         <ul>
-          <li data-auth="in" hidden><a href="/matches" data-i18n="nav.matches">Совпадения</a></li>
-          <li data-auth="in" hidden><a href="/questionnaire" data-i18n="nav.questionnaire">Анкета</a></li>
-          <li data-auth="in" hidden><a href="/my-listing" data-i18n="nav.myListing">Моя карточка</a></li>
-          <li data-auth="in" hidden><a href="/account" data-i18n="nav.account">Аккаунт</a></li>
-          <li data-auth="out" hidden><a href="/login" data-i18n="nav.login">Войти</a></li>
+          <li data-show="seeker" hidden><a href="/matches" data-i18n="nav.matches">Подборка</a></li>
+          <li data-show="host" hidden><a href="/home" data-i18n="nav.home">Моё жильё</a></li>
+          <li data-show="seeker host" hidden><a href="/questionnaire" data-i18n="nav.questionnaire">Анкета</a></li>
+          <li data-show="seeker host onboarding" hidden><a href="/account" data-i18n="nav.account">Аккаунт</a></li>
+          <li data-show="guest" hidden><a href="/login" data-i18n="nav.login">Войти</a></li>
         </ul>
       </nav>
-      <button type="button" class="lang-switch" lang="en">English</button>
     </div>
   </header>
 
@@ -37,7 +36,7 @@
     <ul>
       <li data-i18n="privacy.what1">Адрес почты @g.nsu.ru и имя, которое вы указали.</li>
       <li data-i18n="privacy.what2">Ответы на анкету, их важность и ваши жёсткие условия; ваш бюджет.</li>
-      <li data-i18n="privacy.what3">Карточку комнаты или квартиры и контакт, который вы в ней указали.</li>
+      <li data-i18n="privacy.what3">Карточку вашего жилья, её фото (без данных о месте съёмки) и контакты, которые вы в ней указали.</li>
       <li data-i18n="privacy.what4">Технические данные входа: время запросов кода и IP-адрес, чтобы защищать сайт от подбора кодов.</li>
       <li data-i18n="privacy.what5">Обезличенную статистику посещений и записи действий на страницах (без почты, контактов и того, что вы вводите в поля), чтобы находить и исправлять ошибки в работе сайта.</li>
     </ul>
@@ -46,10 +45,10 @@
     <p data-i18n="privacy.why">Чтобы подбирать соседей: считать совместимость и показывать карточки другим студентам НГУ. Данные хранятся на сервере в России, мы их не продаём и не передаём за пределы сайта. Единственное исключение — письмо с кодом входа: чтобы его доставить, Yandex Cloud Postbox получает только адрес вашей почты и само письмо с кодом, больше ничего.</p>
 
     <h2 data-i18n="privacy.whoTitle">Кто видит ваши данные</h2>
-    <p data-i18n="privacy.who">Ваши ответы другим пользователям не показываются: видна только итоговая совместимость с комнатой. Соседи по вашей карточке видят ваше имя и то, заполнена ли анкета. Контакт из карточки видят вошедшие пользователи, которым карточка подходит.</p>
+    <p data-i18n="privacy.who">Ваши ответы другим пользователям не показываются: видна только итоговая совместимость с жильём. Соседи по жилью видят ваше имя, заполнена ли анкета и кто админ. Фото и контакты жилья видят вошедшие пользователи.</p>
 
     <h2 data-i18n="privacy.deleteTitle">Удаление</h2>
-    <p data-i18n="privacy.delete">Вы можете в любой момент удалить аккаунт на странице «Аккаунт»: вместе с ним удаляются анкета, карточка и участие в комнате.</p>
+    <p data-i18n="privacy.delete">Вы можете в любой момент удалить аккаунт на странице «Аккаунт»: вместе с ним удаляется анкета, а вы — из жилья (если вы в нём последний, удаляется и само жильё с фото).</p>
   </main>
 
   <footer class="site-footer">

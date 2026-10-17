@@ -3,14 +3,15 @@
 import { api } from '../api.js';
 import { EMAIL_DOMAIN, RESEND_COOLDOWN_SECONDS } from '../config.js';
 import { bindText } from '../i18n.js';
-import { initPage } from '../layout.js';
+import { initPage, startPage } from '../layout.js';
 import { busy, clearError, clearFieldErrors, mmss, safeNext, showError, showFieldErrors } from '../ui.js';
 
 const params = new URLSearchParams(location.search);
-const next = safeNext(params.get('next'));
+// Without ?next the user lands on their start page: matches or their home.
+const next = params.has('next') ? safeNext(params.get('next')) : null;
 
-const { me } = await initPage({ auth: 'optional' });
-if (me) location.replace(next);
+const { me } = await initPage({ auth: 'optional', onboarding: true });
+if (me) location.replace(next || startPage(me));
 
 const stepEmail = document.getElementById('step-email');
 const stepCode = document.getElementById('step-code');
@@ -137,10 +138,10 @@ async function verify() {
   try {
     const result = await api.verifyCode(email, code);
     clearInterval(timer);
-    if (!result.profile_complete && !next.startsWith('/questionnaire')) {
-      location.assign(`/questionnaire?next=${encodeURIComponent(next)}`);
+    if (!result.profile_complete && !next?.startsWith('/questionnaire')) {
+      location.assign(next ? `/questionnaire?next=${encodeURIComponent(next)}` : '/questionnaire');
     } else {
-      location.assign(next);
+      location.assign(next || startPage(await api.getMe()));
     }
   } catch (err) {
     showError(codeError, err);

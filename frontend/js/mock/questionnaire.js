@@ -1,8 +1,8 @@
-// Copy of backend/app/config/questionnaire_v1.json (feature/backend_fixes), used
-// only by the mock API. The real list always comes from GET /api/questions.
+// Copy of backend/app/config/questionnaire_v2.json, used only by the mock API.
+// The real list always comes from GET /api/questions.
 
 export default {
-  "version": 1,
+  "version": 2,
   "questions": [
     {
       "key": "sleep",
@@ -44,6 +44,53 @@ export default {
           "label": {
             "ru": "с 01:00 и позже",
             "en": "01:00 or later"
+          }
+        }
+      ],
+      "min_value": 0,
+      "max_value": 4,
+      "normalize_divisor": 4
+    },
+    {
+      "key": "wake",
+      "label": {
+        "ru": "Во сколько вы обычно встаёте?",
+        "en": "What time do you usually get up?"
+      },
+      "scale": [
+        {
+          "value": 0,
+          "label": {
+            "ru": "до 7:00",
+            "en": "before 7:00"
+          }
+        },
+        {
+          "value": 1,
+          "label": {
+            "ru": "с 7:00 до 8:00",
+            "en": "7:00–8:00"
+          }
+        },
+        {
+          "value": 2,
+          "label": {
+            "ru": "с 8:00 до 9:00",
+            "en": "8:00–9:00"
+          }
+        },
+        {
+          "value": 3,
+          "label": {
+            "ru": "с 9:00 до 10:00",
+            "en": "9:00–10:00"
+          }
+        },
+        {
+          "value": 4,
+          "label": {
+            "ru": "после 10:00",
+            "en": "after 10:00"
           }
         }
       ],

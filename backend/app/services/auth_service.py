@@ -82,9 +82,10 @@ async def verify_code(
         db.add(user)
         await db.flush()
 
-    # Профиль заполнен?
+    # Анкета заполнена (и текущей версии)?
     prof_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    profile_complete = prof_result.scalar_one_or_none() is not None
+    profile = prof_result.scalar_one_or_none()
+    profile_complete = profile is not None and profile.questionnaire_version == QUESTIONNAIRE["version"]
 
     # Создаём сессию
     token = await create_session(db, user.id, request)
