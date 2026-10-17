@@ -1,9 +1,10 @@
 // Mock API: a fake backend that runs in the browser, for working on the
 // frontend without FastAPI and Postgres. It follows the API contract in
-// frontend/README.md, including error codes, versions and the matching formula.
+// backend/README.md, including error codes, versions and the matching formula.
+// Photos are shrunk and kept as data URLs.
 //
 // On: open any page on localhost with ?mock=1. Off: ?mock=0.
-// The data lives in localStorage ("nsusosed.mockdb"); the banner's "Turn off"
+// The data lives in localStorage ("nsusosed.mockdb.v2"); the banner's "Turn off"
 // link keeps it, and resetMockDb() in the console starts over.
 //
 // Not loaded at all unless the mock is on (see api.js).
@@ -13,7 +14,7 @@ import { local } from '../storage.js';
 import QUESTIONNAIRE from './questionnaire.js';
 import { seedDb } from './seed.js';
 
-const DB_KEY = 'nsusosed.mockdb';
+const DB_KEY = 'nsusosed.mockdb.v2'; // v2: homes with admins, contacts, photos
 const LATENCY_MS = 300;
 const OTP_TTL_S = 120;
 const RESEND_COOLDOWN_S = 60;
@@ -70,25 +71,49 @@ function currentUser(db) {
   return user;
 }
 
-function membersOf(db, listingId) {
-  return Object.entries(db.memberships).filter(([, lid]) => lid === listingId).map(([uid]) => uid);
+function meDto(db, user) {
+  const profile = db.profiles[user.id];
+  const m = db.memberships[user.id];
+  return {
+    ...user,
+    situation: profile?.situation ?? null,
+    profile_complete: Boolean(profile) && profile.questionnaire_version === QUESTIONNAIRE.version,
+    home: m ? { id: m.listing_id, is_admin: m.is_admin } : null,
+  };
 }
 
-function residentsBrief(db, listingId) {
+// Members of a home, longest-standing first.
+function membersOf(db, listingId) {
+  return Object.entries(db.memberships)
+    .filter(([, m]) => m.listing_id === listingId)
+    .sort(([, a], [, b]) => a.joined_at.localeCompare(b.joined_at))
+    .map(([uid]) => uid);
+}
+
+function residentsOf(db, listingId) {
   return membersOf(db, listingId).map((uid) => ({
+    user_id: uid,
     display_name: db.users[uid]?.display_name ?? 'Пользователь',
     profile_complete: Boolean(db.profiles[uid]),
+    is_admin: db.memberships[uid].is_admin,
+    joined_at: db.memberships[uid].joined_at,
   }));
 }
 
-function ownerDto(db, l) {
-  const residents = residentsBrief(db, l.id);
+function contactsOut(l) {
+  return l.contacts.map((c) => ({ ...c, url: contactUrl(c.type, c.value) }));
+}
+
+function homeDto(db, l, user) {
+  const residents = residentsOf(db, l.id);
   const { invite_token: _t, invite_expires_at: _e, ...rest } = l;
   return {
     ...rest,
+    contacts: contactsOut(l),
     free_places: l.capacity - l.occupied_count,
     answered_count: residents.filter((r) => r.profile_complete).length,
     residents,
+    you_are_admin: Boolean(db.memberships[user.id]?.is_admin && db.memberships[user.id].listing_id === l.id),
     expires_at: iso(new Date(new Date(l.confirmed_at).getTime() + LISTING_TTL_DAYS * DAY_MS)),
   };
 }
@@ -98,29 +123,53 @@ function isVisible(l) {
   return l.status === 'active' && fresh && l.capacity - l.occupied_count > 0;
 }
 
-// ------------------------------------------------------------- matching
-// Same formula as backend/app/services/matching_service.py.
+// Same rules as backend/app/services/membership_service.py: the last admin
+// leaving promotes the longest-standing member (one with a questionnaire
+// first); the last member leaving deletes the home.
+function removeMember(db, uid) {
+  const m = db.memberships[uid];
+  if (!m) return;
+  delete db.memberships[uid];
+  const l = db.listings[m.listing_id];
+  const rest = membersOf(db, m.listing_id);
+  if (!rest.length) {
+    delete db.listings[m.listing_id];
+    return;
+  }
+  if (!rest.some((id) => db.memberships[id].is_admin)) {
+    const heir = rest.find((id) => db.profiles[id]) ?? rest[0];
+    db.memberships[heir].is_admin = true;
+  }
+  l.version += 1;
+}
 
-function checkHard(candidate, resident) {
-  return KEYS.every((key) => {
+// ------------------------------------------------------------- matching
+// Same formula as backend/app/services/matching_service.py. A question that
+// one side hasn't answered (older questionnaire) is skipped.
+
+function hardConflicts(candidate, resident) {
+  const out = [];
+  for (const key of KEYS) {
     const c = candidate[key];
     const r = resident[key];
-    if (c.hard && !c.allowed.includes(r.value)) return false;
-    if (r.hard && !r.allowed.includes(c.value)) return false;
-    return true;
-  });
+    if (!c || !r) continue;
+    if (c.hard && !c.allowed.includes(r.value)) out.push([key, 'yours']);
+    if (r.hard && !r.allowed.includes(c.value)) out.push([key, 'theirs']);
+  }
+  return out;
 }
 
 function compatibility(candidate, residents, occupied) {
-  const n = residents.length;
   const dims = [];
   let num = 0;
   let den = 0;
   for (const key of KEYS) {
-    const div = Q[key].normalize_divisor;
     const c = candidate[key];
-    const roomVal = residents.reduce((s, r) => s + r[key].value / div, 0) / n;
-    const roomImp = residents.reduce((s, r) => s + r[key].importance, 0) / n;
+    const answers = residents.map((r) => r[key]).filter(Boolean);
+    if (!c || !answers.length) continue;
+    const div = Q[key].normalize_divisor;
+    const roomVal = answers.reduce((s, a) => s + a.value / div, 0) / answers.length;
+    const roomImp = answers.reduce((s, a) => s + a.importance, 0) / answers.length;
     const weight = (c.importance + roomImp) / 2;
     const similarity = 1 - Math.abs(c.value / div - roomVal);
     num += weight * similarity;
@@ -133,9 +182,10 @@ function compatibility(candidate, residents, occupied) {
   for (const d of dims) d.contribution_points = den > 0 ? (100 * d.weight * d.similarity) / den : 0;
 
   const warnings = [];
-  if (n < occupied) warnings.push({ code: 'PARTIAL_ANSWERS', answered: n, occupied });
+  if (residents.length < occupied) warnings.push({ code: 'PARTIAL_ANSWERS', answered: residents.length, occupied });
   for (const key of KEYS) {
-    const values = residents.map((r) => r[key].value);
+    const values = residents.map((r) => r[key]?.value).filter((v) => v !== undefined);
+    if (!values.length) continue;
     const spread = Math.max(...values) - Math.min(...values);
     if ((key === 'smoking' && spread > 0) || (key !== 'smoking' && spread >= DISPERSION_THRESHOLD)) {
       warnings.push({ code: 'RESIDENTS_DISAGREE', key });
@@ -145,14 +195,40 @@ function compatibility(candidate, residents, occupied) {
   return { score: Math.floor(scoreRaw + 0.5), score_raw: scoreRaw, score_version: 1, warnings, dimensions: dims };
 }
 
-// Compatibility of `user` with listing `l`, or null if hard conditions/budget hide it.
-function matchFor(db, user, l) {
+function residentAnswers(db, l) {
+  return membersOf(db, l.id).map((uid) => db.profiles[uid]?.answers).filter(Boolean);
+}
+
+function reasonsFor(me, l, answers) {
+  const reasons = [];
+  const seen = new Set();
+  for (const a of answers) {
+    for (const [key, side] of hardConflicts(me.answers, a)) {
+      if (seen.has(key + side)) continue;
+      seen.add(key + side);
+      reasons.push({ code: 'HARD_CONDITION', key, side, price: null, budget: null });
+    }
+  }
+  if (l.kind === 'apartment' && l.monthly_cost_per_person_rub > me.budget_max_rub) {
+    reasons.push({ code: 'OVER_BUDGET', key: null, side: null, price: l.monthly_cost_per_person_rub, budget: me.budget_max_rub });
+  }
+  return reasons;
+}
+
+function candidateProfile(db, user, kind) {
   const me = db.profiles[user.id];
-  const answers = membersOf(db, l.id).map((uid) => db.profiles[uid]?.answers).filter(Boolean);
-  if (!answers.length) return null;
-  if (l.kind === 'apartment' && l.monthly_cost_per_person_rub > me.budget_max_rub) return null;
-  if (!answers.every((a) => checkHard(me.answers, a))) return null;
-  return compatibility(me.answers, answers, l.occupied_count);
+  if (!me) fail(422, 'PROFILE_REQUIRED');
+  if (kind === 'apartment' && me.budget_max_rub == null) fail(422, 'BUDGET_REQUIRED');
+  return me;
+}
+
+// The home and whether the user lives there. Someone else's only while shown.
+function homeForViewer(db, user, id) {
+  const l = db.listings[id];
+  if (!l) fail(404, 'NOT_FOUND');
+  const livesHere = db.memberships[user.id]?.listing_id === l.id;
+  if (!livesHere && !isVisible(l)) fail(404, 'NOT_FOUND');
+  return [l, livesHere];
 }
 
 // ------------------------------------------------------------- validation
@@ -194,6 +270,7 @@ function intIn(errors, body, name, min, max, required) {
   else if (v > max) errors[name] = 'LESS_THAN_EQUAL';
 }
 
+// Returns the normalized contacts.
 function validateListing(kind, body) {
   const errors = {};
   intIn(errors, body, 'capacity', 1, 10, true);
@@ -211,20 +288,25 @@ function validateListing(kind, body) {
   } else errors.kind = 'INVALID_CHOICE';
   if (body.description && body.description.length > 1000) errors.description = 'STRING_TOO_LONG';
   if (!errors.capacity && !errors.occupied_count && body.occupied_count > body.capacity) errors.occupied_count = 'EXCEEDS_CAPACITY';
-  const [contact, reason] = normalizeContact(body.contact_type, body.contact_value);
-  if (reason) errors[reason === 'INVALID_CHOICE' ? 'contact_type' : 'contact_value'] = reason;
+  const contacts = Array.isArray(body.contacts) ? body.contacts : [];
+  if (!contacts.length) errors.contacts = 'TOO_SHORT';
+  if (contacts.length > 10) errors.contacts = 'TOO_LONG';
+  const normalized = contacts.map((c, i) => {
+    const [value, reason] = normalizeContact(c.type, c.value);
+    if (reason) errors[`contacts.${i}.${reason === 'INVALID_CHOICE' ? 'type' : 'value'}`] = reason;
+    return { type: c.type, value };
+  });
   if (body.status && !['active', 'paused'].includes(body.status)) errors.status = 'INVALID_CHOICE';
   if (Object.keys(errors).length) invalid(errors);
-  return contact;
+  return normalized;
 }
 
-function listingFields(kind, body, contact) {
+function listingFields(kind, body, contacts) {
   const f = {
     capacity: body.capacity,
     occupied_count: body.occupied_count,
     description: body.description || null,
-    contact_type: body.contact_type,
-    contact_value: contact,
+    contacts,
     building: null, room_number: null, floor: null, is_corner: null, windows_count: null, view: null, layout: null,
     district: null, monthly_cost_per_person_rub: null,
   };
@@ -239,15 +321,40 @@ function listingFields(kind, body, contact) {
   return f;
 }
 
-function ownListing(db, user, id) {
+// A home the user is an admin of.
+function adminListing(db, user, id) {
   const l = db.listings[id];
   if (!l) fail(404, 'NOT_FOUND');
-  if (l.owner_id !== user.id) fail(403, 'FORBIDDEN');
+  const m = db.memberships[user.id];
+  if (!m || m.listing_id !== id || !m.is_admin) fail(403, 'NOT_ADMIN');
   return l;
+}
+
+function targetMember(db, l, uid) {
+  if (db.memberships[uid]?.listing_id !== l.id) fail(404, 'NOT_MEMBER');
+  return db.memberships[uid];
 }
 
 function checkVersion(l, expected) {
   if (expected !== l.version) fail(409, 'VERSION_CONFLICT');
+}
+
+// Shrink an uploaded photo to a small data URL, so it fits in localStorage.
+async function photoDataUrl(file) {
+  if (!(file instanceof Blob) || !/^image\/(jpeg|png|webp)$/.test(file.type)) fail(415, 'PHOTO_BAD_TYPE');
+  if (file.size > 10 * 1024 * 1024) fail(413, 'PHOTO_TOO_LARGE');
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch {
+    fail(415, 'PHOTO_BAD_TYPE');
+  }
+  const scale = Math.min(1, 480 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  return { url: canvas.toDataURL('image/jpeg', 0.7), width: canvas.width, height: canvas.height };
 }
 
 // ------------------------------------------------------------- routes
@@ -275,11 +382,12 @@ const routes = [
     delete db.otp[email];
     let user = Object.values(db.users).find((u) => u.email === email);
     if (!user) {
-      user = { id: newId(), email, display_name: 'Пользователь' };
+      user = { id: newId(), email, display_name: 'Пользователь', language: null };
       db.users[user.id] = user;
     }
     db.session = user.id;
-    return { user, profile_complete: Boolean(db.profiles[user.id]) };
+    const { id, display_name: displayName } = user;
+    return { user: { id, email, display_name: displayName }, profile_complete: meDto(db, user).profile_complete };
   }],
 
   ['POST', /^\/auth\/logout$/, (db) => {
@@ -287,27 +395,27 @@ const routes = [
     return null;
   }],
 
-  ['GET', /^\/me$/, (db) => currentUser(db)],
+  ['GET', /^\/me$/, (db) => meDto(db, currentUser(db))],
 
   ['PUT', /^\/me$/, (db, body) => {
     const user = currentUser(db);
-    const name = String(body.display_name ?? '');
-    if (name.length < 2) invalid({ display_name: 'STRING_TOO_SHORT' });
-    if (name.length > 60) invalid({ display_name: 'STRING_TOO_LONG' });
-    user.display_name = name;
-    return user;
+    if (body.display_name != null) {
+      const name = String(body.display_name);
+      if (name.length < 2) invalid({ display_name: 'STRING_TOO_SHORT' });
+      if (name.length > 60) invalid({ display_name: 'STRING_TOO_LONG' });
+      user.display_name = name;
+    }
+    if (body.language != null) {
+      if (!['ru', 'en'].includes(body.language)) invalid({ language: 'LITERAL_ERROR' });
+      user.language = body.language;
+    }
+    return meDto(db, user);
   }],
 
   ['DELETE', /^\/me$/, (db, body) => {
     const user = currentUser(db);
     if (body.confirm !== 'DELETE') fail(422, 'VALIDATION_ERROR', { confirm: 'MUST_BE_DELETE' });
-    for (const l of Object.values(db.listings)) {
-      if (l.owner_id === user.id) {
-        for (const uid of membersOf(db, l.id)) delete db.memberships[uid];
-        delete db.listings[l.id];
-      }
-    }
-    delete db.memberships[user.id];
+    removeMember(db, user.id);
     delete db.profiles[user.id];
     delete db.users[user.id];
     db.session = null;
@@ -322,8 +430,8 @@ const routes = [
     const user = currentUser(db);
     const current = db.profiles[user.id];
     const errors = {};
-    if (body.questionnaire_version !== 1) errors.questionnaire_version = 'UNSUPPORTED_VERSION';
-    if (!['looking', 'dorm_resident', 'apartment_host'].includes(body.situation)) errors.situation = 'INVALID_CHOICE';
+    if (body.questionnaire_version !== QUESTIONNAIRE.version) errors.questionnaire_version = 'UNSUPPORTED_VERSION';
+    if (!['seeker', 'host'].includes(body.situation)) errors.situation = 'INVALID_CHOICE';
     intIn(errors, body, 'budget_max_rub', 1, 200000);
     const answers = body.answers ?? {};
     if (Object.keys(answers).sort().join() !== [...KEYS].sort().join()) errors.answers = 'INVALID_QUESTION_SET';
@@ -338,13 +446,14 @@ const routes = [
       }
     }
     if (Object.keys(errors).length) invalid(errors);
+    if (body.situation === 'seeker' && db.memberships[user.id]) fail(409, 'LEAVE_HOME_FIRST');
     if (body.expected_version !== (current?.version ?? 0)) fail(409, 'VERSION_CONFLICT');
     const profile = {
       user_id: user.id,
-      questionnaire_version: 1,
+      questionnaire_version: QUESTIONNAIRE.version,
       answers,
       situation: body.situation,
-      budget_max_rub: body.budget_max_rub ?? null,
+      budget_max_rub: body.situation === 'seeker' ? body.budget_max_rub ?? null : null,
       version: (current?.version ?? 0) + 1,
       updated_at: iso(now()),
     };
@@ -354,36 +463,45 @@ const routes = [
 
   ['GET', /^\/listings\/mine$/, (db) => {
     const user = currentUser(db);
-    const l = Object.values(db.listings).find((x) => x.owner_id === user.id);
-    return { item: l ? ownerDto(db, l) : null };
+    const m = db.memberships[user.id];
+    return { item: m ? homeDto(db, db.listings[m.listing_id], user) : null };
   }],
 
   ['POST', /^\/listings$/, (db, body) => {
     const user = currentUser(db);
-    const contact = validateListing(body.kind, body);
+    const contacts = validateListing(body.kind, body);
     if (!db.profiles[user.id]) fail(422, 'PROFILE_REQUIRED');
-    if (Object.values(db.listings).some((x) => x.owner_id === user.id)) fail(409, 'LISTING_EXISTS');
     if (db.memberships[user.id]) fail(409, 'ALREADY_IN_ROOM');
-    const fields = listingFields(body.kind, body, contact);
+    const fields = listingFields(body.kind, body, contacts);
     if (body.kind === 'dorm' && Object.values(db.listings).some((x) => x.building === fields.building && x.room_number === fields.room_number)) {
       fail(409, 'ROOM_TAKEN');
     }
     const l = {
-      id: newId(), owner_id: user.id, kind: body.kind, ...fields, status: 'active', version: 1,
+      id: newId(), kind: body.kind, ...fields, photos: [], status: 'active', version: 1,
       confirmed_at: iso(now()), created_at: iso(now()), invite_token: null, invite_expires_at: null,
     };
     db.listings[l.id] = l;
-    db.memberships[user.id] = l.id;
-    return { status: 201, data: ownerDto(db, l) };
+    db.memberships[user.id] = { listing_id: l.id, is_admin: true, joined_at: iso(now()) };
+    Object.assign(db.profiles[user.id], { situation: 'host', budget_max_rub: null });
+    return { status: 201, data: homeDto(db, l, user) };
+  }],
+
+  ['PUT', /^\/listings\/([\w-]+)\/photos\/order$/, (db, body, [id]) => {
+    const user = currentUser(db);
+    const l = adminListing(db, user, id);
+    const ids = body.photo_ids ?? [];
+    if (ids.length !== l.photos.length || !l.photos.every((p) => ids.includes(p.id))) invalid({ photo_ids: 'INVALID_SET' });
+    l.photos = ids.map((pid) => l.photos.find((p) => p.id === pid));
+    return homeDto(db, l, user);
   }],
 
   ['PUT', /^\/listings\/([\w-]+)$/, (db, body, [id]) => {
     const user = currentUser(db);
-    const l = ownListing(db, user, id);
+    const l = adminListing(db, user, id);
     checkVersion(l, body.expected_version);
     if (body.occupied_count < membersOf(db, l.id).length) fail(409, 'OCCUPANCY_CONFLICT');
-    const contact = validateListing(l.kind, body);
-    const fields = listingFields(l.kind, body, contact);
+    const contacts = validateListing(l.kind, body);
+    const fields = listingFields(l.kind, body, contacts);
     if (l.kind === 'dorm' && Object.values(db.listings).some((x) => x.id !== l.id && x.building === fields.building && x.room_number === fields.room_number)) {
       fail(409, 'ROOM_TAKEN');
     }
@@ -391,32 +509,78 @@ const routes = [
     l.status = l.capacity - l.occupied_count <= 0 ? 'paused' : (body.status || 'active');
     if (l.status === 'active') l.confirmed_at = iso(now());
     l.version += 1;
-    return ownerDto(db, l);
+    return homeDto(db, l, user);
   }],
 
   ['DELETE', /^\/listings\/([\w-]+)$/, (db, body, [id]) => {
-    const l = ownListing(db, currentUser(db), id);
-    for (const uid of membersOf(db, l.id)) delete db.memberships[uid];
-    delete db.listings[l.id];
+    const l = adminListing(db, currentUser(db), id);
+    for (const uid of membersOf(db, l.id)) removeMember(db, uid);
     return null;
   }],
 
   ['POST', /^\/listings\/([\w-]+)\/confirm$/, (db, body, [id]) => {
-    const l = ownListing(db, currentUser(db), id);
+    const user = currentUser(db);
+    const l = adminListing(db, user, id);
     checkVersion(l, body.expected_version);
     l.confirmed_at = iso(now());
     if (l.capacity - l.occupied_count > 0) l.status = 'active';
     l.version += 1;
-    return ownerDto(db, l);
+    return homeDto(db, l, user);
   }],
 
   ['POST', /^\/listings\/([\w-]+)\/invite$/, (db, body, [id]) => {
-    const l = ownListing(db, currentUser(db), id);
+    const l = adminListing(db, currentUser(db), id);
     checkVersion(l, body.expected_version);
     l.invite_token = crypto.randomUUID().replace(/-/g, '');
     l.invite_expires_at = iso(new Date(Date.now() + INVITE_TTL_DAYS * DAY_MS));
     l.version += 1;
     return { invite_url: `${location.origin}/join#token=${l.invite_token}`, expires_at: l.invite_expires_at, version: l.version };
+  }],
+
+  ['POST', /^\/listings\/([\w-]+)\/photos$/, async (db, body, [id]) => {
+    const user = currentUser(db);
+    const l = adminListing(db, user, id);
+    if (l.photos.length >= 10) fail(409, 'TOO_MANY_PHOTOS');
+    const photo = await photoDataUrl(body instanceof FormData ? body.get('file') : null);
+    l.photos.push({ id: newId(), ...photo });
+    return { status: 201, data: homeDto(db, l, user) };
+  }],
+
+  ['DELETE', /^\/listings\/([\w-]+)\/photos\/([\w-]+)$/, (db, body, [id, photoId]) => {
+    const user = currentUser(db);
+    const l = adminListing(db, user, id);
+    if (!l.photos.some((p) => p.id === photoId)) fail(404, 'NOT_FOUND');
+    l.photos = l.photos.filter((p) => p.id !== photoId);
+    return homeDto(db, l, user);
+  }],
+
+  ['POST', /^\/listings\/([\w-]+)\/admins\/([\w-]+)$/, (db, body, [id, uid]) => {
+    const l = adminListing(db, currentUser(db), id);
+    const target = targetMember(db, l, uid);
+    if (!target.is_admin) {
+      if (!db.profiles[uid]) fail(422, 'TARGET_PROFILE_REQUIRED');
+      target.is_admin = true;
+      l.version += 1;
+    }
+    return null;
+  }],
+
+  ['DELETE', /^\/listings\/([\w-]+)\/admins\/([\w-]+)$/, (db, body, [id, uid]) => {
+    const l = adminListing(db, currentUser(db), id);
+    const target = targetMember(db, l, uid);
+    if (target.is_admin) {
+      if (!membersOf(db, l.id).some((m) => m !== uid && db.memberships[m].is_admin)) fail(409, 'LAST_ADMIN');
+      target.is_admin = false;
+      l.version += 1;
+    }
+    return null;
+  }],
+
+  ['DELETE', /^\/listings\/([\w-]+)\/members\/([\w-]+)$/, (db, body, [id, uid]) => {
+    const l = adminListing(db, currentUser(db), id);
+    targetMember(db, l, uid);
+    removeMember(db, uid);
+    return null;
   }],
 
   ['POST', /^\/memberships\/join$/, (db, body) => {
@@ -425,21 +589,18 @@ const routes = [
     const l = Object.values(db.listings).find((x) => x.invite_token && x.invite_token === body.invite_token);
     if (!l) fail(404, 'INVITE_INVALID');
     if (new Date(l.invite_expires_at) < now()) fail(404, 'INVITE_EXPIRED');
-    if (db.memberships[user.id] === l.id) return { listing_id: l.id, version: l.version };
-    if (db.memberships[user.id]) fail(409, 'ALREADY_IN_ROOM');
+    const m = db.memberships[user.id];
+    if (m?.listing_id === l.id) return { listing_id: l.id, version: l.version };
+    if (m) fail(409, 'ALREADY_IN_ROOM');
     if (membersOf(db, l.id).length >= l.occupied_count) fail(409, 'ROOM_FULL');
-    db.memberships[user.id] = l.id;
+    db.memberships[user.id] = { listing_id: l.id, is_admin: false, joined_at: iso(now()) };
+    Object.assign(db.profiles[user.id], { situation: 'host', budget_max_rub: null });
     l.version += 1;
     return { listing_id: l.id, version: l.version };
   }],
 
   ['DELETE', /^\/membership$/, (db) => {
-    const user = currentUser(db);
-    const lid = db.memberships[user.id];
-    if (!lid) return null;
-    if (db.listings[lid]?.owner_id === user.id) fail(403, 'OWNER_CANNOT_LEAVE');
-    delete db.memberships[user.id];
-    if (db.listings[lid]) db.listings[lid].version += 1;
+    removeMember(db, currentUser(db).id);
     return null;
   }],
 
@@ -448,54 +609,54 @@ const routes = [
     const kind = query.get('kind');
     const offset = Number(query.get('offset') ?? 0);
     const limit = Number(query.get('limit') ?? 20);
+    const all = ['true', '1'].includes(query.get('include_unmatched'));
     if (!['dorm', 'apartment'].includes(kind)) invalid({ 'query.kind': 'STRING_PATTERN_MISMATCH' });
-    const me = db.profiles[user.id];
-    if (!me) fail(422, 'PROFILE_REQUIRED');
-    if (kind === 'apartment' && me.budget_max_rub == null) fail(422, 'BUDGET_REQUIRED');
+    const me = candidateProfile(db, user, kind);
     const items = [];
     for (const l of Object.values(db.listings)) {
-      if (l.kind !== kind || !isVisible(l) || db.memberships[user.id] === l.id) continue;
-      const compat = matchFor(db, user, l);
-      if (!compat) continue;
-      const answered = membersOf(db, l.id).filter((uid) => db.profiles[uid]).length;
+      if (l.kind !== kind || !isVisible(l) || db.memberships[user.id]?.listing_id === l.id) continue;
+      const answers = residentAnswers(db, l);
+      if (!answers.length) continue;
+      const reasons = reasonsFor(me, l, answers);
+      if (reasons.length && !all) continue;
       items.push({
         id: l.id, kind: l.kind, building: l.building, room_number: l.room_number, district: l.district,
-        free_places: l.capacity - l.occupied_count, answered_count: answered, occupied_count: l.occupied_count,
-        compatibility: compat,
+        monthly_cost_per_person_rub: l.monthly_cost_per_person_rub, cover_url: l.photos[0]?.url ?? null,
+        free_places: l.capacity - l.occupied_count, answered_count: answers.length, occupied_count: l.occupied_count,
+        fits: !reasons.length, reasons, compatibility: compatibility(me.answers, answers, l.occupied_count),
       });
     }
-    items.sort((a, b) => b.compatibility.score_raw - a.compatibility.score_raw);
+    items.sort((a, b) => (a.fits === b.fits ? b.compatibility.score_raw - a.compatibility.score_raw : a.fits ? -1 : 1));
     return { items: items.slice(offset, offset + limit), total: items.length, offset, limit, score_version: 1 };
   }],
 
   ['GET', /^\/listings\/([\w-]+)$/, (db, body, [id]) => {
     const user = currentUser(db);
-    const l = db.listings[id];
-    if (!l) fail(404, 'NOT_FOUND');
-    const own = l.owner_id === user.id || db.memberships[user.id] === l.id;
-    const residents = residentsBrief(db, l.id);
-    const { owner_id: _o, contact_type: _ct, contact_value: _cv, invite_token: _t, invite_expires_at: _e, created_at: _c, ...rest } = l;
+    const [l, livesHere] = homeForViewer(db, user, id);
+    const residents = residentsOf(db, l.id).map(({ display_name: name, profile_complete: done, is_admin: admin }) => ({
+      display_name: name, profile_complete: done, is_admin: admin,
+    }));
+    const { contacts: _c, invite_token: _t, invite_expires_at: _e, created_at: _cr, ...rest } = l;
     const detail = {
       ...rest, free_places: l.capacity - l.occupied_count,
-      answered_count: residents.filter((r) => r.profile_complete).length, residents, compatibility: null,
+      answered_count: residents.filter((r) => r.profile_complete).length, residents,
+      you_live_here: livesHere, fits: true, reasons: [], compatibility: null,
     };
-    if (own) return detail;
-    if (!isVisible(l)) fail(404, 'NOT_FOUND');
-    const me = db.profiles[user.id];
-    if (!me) fail(422, 'PROFILE_REQUIRED');
-    if (l.kind === 'apartment' && me.budget_max_rub == null) fail(422, 'BUDGET_REQUIRED');
-    detail.compatibility = matchFor(db, user, l);
-    if (!detail.compatibility) fail(404, 'NOT_FOUND');
+    if (livesHere) return detail;
+    const me = candidateProfile(db, user, l.kind);
+    const answers = residentAnswers(db, l);
+    if (!answers.length) fail(404, 'NOT_FOUND');
+    detail.reasons = reasonsFor(me, l, answers);
+    detail.fits = !detail.reasons.length;
+    detail.compatibility = compatibility(me.answers, answers, l.occupied_count);
     return detail;
   }],
 
   ['GET', /^\/listings\/([\w-]+)\/contact$/, (db, body, [id]) => {
     const user = currentUser(db);
-    const l = db.listings[id];
-    if (!l) fail(404, 'NOT_FOUND');
-    const own = l.owner_id === user.id || db.memberships[user.id] === l.id;
-    if (!own && (!isVisible(l) || !db.profiles[user.id] || !matchFor(db, user, l))) fail(404, 'NOT_FOUND');
-    return { type: l.contact_type, value: l.contact_value, url: contactUrl(l.contact_type, l.contact_value) };
+    const [l, livesHere] = homeForViewer(db, user, id);
+    if (!livesHere) candidateProfile(db, user, l.kind);
+    return { items: contactsOut(l) };
   }],
 ];
 
@@ -507,7 +668,7 @@ export async function handle(method, path, body) {
     for (const [m, re, fn] of routes) {
       const match = m === method && url.pathname.match(re);
       if (!match) continue;
-      const result = fn(db, body ?? {}, match.slice(1), url.searchParams);
+      const result = await fn(db, body ?? {}, match.slice(1), url.searchParams);
       saveDb(db);
       if (result && typeof result === 'object' && 'status' in result && 'data' in result) return result;
       return { status: result === null ? 204 : 200, data: result };

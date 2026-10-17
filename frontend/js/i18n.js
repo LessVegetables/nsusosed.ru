@@ -13,7 +13,17 @@ const DICTS = { ru, en };
 export const LANGS = ['ru', 'en'];
 const STORAGE_KEY = 'nsusosed.lang';
 
-let lang = LANGS.includes(local.get(STORAGE_KEY)) ? local.get(STORAGE_KEY) : 'ru';
+// The language saved on this device, else the browser's. After login the
+// account's language wins (layout.js); it is chosen once during onboarding and
+// changed on the Account page.
+function initialLang() {
+  const saved = local.get(STORAGE_KEY);
+  if (LANGS.includes(saved)) return saved;
+  const browser = (navigator.languages?.[0] || navigator.language || '').toLowerCase();
+  return browser && !browser.startsWith('ru') ? 'en' : 'ru';
+}
+
+let lang = initialLang();
 document.documentElement.lang = lang;
 
 export function getLang() {

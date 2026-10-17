@@ -232,3 +232,6 @@ nginx/certs/*.pem
 nginx/certs/*.key
 nginx/certs/*.crt
 
+
+# Listing photos in local development (MEDIA_DIR=media)
+backend/media/

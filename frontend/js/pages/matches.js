@@ -1,22 +1,35 @@
-// /matches?kind=dorm|apartment&page=N — listings sorted by compatibility.
+// /matches?kind=dorm|apartment&page=N&all=1 — places sorted by compatibility.
+// all=1 also shows places that break a hard condition or the budget, after
+// the ones that fit, each with the reasons.
 
 import { api } from '../api.js';
 import { MATCHES_PAGE_SIZE } from '../config.js';
 import { initPage } from '../layout.js';
-import { explanation, listingTitle, scoreBadge, warnings } from '../listing-view.js';
+import { explanation, listingTitle, reasons, scoreBadge, warnings } from '../listing-view.js';
 import { h, loadFailed, loading } from '../ui.js';
 
 const KINDS = ['dorm', 'apartment'];
 
-await initPage({ auth: 'required', nav: 'matches' });
+await initPage({ auth: 'required' });
 
 const params = new URLSearchParams(location.search);
 let kind = KINDS.includes(params.get('kind')) ? params.get('kind') : 'dorm';
 let page = Math.max(1, Number.parseInt(params.get('page'), 10) || 1);
+let showAll = params.get('all') === '1';
 let requestId = 0;
 
 const panel = document.getElementById('panel');
 const tabs = [...document.querySelectorAll('[role="tab"]')];
+const allToggle = document.getElementById('show-all');
+allToggle.checked = showAll;
+allToggle.addEventListener('change', () => setShowAll(allToggle.checked));
+
+function setShowAll(on) {
+  showAll = on;
+  allToggle.checked = on;
+  page = 1;
+  load();
+}
 
 function updateTabs() {
   for (const tab of tabs) {
@@ -30,6 +43,7 @@ function updateTabs() {
 function updateUrl() {
   const query = new URLSearchParams({ kind });
   if (page > 1) query.set('page', String(page));
+  if (showAll) query.set('all', '1');
   history.replaceState(null, '', `/matches?${query}`);
 }
 
@@ -65,7 +79,9 @@ function card(item) {
     {},
     h(
       'article',
-      { class: 'card match-card' },
+      { class: item.fits ? 'card match-card' : 'card match-card match-unfit' },
+      item.cover_url ? h('img', { class: 'match-cover', src: item.cover_url, alt: '', loading: 'lazy' }) : null,
+      item.fits ? null : h('p', {}, h('span', { class: 'badge badge-warn', i18n: 'matches.unfit' })),
       h(
         'div',
         { class: 'match-head' },
@@ -76,11 +92,11 @@ function card(item) {
         'p',
         { class: 'meta' },
         h('span', { i18n: 'listing.freePlaces', i18nArgs: { count: item.free_places } }),
-        // Not in the match list yet (see README, "Gaps"); shown once the API adds it.
         item.monthly_cost_per_person_rub != null
           ? h('span', { i18n: 'listing.costShort', i18nArgs: { cost: { num: item.monthly_cost_per_person_rub } } })
           : null,
       ),
+      reasons(item.reasons),
       explanation(c.dimensions),
       warnings(c.warnings),
     ),
@@ -126,9 +142,11 @@ function render(data) {
       h(
         'div',
         { class: 'empty card' },
-        h('p', { i18n: `matches.empty.${kind}` }),
-        h('p', { class: 'muted', i18n: 'matches.emptyHint' }),
-        h('p', {}, h('a', { href: '/questionnaire', i18n: 'matches.editAnswers' })),
+        h('p', { i18n: showAll ? `matches.emptyAll.${kind}` : `matches.empty.${kind}` }),
+        h('p', { class: 'muted', i18n: showAll ? 'matches.emptyAllHint' : 'matches.emptyHint' }),
+        h('p', { class: 'actions' },
+          showAll ? null : h('button', { type: 'button', class: 'btn', i18n: 'matches.showAll', onclick: () => setShowAll(true) }),
+          h('a', { class: 'btn btn-secondary', href: '/questionnaire', i18n: 'matches.editAnswers' })),
       ),
     );
     return;
@@ -146,7 +164,7 @@ async function load({ focus = false } = {}) {
   updateUrl();
   loading(panel);
   try {
-    const data = await api.getMatches(kind, (page - 1) * MATCHES_PAGE_SIZE, MATCHES_PAGE_SIZE);
+    const data = await api.getMatches(kind, (page - 1) * MATCHES_PAGE_SIZE, MATCHES_PAGE_SIZE, showAll);
     if (current !== requestId) return; // A newer request (other tab or page) won.
     render(data);
     if (focus) {

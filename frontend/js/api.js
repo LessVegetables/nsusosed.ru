@@ -53,7 +53,9 @@ async function request(method, path, body) {
 
   const headers = { Accept: 'application/json' };
   const init = { method, headers, credentials: 'same-origin', cache: 'no-store' };
-  if (body !== undefined) {
+  if (body instanceof FormData) {
+    init.body = body; // The browser sets multipart/form-data with its boundary.
+  } else if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
     init.body = JSON.stringify(body);
   }
@@ -87,7 +89,8 @@ export const api = {
 
   // Account
   getMe: () => request('GET', '/me'),
-  updateMe: (displayName) => request('PUT', '/me', { display_name: displayName }),
+  // {display_name} and/or {language}
+  updateMe: (changes) => request('PUT', '/me', changes),
   deleteMe: (confirm) => request('DELETE', '/me', { confirm }),
 
   // Questionnaire
@@ -95,7 +98,7 @@ export const api = {
   getProfile: () => request('GET', '/profile'),
   saveProfile: (payload) => request('PUT', '/profile', payload),
 
-  // Own listing
+  // The user's home (they live there; admins can change it)
   getMyListing: () => request('GET', '/listings/mine'),
   createListing: (payload) => request('POST', '/listings', payload),
   updateListing: (id, payload) => request('PUT', `/listings/${enc(id)}`, payload),
@@ -104,14 +107,26 @@ export const api = {
     request('POST', `/listings/${enc(id)}/invite`, { expected_version: expectedVersion }),
   confirmListing: (id, expectedVersion) =>
     request('POST', `/listings/${enc(id)}/confirm`, { expected_version: expectedVersion }),
+  addPhoto: (id, file) => {
+    const form = new FormData();
+    form.append('file', file);
+    return request('POST', `/listings/${enc(id)}/photos`, form);
+  },
+  deletePhoto: (id, photoId) => request('DELETE', `/listings/${enc(id)}/photos/${enc(photoId)}`),
+  reorderPhotos: (id, photoIds) => request('PUT', `/listings/${enc(id)}/photos/order`, { photo_ids: photoIds }),
 
   // Residents
   joinRoom: (inviteToken) => request('POST', '/memberships/join', { invite_token: inviteToken }),
   leaveRoom: () => request('DELETE', '/membership'),
+  makeAdmin: (id, userId) => request('POST', `/listings/${enc(id)}/admins/${enc(userId)}`, {}),
+  removeAdmin: (id, userId) => request('DELETE', `/listings/${enc(id)}/admins/${enc(userId)}`),
+  removeResident: (id, userId) => request('DELETE', `/listings/${enc(id)}/members/${enc(userId)}`),
 
-  // Matching
-  getMatches: (kind, offset, limit) =>
-    request('GET', `/matches?kind=${enc(kind)}&offset=${enc(offset)}&limit=${enc(limit)}`),
+  // Matching. includeUnmatched also returns places that break a hard
+  // condition or the budget (fits: false, with reasons).
+  getMatches: (kind, offset, limit, includeUnmatched = false) =>
+    request('GET', `/matches?kind=${enc(kind)}&offset=${enc(offset)}&limit=${enc(limit)}`
+      + (includeUnmatched ? '&include_unmatched=true' : '')),
   getListing: (id) => request('GET', `/listings/${enc(id)}`),
   getContact: (id) => request('GET', `/listings/${enc(id)}/contact`),
 };

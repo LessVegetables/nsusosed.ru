@@ -14,7 +14,6 @@ class Listing(Base):
         CheckConstraint("occupied_count BETWEEN 1 AND capacity", name="ck_listings_occupied"),
         CheckConstraint("kind IN ('dorm', 'apartment')", name="ck_listings_kind"),
         CheckConstraint("status IN ('active', 'paused')", name="ck_listings_status"),
-        CheckConstraint("contact_type IN ('telegram', 'whatsapp', 'max', 'phone', 'other')", name="ck_listings_contact_type"),
         # Одна карточка на комнату общежития (у квартир building/room_number пустые).
         Index("uq_listings_dorm_addr", "building", "room_number", unique=True,
               postgresql_where=text("building IS NOT NULL AND room_number IS NOT NULL")),
@@ -22,12 +21,9 @@ class Listing(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    owner_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
     capacity: Mapped[int] = mapped_column(Integer, nullable=False)
     occupied_count: Mapped[int] = mapped_column(Integer, nullable=False)
-    contact_type: Mapped[str] = mapped_column(String(10), nullable=False)
-    contact_value: Mapped[str] = mapped_column(String(100), nullable=False)
     status: Mapped[str] = mapped_column(String(10), nullable=False, default="active")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -45,5 +41,38 @@ class Listing(Base):
     invite_token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     invite_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    owner: Mapped["User"] = relationship(back_populates="owned_listing")
     memberships: Mapped[list["Membership"]] = relationship(back_populates="listing", cascade="all, delete-orphan")
+    contacts: Mapped[list["ListingContact"]] = relationship(
+        back_populates="listing", cascade="all, delete-orphan", order_by="ListingContact.position")
+    photos: Mapped[list["ListingPhoto"]] = relationship(
+        back_populates="listing", cascade="all, delete-orphan", order_by="ListingPhoto.position")
+
+
+class ListingContact(Base):
+    __tablename__ = "listing_contacts"
+    __table_args__ = (
+        CheckConstraint("type IN ('telegram', 'whatsapp', 'max', 'phone', 'other')", name="ck_listing_contacts_type"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    listing_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    type: Mapped[str] = mapped_column(String(10), nullable=False)
+    value: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    listing: Mapped["Listing"] = relationship(back_populates="contacts")
+
+
+class ListingPhoto(Base):
+    """Файл лежит в MEDIA_DIR/listings/<listing_id>/<file_name>."""
+    __tablename__ = "listing_photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    listing_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("listings.id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    file_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    listing: Mapped["Listing"] = relationship(back_populates="photos")

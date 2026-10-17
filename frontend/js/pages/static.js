@@ -2,4 +2,4 @@
 
 import { initPage } from '../layout.js';
 
-await initPage({ auth: 'optional' });
+await initPage({ auth: 'optional', onboarding: true });

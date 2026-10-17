@@ -5,6 +5,8 @@
   /join -> join.html, unknown paths -> 404.html (see README.md, "nginx").
 - Proxies /api/* to the backend (default http://localhost:8000), so the
   browser sees one origin and the session cookie just works.
+- Serves /media/* (listing photos) from the backend's MEDIA_DIR
+  (default backend/media, i.e. MEDIA_DIR=media in the backend's .env).
 
     python3 frontend/dev_server.py                 # http://localhost:8080
     python3 frontend/dev_server.py --port 3000 --backend http://localhost:8001
@@ -33,6 +35,7 @@ HOP_BY_HOP = {
 
 class Handler(http.server.SimpleHTTPRequestHandler):
     backend = None  # urllib.parse.SplitResult, set in main()
+    media_dir = None  # Path, set in main()
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(ROOT), **kwargs)
@@ -51,6 +54,11 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         """Return (file path, status) for the request path, like
         `try_files $uri $uri.html $uri/ =404` with error_page 404."""
         path = urllib.parse.urlsplit(self.path).path
+        if path.startswith("/media/"):
+            media = (self.media_dir / urllib.parse.unquote(path[len("/media/"):])).resolve()
+            if media.is_relative_to(self.media_dir) and media.is_file():
+                return media, 200
+            return ROOT / "404.html", 404
         candidate = Path(self.translate_path(path))
         if candidate.is_dir() and (candidate / "index.html").is_file():
             return candidate / "index.html", 200
@@ -63,7 +71,8 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def serve_static(self, head_only=False):
         file, status = self.resolve()
-        if file.name.startswith(".") or "tools" in file.relative_to(ROOT).parts[:1] or file.suffix == ".py":
+        in_root = file.is_relative_to(ROOT)
+        if file.name.startswith(".") or (in_root and "tools" in file.relative_to(ROOT).parts[:1]) or file.suffix == ".py":
             file, status = ROOT / "404.html", 404
         try:
             body = file.read_bytes()
@@ -165,7 +174,10 @@ def main():
     parser.add_argument("--host", default="localhost", help="address to listen on (default: localhost)")
     parser.add_argument("--port", type=int, default=8080, help="port to listen on (default: 8080)")
     parser.add_argument("--backend", default="http://localhost:8000", help="backend URL (default: http://localhost:8000)")
+    parser.add_argument("--media-dir", default=str(ROOT.parent / "backend" / "media"),
+                        help="the backend's MEDIA_DIR, served as /media/ (default: backend/media)")
     args = parser.parse_args()
+    Handler.media_dir = Path(args.media_dir).resolve()
 
     backend = urllib.parse.urlsplit(args.backend)
     if backend.scheme not in ("http", "https") or not backend.hostname:

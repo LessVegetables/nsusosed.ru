@@ -4,53 +4,67 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Tuple
 from sqlalchemy import select
-from app.config import QUESTIONNAIRE_V1, MATCHING_CONFIG, settings
+from sqlalchemy.orm import selectinload
+from app.config import QUESTIONNAIRE, MATCHING_CONFIG, settings
 from app.models.listing import Listing
 from app.models.membership import Membership
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.matching import MatchItem, MatchWarning, MatchListResponse, Compatibility, DimensionDetail, ContactResponse
+from app.schemas.matching import (MatchItem, MatchWarning, MatchReason, MatchListResponse, Compatibility,
+                                  DimensionDetail, ContactListResponse)
 from app.schemas.listing import ResidentBrief
-from app.utils.contact import contact_url
+from app.services.listing_service import contacts_out, photos_out
+from app.services.photo_service import photo_url
 from app.utils.errors import not_found, profile_required, budget_required
 
-QUESTION_KEYS = [q["key"] for q in QUESTIONNAIRE_V1["questions"]]
-Q_MAP = {q["key"]: q for q in QUESTIONNAIRE_V1["questions"]}
+QUESTION_KEYS = [q["key"] for q in QUESTIONNAIRE["questions"]]
+Q_MAP = {q["key"]: q for q in QUESTIONNAIRE["questions"]}
 SCORE_VERSION = MATCHING_CONFIG["score_version"]
 THRESHOLDS = MATCHING_CONFIG["explanation_thresholds"]
 DISPERSION_THRESHOLD = MATCHING_CONFIG["dispersion_threshold"]
+
+# Анкеты старых версий отвечают не на все вопросы: вопрос, на который не ответила
+# одна из сторон, просто не участвует ни в проверке условий, ни в оценке.
 
 
 def _normalize(key: str, value: int) -> float:
     return value / Q_MAP[key]["normalize_divisor"]
 
 
-def _check_hard(candidate: Dict[str, Any], resident: Dict[str, Any]) -> bool:
+def _hard_conflicts(candidate: Dict[str, Any], resident: Dict[str, Any]) -> List[Tuple[str, str]]:
+    """Нарушенные жёсткие условия: [(вопрос, чьё условие: yours | theirs)]."""
+    conflicts = []
     for key in QUESTION_KEYS:
-        c = candidate[key]
-        r = resident[key]
+        c = candidate.get(key)
+        r = resident.get(key)
+        if c is None or r is None:
+            continue
         if c.get("hard", False) and r["value"] not in c.get("allowed", []):
-            return False
+            conflicts.append((key, "yours"))
         if r.get("hard", False) and c["value"] not in r.get("allowed", []):
-            return False
-    return True
+            conflicts.append((key, "theirs"))
+    return conflicts
+
+
+def _check_hard(candidate: Dict[str, Any], resident: Dict[str, Any]) -> bool:
+    return not _hard_conflicts(candidate, resident)
 
 
 def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], occupied: int) -> Compatibility:
-    n = len(residents)
     dims: List[DimensionDetail] = []
     warnings: List[MatchWarning] = []
     numerator = 0.0
     denominator = 0.0
 
     for key in QUESTION_KEYS:
-        c_ans = candidate[key]
+        c_ans = candidate.get(key)
+        r_answers = [r[key] for r in residents if key in r]
+        if c_ans is None or not r_answers:
+            continue
         c_norm = _normalize(key, c_ans["value"])
         c_imp = c_ans["importance"]
-        r_values = [r[key]["value"] for r in residents]
-        r_norms = [_normalize(key, v) for v in r_values]
-        room_val = sum(r_norms) / n
-        room_imp = sum(r[key]["importance"] for r in residents) / n
+        room_val = sum(_normalize(key, a["value"]) for a in r_answers) / len(r_answers)
+        room_imp = sum(a["importance"] for a in r_answers) / len(r_answers)
         weight = (c_imp + room_imp) / 2.0
         similarity = 1.0 - abs(c_norm - room_val)
         numerator += weight * similarity
@@ -79,11 +93,13 @@ def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], 
     for d in dims:
         d.contribution_points = round(100.0 * d.weight * d.similarity / denominator, 6) if denominator > 0 else 0.0
 
-    if n < occupied:
-        warnings.append(MatchWarning(code="PARTIAL_ANSWERS", answered=n, occupied=occupied))
+    if len(residents) < occupied:
+        warnings.append(MatchWarning(code="PARTIAL_ANSWERS", answered=len(residents), occupied=occupied))
 
     for key in QUESTION_KEYS:
-        r_values = [r[key]["value"] for r in residents]
+        r_values = [r[key]["value"] for r in residents if key in r]
+        if not r_values:
+            continue
         if key == "smoking":
             if len(set(r_values)) > 1:
                 warnings.append(MatchWarning(code="RESIDENTS_DISAGREE", key=key))
@@ -99,97 +115,123 @@ def _compute_compat(candidate: Dict[str, Any], residents: List[Dict[str, Any]], 
     )
 
 
-async def get_matches(db, user, kind: str, offset: int = 0, limit: int = 20) -> MatchListResponse:
+def _reasons(cand: Profile, listing: Listing, r_profiles: List[Dict[str, Any]]) -> List[MatchReason]:
+    """Все причины, по которым жильё не подходит кандидату (пусто — подходит)."""
+    reasons: List[MatchReason] = []
+    seen = set()
+    for rp in r_profiles:
+        for key, side in _hard_conflicts(cand.answers, rp):
+            if (key, side) not in seen:
+                seen.add((key, side))
+                reasons.append(MatchReason(code="HARD_CONDITION", key=key, side=side))
+    if listing.kind == "apartment":
+        price = listing.monthly_cost_per_person_rub
+        if price is not None and price > cand.budget_max_rub:
+            reasons.append(MatchReason(code="OVER_BUDGET", price=price, budget=cand.budget_max_rub))
+    return reasons
+
+
+def _is_visible(l: Listing) -> bool:
+    """Показывается ли жильё тем, кто в нём не живёт."""
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.listing_ttl_days)
+    return l.status == "active" and l.confirmed_at >= cutoff and l.capacity - l.occupied_count > 0
+
+
+async def _candidate_profile(db, user, kind: str) -> Profile:
     cp_r = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    cand_prof = cp_r.scalar_one_or_none()
-    if cand_prof is None:
+    cand = cp_r.scalar_one_or_none()
+    if cand is None:
         raise profile_required()
-    if kind == "apartment" and cand_prof.budget_max_rub is None:
+    if kind == "apartment" and cand.budget_max_rub is None:
         raise budget_required()
+    return cand
+
+
+async def _resident_profiles(db, listing_ids: List[uuid.UUID]) -> Dict[uuid.UUID, List[Dict[str, Any]]]:
+    result = await db.execute(
+        select(Membership.listing_id, Profile.answers).join(Profile, Profile.user_id == Membership.user_id)
+        .where(Membership.listing_id.in_(listing_ids)))
+    by_listing: Dict[uuid.UUID, List[Dict[str, Any]]] = {}
+    for listing_id, answers in result.all():
+        by_listing.setdefault(listing_id, []).append(answers)
+    return by_listing
+
+
+async def get_matches(db, user, kind: str, offset: int = 0, limit: int = 20,
+                      include_unmatched: bool = False) -> MatchListResponse:
+    cand_prof = await _candidate_profile(db, user, kind)
 
     mem_r = await db.execute(select(Membership.listing_id).where(Membership.user_id == user.id))
     user_listing_ids = {row[0] for row in mem_r.fetchall()}
 
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=settings.listing_ttl_days)
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.listing_ttl_days)
     listings_r = await db.execute(
         select(Listing).where(Listing.kind == kind, Listing.status == "active", Listing.confirmed_at >= cutoff)
+        .options(selectinload(Listing.photos))
     )
-    all_listings = listings_r.scalars().all()
-    candidates = [l for l in all_listings if (l.capacity - l.occupied_count) > 0 and l.id not in user_listing_ids]
-
-    if kind == "apartment":
-        budget = cand_prof.budget_max_rub
-        candidates = [l for l in candidates if l.monthly_cost_per_person_rub is not None and l.monthly_cost_per_person_rub <= budget]
-
+    candidates = [l for l in listings_r.scalars().all()
+                  if (l.capacity - l.occupied_count) > 0 and l.id not in user_listing_ids]
     if not candidates:
         return MatchListResponse(items=[], total=0, offset=offset, limit=limit, score_version=SCORE_VERSION)
 
-    lids = [l.id for l in candidates]
-    mem_all_r = await db.execute(select(Membership).where(Membership.listing_id.in_(lids)))
-    listing_members: Dict[uuid.UUID, List[uuid.UUID]] = {}
-    for m in mem_all_r.scalars().all():
-        listing_members.setdefault(m.listing_id, []).append(m.user_id)
-
-    all_member_ids = set()
-    for ids in listing_members.values():
-        all_member_ids.update(ids)
-
-    profiles_map: Dict[uuid.UUID, Dict[str, Any]] = {}
-    if all_member_ids:
-        prof_all_r = await db.execute(select(Profile).where(Profile.user_id.in_(list(all_member_ids))))
-        for p in prof_all_r.scalars().all():
-            profiles_map[p.user_id] = p.answers
+    profiles_by_listing = await _resident_profiles(db, [l.id for l in candidates])
 
     scored: List[Tuple] = []
     for l in candidates:
-        r_profiles = [profiles_map[uid] for uid in listing_members.get(l.id, []) if uid in profiles_map]
+        r_profiles = profiles_by_listing.get(l.id, [])
         if not r_profiles:
             continue
-        if not all(_check_hard(cand_prof.answers, rp) for rp in r_profiles):
+        reasons = _reasons(cand_prof, l, r_profiles)
+        if reasons and not include_unmatched:
             continue
         compat = _compute_compat(cand_prof.answers, r_profiles, l.occupied_count)
         ratio = len(r_profiles) / l.occupied_count
         item = MatchItem(
             id=l.id, kind=l.kind,
             building=l.building, room_number=l.room_number, district=l.district,
+            monthly_cost_per_person_rub=l.monthly_cost_per_person_rub,
+            cover_url=photo_url(l.id, l.photos[0].file_name) if l.photos else None,
             free_places=l.capacity - l.occupied_count,
             answered_count=len(r_profiles), occupied_count=l.occupied_count,
+            fits=not reasons, reasons=reasons,
             compatibility=compat,
         )
-        scored.append((-compat.score_raw, -ratio, -l.confirmed_at.timestamp(), str(l.id), item))
+        # Подходящие — первыми; внутри групп — по совместимости.
+        scored.append((bool(reasons), -compat.score_raw, -ratio, -l.confirmed_at.timestamp(), str(l.id), item))
 
-    scored.sort()
+    scored.sort(key=lambda s: s[:5])
     total = len(scored)
-    page_items = [s[4] for s in scored[offset:offset + limit]]
+    page_items = [s[5] for s in scored[offset:offset + limit]]
     return MatchListResponse(items=page_items, total=total, offset=offset, limit=limit, score_version=SCORE_VERSION)
 
 
-async def get_listing_detail(db, user, listing_id: uuid.UUID) -> dict:
-    r = await db.execute(select(Listing).where(Listing.id == listing_id))
+async def _listing_for_viewer(db, user, listing_id: uuid.UUID) -> Tuple[Listing, bool]:
+    """Жильё и признак «пользователь в нём живёт». Чужое — только если оно сейчас показывается."""
+    r = await db.execute(select(Listing).where(Listing.id == listing_id)
+                         .options(selectinload(Listing.contacts), selectinload(Listing.photos)))
     l = r.scalar_one_or_none()
     if l is None:
-        raise not_found("Карточка не найдена.")
-
-    is_author = l.owner_id == user.id
+        raise not_found("Жильё не найдено.")
     mem_r = await db.execute(select(Membership).where(Membership.listing_id == l.id, Membership.user_id == user.id))
-    is_resident = mem_r.scalar_one_or_none() is not None
+    lives_here = mem_r.scalar_one_or_none() is not None
+    if not lives_here and not _is_visible(l):
+        raise not_found("Жильё недоступно.")
+    return l, lives_here
 
-    members_r = await db.execute(select(Membership.user_id).where(Membership.listing_id == l.id))
-    member_ids = [row[0] for row in members_r.fetchall()]
-    umap: Dict = {}
-    pmap: Dict = {}
-    if member_ids:
-        u_r = await db.execute(select(User).where(User.id.in_(member_ids)))
-        umap = {u.id: u for u in u_r.scalars().all()}
-        p_r = await db.execute(select(Profile).where(Profile.user_id.in_(member_ids)))
-        for p in p_r.scalars().all():
-            pmap[p.user_id] = p.answers
+
+async def get_listing_detail(db, user, listing_id: uuid.UUID) -> dict:
+    l, lives_here = await _listing_for_viewer(db, user, listing_id)
+
+    members_r = await db.execute(
+        select(Membership, User).join(User, User.id == Membership.user_id)
+        .where(Membership.listing_id == l.id).order_by(Membership.joined_at, Membership.user_id))
+    members = members_r.all()
+    p_r = await db.execute(select(Profile).where(Profile.user_id.in_([m.user_id for m, _ in members])))
+    pmap = {p.user_id: p.answers for p in p_r.scalars().all()}
 
     residents = [
-        ResidentBrief(display_name=umap[uid].display_name if uid in umap else "Пользователь",
-                      profile_complete=uid in pmap)
-        for uid in member_ids
+        ResidentBrief(display_name=u.display_name, profile_complete=m.user_id in pmap, is_admin=m.is_admin)
+        for m, u in members
     ]
 
     base = {
@@ -202,77 +244,30 @@ async def get_listing_detail(db, user, listing_id: uuid.UUID) -> dict:
         "view": l.view, "layout": l.layout,
         "district": l.district, "monthly_cost_per_person_rub": l.monthly_cost_per_person_rub,
         "description": l.description, "status": l.status,
+        "photos": [p.model_dump() for p in photos_out(l)],
         "residents": [r.model_dump() for r in residents],
         "confirmed_at": l.confirmed_at.isoformat(),
+        "you_live_here": lives_here,
     }
 
-    if is_author or is_resident:
+    if lives_here:
         base["compatibility"] = None
         return base
 
-    now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(days=settings.listing_ttl_days)
-    if l.status != "active" or l.confirmed_at < cutoff or (l.capacity - l.occupied_count) <= 0:
-        raise not_found("Карточка недоступна.")
-
-    cand_r = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    cand = cand_r.scalar_one_or_none()
-    if cand is None:
-        raise profile_required()
-
-    if l.kind == "apartment":
-        if cand.budget_max_rub is None:
-            raise budget_required()
-        if l.monthly_cost_per_person_rub and l.monthly_cost_per_person_rub > cand.budget_max_rub:
-            raise not_found("Карточка недоступна.")
-
+    cand = await _candidate_profile(db, user, l.kind)
     r_profiles = list(pmap.values())
     if not r_profiles:
-        raise not_found("Карточка недоступна.")
-    for rp in r_profiles:
-        if not _check_hard(cand.answers, rp):
-            raise not_found("Карточка недоступна.")
+        raise not_found("Жильё недоступно.")
 
-    compat = _compute_compat(cand.answers, r_profiles, l.occupied_count)
-    base["compatibility"] = compat.model_dump()
+    reasons = _reasons(cand, l, r_profiles)
+    base["fits"] = not reasons
+    base["reasons"] = [r.model_dump() for r in reasons]
+    base["compatibility"] = _compute_compat(cand.answers, r_profiles, l.occupied_count).model_dump()
     return base
 
 
-async def get_contact(db, user, listing_id: uuid.UUID) -> ContactResponse:
-    r = await db.execute(select(Listing).where(Listing.id == listing_id))
-    l = r.scalar_one_or_none()
-    if l is None:
-        raise not_found("Карточка не найдена.")
-
-    is_author = l.owner_id == user.id
-    mem_r = await db.execute(select(Membership).where(Membership.listing_id == l.id, Membership.user_id == user.id))
-    is_resident = mem_r.scalar_one_or_none() is not None
-
-    if not is_author and not is_resident:
-        now = datetime.now(timezone.utc)
-        cutoff = now - timedelta(days=settings.listing_ttl_days)
-        free = l.capacity - l.occupied_count
-        if l.status != "active" or l.confirmed_at < cutoff or free <= 0:
-            raise not_found("Карточка недоступна.")
-
-        cand_r = await db.execute(select(Profile).where(Profile.user_id == user.id))
-        cand = cand_r.scalar_one_or_none()
-        if cand is None:
-            raise profile_required()
-
-        if l.kind == "apartment":
-            if cand.budget_max_rub is None:
-                raise budget_required()
-            if l.monthly_cost_per_person_rub and l.monthly_cost_per_person_rub > cand.budget_max_rub:
-                raise not_found("Карточка недоступна.")
-
-        members_r = await db.execute(select(Membership.user_id).where(Membership.listing_id == l.id))
-        mids = [row[0] for row in members_r.fetchall()]
-        if mids:
-            p_r = await db.execute(select(Profile).where(Profile.user_id.in_(mids)))
-            for p in p_r.scalars().all():
-                if not _check_hard(cand.answers, p.answers):
-                    raise not_found("Карточка недоступна.")
-
-    return ContactResponse(type=l.contact_type, value=l.contact_value,
-                           url=contact_url(l.contact_type, l.contact_value))
+async def get_contact(db, user, listing_id: uuid.UUID) -> ContactListResponse:
+    l, lives_here = await _listing_for_viewer(db, user, listing_id)
+    if not lives_here:
+        await _candidate_profile(db, user, l.kind)
+    return ContactListResponse(items=contacts_out(l))

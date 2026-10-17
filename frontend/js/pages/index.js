@@ -1,12 +1,14 @@
-// / — short intro. Logged-in users get a link straight to their matches.
+// / — short intro. Logged-in users get a link straight to their matches or home.
 
-import { initPage } from '../layout.js';
+import { initPage, startPage } from '../layout.js';
 import { h } from '../ui.js';
 
 const { me } = await initPage({ auth: 'optional' });
 
 if (me) {
-  document.getElementById('cta').replaceChildren(h('a', { class: 'btn', href: '/matches', i18n: 'home.toMatches' }));
+  const host = startPage(me) === '/home';
+  document.getElementById('cta').replaceChildren(
+    h('a', { class: 'btn', href: startPage(me), i18n: host ? 'home.toHome' : 'home.toMatches' }));
 }
 
 const params = new URLSearchParams(location.search);

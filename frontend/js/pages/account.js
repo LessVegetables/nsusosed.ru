@@ -1,11 +1,13 @@
-// /account — display name, leave a room, log out, delete the account.
+// /account — display name, interface language, log out, delete the account.
+// Leaving a home is on /home.
 
 import { api } from '../api.js';
+import { getLang, setLang } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { session } from '../storage.js';
-import { busy, clearError, clearFieldErrors, confirmDialog, showError, showFieldErrors, toast } from '../ui.js';
+import { busy, clearError, clearFieldErrors, showError, showFieldErrors, toast } from '../ui.js';
 
-const { me } = await initPage({ auth: 'required', nav: 'account' });
+const { me } = await initPage({ auth: 'required', onboarding: true });
 
 // ---- Display name
 const nameForm = document.getElementById('name-form');
@@ -24,7 +26,7 @@ nameForm.addEventListener('submit', async (event) => {
 
   const done = busy(nameForm.querySelector('[type="submit"]'));
   try {
-    const updated = await api.updateMe(name);
+    const updated = await api.updateMe({ display_name: name });
     nameInput.value = updated.display_name;
     toast('account.nameSaved');
   } catch (err) {
@@ -35,21 +37,23 @@ nameForm.addEventListener('submit', async (event) => {
   }
 });
 
-// ---- Leave the room the user joined as a resident
-const leaveButton = document.getElementById('leave');
-const leaveError = document.getElementById('leave-error');
-leaveButton.addEventListener('click', async () => {
-  const ok = await confirmDialog({ title: 'account.leaveTitle', body: 'account.leaveBody', confirm: 'account.leave' });
-  if (!ok) return;
-  clearError(leaveError);
-  const done = busy(leaveButton);
+// ---- Interface language: saved to the account, so it follows the user
+const languageSelect = document.getElementById('language');
+const languageError = document.getElementById('language-error');
+languageSelect.value = getLang();
+languageSelect.addEventListener('change', async () => {
+  clearError(languageError);
+  const lang = languageSelect.value;
+  languageSelect.disabled = true;
   try {
-    await api.leaveRoom();
-    toast('account.left');
+    await api.updateMe({ language: lang });
+    setLang(lang);
+    toast('account.languageSaved');
   } catch (err) {
-    showError(leaveError, err);
+    languageSelect.value = getLang();
+    showError(languageError, err);
   } finally {
-    done();
+    languageSelect.disabled = false;
   }
 });
 

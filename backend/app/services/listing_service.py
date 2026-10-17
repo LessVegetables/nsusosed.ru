@@ -1,82 +1,93 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, text
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.config import settings
-from app.models.listing import Listing
+from app.models.listing import Listing, ListingContact
 from app.models.membership import Membership
 from app.models.profile import Profile
 from app.models.user import User
-from app.schemas.listing import listing_field_errors, ListingInput, ListingUpdate, ListingOwner, ResidentBrief, InviteResponse, MineListingResponse
+from app.schemas.listing import (listing_field_errors, ListingFields, ListingInput, ListingUpdate, ListingOwner,
+                                 HomeResident, ContactOut, PhotoOut, InviteResponse, MineListingResponse)
+from app.services.membership_service import get_listing_as_admin, get_membership, remove_member
+from app.services.photo_service import photo_url
+from app.utils.contact import contact_url
 from app.utils.security import generate_token, sha256_hex, normalize_building
-from app.utils.errors import not_found, forbidden, version_conflict, listing_exists, room_taken, already_in_room, occupancy_conflict, profile_required, validation_error
+from app.utils.errors import version_conflict, room_taken, already_in_room, occupancy_conflict, profile_required, validation_error
 
 
 def _free_places(l: Listing) -> int:
     return l.capacity - l.occupied_count
 
 
-async def _answered_count(db, listing_id: uuid.UUID) -> int:
-    result = await db.execute(select(Membership.user_id).where(Membership.listing_id == listing_id))
-    member_ids = [row[0] for row in result.fetchall()]
-    if not member_ids:
-        return 0
-    prof = await db.execute(select(Profile.user_id).where(Profile.user_id.in_(member_ids)))
-    return len(prof.fetchall())
+async def _load(db, listing_id: uuid.UUID) -> Listing:
+    result = await db.execute(
+        select(Listing).where(Listing.id == listing_id)
+        .options(selectinload(Listing.contacts), selectinload(Listing.photos))
+        .execution_options(populate_existing=True))
+    return result.scalar_one()
 
 
-async def _residents_brief(db, listing_id: uuid.UUID) -> list[ResidentBrief]:
-    result = await db.execute(select(Membership.user_id).where(Membership.listing_id == listing_id))
-    member_ids = [row[0] for row in result.fetchall()]
-    if not member_ids:
-        return []
-    users_r = await db.execute(select(User).where(User.id.in_(member_ids)))
-    users = {u.id: u for u in users_r.scalars().all()}
-    prof_r = await db.execute(select(Profile.user_id).where(Profile.user_id.in_(member_ids)))
+def contacts_out(l: Listing) -> list[ContactOut]:
+    return [ContactOut(type=c.type, value=c.value, url=contact_url(c.type, c.value)) for c in l.contacts]
+
+
+def photos_out(l: Listing) -> list[PhotoOut]:
+    return [PhotoOut(id=p.id, url=photo_url(l.id, p.file_name), width=p.width, height=p.height) for p in l.photos]
+
+
+async def _residents(db, listing_id: uuid.UUID) -> list[HomeResident]:
+    result = await db.execute(
+        select(Membership, User).join(User, User.id == Membership.user_id)
+        .where(Membership.listing_id == listing_id).order_by(Membership.joined_at, Membership.user_id))
+    rows = result.all()
+    prof_r = await db.execute(select(Profile.user_id).where(Profile.user_id.in_([m.user_id for m, _ in rows])))
     profile_ids = {row[0] for row in prof_r.fetchall()}
     return [
-        ResidentBrief(display_name=users[uid].display_name, profile_complete=uid in profile_ids)
-        for uid in member_ids if uid in users
+        HomeResident(user_id=m.user_id, display_name=u.display_name, profile_complete=m.user_id in profile_ids,
+                     is_admin=m.is_admin, joined_at=m.joined_at)
+        for m, u in rows
     ]
 
 
-async def _to_owner_dto(db, l: Listing) -> ListingOwner:
-    answered = await _answered_count(db, l.id)
-    residents = await _residents_brief(db, l.id)
+async def to_home_dto(db, listing_id: uuid.UUID, user: User) -> ListingOwner:
+    l = await _load(db, listing_id)
+    residents = await _residents(db, l.id)
     return ListingOwner(
-        id=l.id, owner_id=l.owner_id, kind=l.kind,
+        id=l.id, kind=l.kind,
         building=l.building, room_number=l.room_number, floor=l.floor,
         capacity=l.capacity, occupied_count=l.occupied_count,
-        free_places=_free_places(l), answered_count=answered,
+        free_places=_free_places(l), answered_count=sum(r.profile_complete for r in residents),
         is_corner=l.is_corner, windows_count=l.windows_count,
         view=l.view, layout=l.layout,
         district=l.district, monthly_cost_per_person_rub=l.monthly_cost_per_person_rub,
-        description=l.description, contact_type=l.contact_type, contact_value=l.contact_value,
+        description=l.description, contacts=contacts_out(l), photos=photos_out(l),
         status=l.status, version=l.version,
-        residents=residents, confirmed_at=l.confirmed_at,
+        residents=residents, you_are_admin=any(r.user_id == user.id and r.is_admin for r in residents),
+        confirmed_at=l.confirmed_at,
         expires_at=l.confirmed_at + timedelta(days=settings.listing_ttl_days),
         created_at=l.created_at,
     )
 
 
+def _set_contacts(listing: Listing, body: ListingFields) -> None:
+    listing.contacts = [ListingContact(position=i, type=c.type, value=c.value) for i, c in enumerate(body.contacts)]
+
+
 async def get_mine(db, user: User) -> MineListingResponse:
-    result = await db.execute(select(Listing).where(Listing.owner_id == user.id))
-    listing = result.scalar_one_or_none()
-    if listing is None:
+    membership = await get_membership(db, user.id)
+    if membership is None:
         return MineListingResponse(item=None)
-    dto = await _to_owner_dto(db, listing)
-    return MineListingResponse(item=dto)
+    return MineListingResponse(item=await to_home_dto(db, membership.listing_id, user))
 
 
 async def create_listing(db, user: User, body: ListingInput) -> ListingOwner:
     prof = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    if prof.scalar_one_or_none() is None:
+    profile = prof.scalar_one_or_none()
+    if profile is None:
         raise profile_required()
-    existing = await db.execute(select(Listing).where(Listing.owner_id == user.id))
-    if existing.scalar_one_or_none() is not None:
-        raise listing_exists()
-    mem = await db.execute(select(Membership).where(Membership.user_id == user.id))
-    if mem.scalar_one_or_none() is not None:
+    if await get_membership(db, user.id) is not None:
         raise already_in_room()
 
     building = None
@@ -89,38 +100,31 @@ async def create_listing(db, user: User, body: ListingInput) -> ListingOwner:
 
     now = datetime.now(timezone.utc)
     listing = Listing(
-        owner_id=user.id, kind=body.kind,
-        capacity=body.capacity, occupied_count=body.occupied_count,
-        contact_type=body.contact_type, contact_value=body.contact_value, description=body.description,
+        kind=body.kind,
+        capacity=body.capacity, occupied_count=body.occupied_count, description=body.description,
         status="active", version=1, confirmed_at=now,
         building=building, room_number=room_number, floor=body.floor,
         is_corner=body.is_corner, windows_count=body.windows_count,
         view=body.view, layout=body.layout,
         district=body.district, monthly_cost_per_person_rub=body.monthly_cost_per_person_rub,
     )
+    _set_contacts(listing, body)
     db.add(listing)
     await db.flush()
-    db.add(Membership(listing_id=listing.id, user_id=user.id, joined_at=now))
+    db.add(Membership(listing_id=listing.id, user_id=user.id, joined_at=now, is_admin=True))
+    profile.situation = "host"
+    profile.budget_max_rub = None
     await db.flush()
-    return await _to_owner_dto(db, listing)
+    return await to_home_dto(db, listing.id, user)
 
 
 async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpdate) -> ListingOwner:
-    result = await db.execute(select(Listing).where(Listing.id == listing_id))
-    listing = result.scalar_one_or_none()
-    if listing is None:
-        raise not_found("Карточка не найдена.")
-    if listing.owner_id != user.id:
-        raise forbidden("Только автор может изменить карточку.")
-
-    await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
-
+    listing = await get_listing_as_admin(db, user, listing_id)
     if body.expected_version != listing.version:
         raise version_conflict()
 
-    mem_count_result = await db.execute(select(Membership.listing_id).where(Membership.listing_id == listing.id))
-    mem_count = len(mem_count_result.fetchall())
-    if body.occupied_count < mem_count:
+    mem_count_result = await db.execute(select(Membership.user_id).where(Membership.listing_id == listing.id))
+    if body.occupied_count < len(mem_count_result.fetchall()):
         raise occupancy_conflict()
 
     errors = listing_field_errors(listing.kind, body)
@@ -147,9 +151,9 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
 
     listing.capacity = body.capacity
     listing.occupied_count = body.occupied_count
-    listing.contact_type = body.contact_type
-    listing.contact_value = body.contact_value
     listing.description = body.description
+    await db.refresh(listing, ["contacts"])
+    _set_contacts(listing, body)
 
     free = listing.capacity - listing.occupied_count
     if free == 0:
@@ -162,20 +166,12 @@ async def update_listing(db, user: User, listing_id: uuid.UUID, body: ListingUpd
 
     listing.version += 1
     await db.flush()
-    return await _to_owner_dto(db, listing)
+    return await to_home_dto(db, listing.id, user)
 
 
 async def confirm_listing(db, user: User, listing_id: uuid.UUID, expected_version: int) -> ListingOwner:
-    """Автор подтверждает, что карточка актуальна: продлевает показ ещё на LISTING_TTL_DAYS."""
-    result = await db.execute(select(Listing).where(Listing.id == listing_id))
-    listing = result.scalar_one_or_none()
-    if listing is None:
-        raise not_found("Карточка не найдена.")
-    if listing.owner_id != user.id:
-        raise forbidden("Только автор может подтвердить карточку.")
-
-    await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
-
+    """Админ подтверждает, что карточка актуальна: продлевает показ ещё на LISTING_TTL_DAYS."""
+    listing = await get_listing_as_admin(db, user, listing_id)
     if expected_version != listing.version:
         raise version_conflict()
 
@@ -184,40 +180,27 @@ async def confirm_listing(db, user: User, listing_id: uuid.UUID, expected_versio
         listing.status = "active"
     listing.version += 1
     await db.flush()
-    return await _to_owner_dto(db, listing)
+    return await to_home_dto(db, listing.id, user)
 
 
 async def delete_listing(db, user: User, listing_id: uuid.UUID) -> None:
-    result = await db.execute(select(Listing).where(Listing.id == listing_id))
-    listing = result.scalar_one_or_none()
-    if listing is None:
-        raise not_found("Карточка не найдена.")
-    if listing.owner_id != user.id:
-        raise forbidden("Только автор может удалить карточку.")
-    await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
-    await db.delete(listing)
-    await db.flush()
+    """Удалить жильё целиком: все жильцы уходят, последний уход удаляет карточку и фото."""
+    listing = await get_listing_as_admin(db, user, listing_id)
+    result = await db.execute(select(Membership).where(Membership.listing_id == listing.id))
+    for membership in result.scalars().all():
+        await remove_member(db, membership)
 
 
 async def generate_invite(db, user: User, listing_id: uuid.UUID, expected_version: int) -> InviteResponse:
-    result = await db.execute(select(Listing).where(Listing.id == listing_id))
-    listing = result.scalar_one_or_none()
-    if listing is None:
-        raise not_found("Карточка не найдена.")
-    if listing.owner_id != user.id:
-        raise forbidden("Только автор может создать приглашение.")
-
-    await db.execute(text("SELECT id FROM listings WHERE id = :lid FOR UPDATE"), {"lid": listing.id})
-
+    listing = await get_listing_as_admin(db, user, listing_id)
     if expected_version != listing.version:
         raise version_conflict()
 
     token = generate_token()
-    token_hash = sha256_hex(token)
     now = datetime.now(timezone.utc)
     expires_at = now + timedelta(days=settings.invite_ttl_days)
 
-    listing.invite_token_hash = token_hash
+    listing.invite_token_hash = sha256_hex(token)
     listing.invite_expires_at = expires_at
     listing.version += 1
     await db.flush()

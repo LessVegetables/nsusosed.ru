@@ -1,7 +1,7 @@
 from __future__ import annotations
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.config import QUESTIONNAIRE_V1
+from app.config import QUESTIONNAIRE
 from app.database import get_db
 from app.models.user import User
 from app.schemas.profile import ProfileInput, ProfileSelf, ProfileResponse
@@ -13,7 +13,7 @@ router = APIRouter(prefix="/api", tags=["profiles"])
 
 @router.get("/questions")
 async def api_get_questions():
-    return {"version": QUESTIONNAIRE_V1["version"], "questions": QUESTIONNAIRE_V1["questions"]}
+    return {"version": QUESTIONNAIRE["version"], "questions": QUESTIONNAIRE["questions"]}
 
 
 @router.get("/profile", response_model=ProfileResponse)

@@ -1,11 +1,13 @@
-// /listing?id=<uuid> — one listing, its compatibility breakdown and the contact.
+// /listing?id=<uuid> — one home: photos, compatibility breakdown, why it
+// doesn't fit (if it doesn't) and the contacts.
 
 import { api } from '../api.js';
 import { initPage } from '../layout.js';
-import { explanation, facts, listingTitle, residentsList, scoreBadge, warnings } from '../listing-view.js';
+import { contactText } from '../home-form.js';
+import { explanation, facts, listingTitle, reasons, residentsList, scoreBadge, warnings } from '../listing-view.js';
 import { busy, h, loadFailed, loading, showError, toast } from '../ui.js';
 
-await initPage({ auth: 'required', nav: 'matches' });
+await initPage({ auth: 'required' });
 
 const content = document.getElementById('content');
 const id = new URLSearchParams(location.search).get('id');
@@ -51,10 +53,10 @@ function contactSection(listingId) {
   button.addEventListener('click', async () => {
     const done = busy(button);
     try {
-      const contact = await api.getContact(listingId);
+      const contacts = await api.getContact(listingId);
       button.remove();
       error.hidden = true;
-      result.replaceChildren(renderContact(contact));
+      result.replaceChildren(h('ul', { class: 'contacts' }, contacts.items.map(renderContact)));
     } catch (err) {
       showError(error, err);
       done();
@@ -75,7 +77,7 @@ function contactSection(listingId) {
 function renderContact(contact) {
   // Only follow links we expect from the API (https or tel); show anything else as text.
   const safeUrl = contact.url && /^(https:\/\/|tel:)/.test(contact.url) ? contact.url : null;
-  const shown = contact.type === 'telegram' ? `@${contact.value}` : contact.value;
+  const shown = contactText(contact);
   const value = safeUrl
     ? h('a', { href: safeUrl, target: safeUrl.startsWith('https') ? '_blank' : null, rel: 'noopener noreferrer' }, shown)
     : h('span', {}, shown);
@@ -91,7 +93,7 @@ function renderContact(contact) {
   });
 
   return h(
-    'p',
+    'li',
     { class: 'contact' },
     h('span', { class: 'contact-type', i18n: `contact.${contact.type}` }),
     ' ',
@@ -105,10 +107,23 @@ function render(detail, questions) {
   document.title = `${listingTitle(detail).textContent} — nsusosed`;
   const compat = detail.compatibility;
 
-  content.replaceChildren(
-    h('p', {}, h('a', { href: `/matches?kind=${detail.kind}`, i18n: 'detail.back' })),
+  // replaceChildren() would turn a null into the text "null".
+  content.replaceChildren(...[
+    h('p', {}, detail.you_live_here
+      ? h('a', { href: '/home', i18n: 'detail.backHome' })
+      : h('a', { href: `/matches?kind=${detail.kind}`, i18n: 'detail.back' })),
     h('div', { class: 'detail-head' }, h('h1', {}, listingTitle(detail)), compat ? scoreBadge(compat.score) : null),
     h('p', { class: 'muted', i18n: 'detail.confirmed', i18nArgs: { date: { date: detail.confirmed_at } } }),
+
+    detail.photos.length
+      ? h('ul', { class: 'photo-grid gallery' }, detail.photos.map((p) =>
+          h('li', { class: 'photo' }, h('a', { href: p.url, target: '_blank', rel: 'noopener' },
+            h('img', { src: p.url, alt: '', loading: 'lazy', width: p.width, height: p.height })))))
+      : null,
+
+    detail.fits === false
+      ? h('div', { class: 'alert alert-warn' }, h('p', { i18n: 'detail.unfit' }), reasons(detail.reasons))
+      : null,
 
     compat
       ? h(
@@ -138,7 +153,7 @@ function render(detail, questions) {
     ),
 
     contactSection(detail.id),
-  );
+  ].filter(Boolean));
 }
 
 function notFound() {

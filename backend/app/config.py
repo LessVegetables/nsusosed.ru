@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     max_sessions_per_user: int = 5
     listing_ttl_days: int = 30
     invite_ttl_days: int = 7
+    # Фото жилья: файлы на диске, nginx отдаёт их как /media/...
+    media_dir: str = "/data/media"
+    media_url: str = "/media"
     cookie_name: str = "__Host-nsusosed"
 
     # ── Yandex Cloud Postbox ────────────────────────────
@@ -60,7 +63,7 @@ class Settings(BaseSettings):
 settings = Settings()
 
 _CONFIG_DIR = Path(__file__).resolve().parent / "config"
-with open(_CONFIG_DIR / "questionnaire_v1.json", encoding="utf-8") as _f:
-    QUESTIONNAIRE_V1: dict = json.load(_f)
+with open(_CONFIG_DIR / "questionnaire_v2.json", encoding="utf-8") as _f:
+    QUESTIONNAIRE: dict = json.load(_f)
 with open(_CONFIG_DIR / "matching.json", encoding="utf-8") as _f:
     MATCHING_CONFIG: dict = json.load(_f)

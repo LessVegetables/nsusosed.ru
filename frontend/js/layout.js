@@ -1,71 +1,39 @@
-// Shared page frame: header with navigation and language switch, footer, the
-// mock-API banner and the login check. Every page script starts with
-//   const { me } = await initPage({ auth: 'required', nav: 'matches' });
+// Shared page frame: which menu links to show, the account's language, the
+// mock-API banner, the login check and sending unfinished accounts to
+// onboarding. Every page script starts with
+//   const { me } = await initPage({ auth: 'required' });
 
 import { api } from './api.js';
 import { MOCK_LOGIN_CODE, USE_MOCK } from './config.js';
-import { applyI18n, getLang, setLang } from './i18n.js';
+import { applyI18n, setLang } from './i18n.js';
 import { h, loadFailed, loginUrl } from './ui.js';
 
-const NAV = [
-  { id: 'matches', href: '/matches', key: 'nav.matches' },
-  { id: 'questionnaire', href: '/questionnaire', key: 'nav.questionnaire' },
-  { id: 'my-listing', href: '/my-listing', key: 'nav.myListing' },
-  { id: 'account', href: '/account', key: 'nav.account' },
-];
-
-let langSwitch = null;
-
-// Created once: the header is rendered twice (before and after the login check).
-function langButton() {
-  if (langSwitch) return langSwitch;
-  // The button is labelled in the language it switches to.
-  const button = h('button', { type: 'button', class: 'lang-switch' });
-  langSwitch = button;
-  const update = () => {
-    const other = getLang() === 'ru' ? 'en' : 'ru';
-    button.textContent = other === 'en' ? 'English' : 'Русский';
-    button.lang = other;
-  };
-  button.addEventListener('click', () => setLang(getLang() === 'ru' ? 'en' : 'ru'));
-  window.addEventListener('langchange', update);
-  update();
-  return button;
+// Seekers look for a place; hosts live in a home (or are about to list one).
+export function roleOf(me) {
+  if (!me) return 'guest';
+  return me.home || me.situation === 'host' ? 'host' : 'seeker';
 }
 
-// `me` undefined = still checking the session: brand and language only.
-function renderHeader(me, current) {
-  const header = document.getElementById('site-header');
-  if (!header) return;
-  const links = me === undefined ? [] : me
-    ? NAV.map((item) =>
-        h('li', {}, h('a', { href: item.href, i18n: item.key, 'aria-current': item.id === current ? 'page' : null })),
-      )
-    : [h('li', {}, h('a', { href: '/login', i18n: 'nav.login', 'aria-current': current === 'login' ? 'page' : null }))];
-
-  header.replaceChildren(
-    h(
-      'div',
-      { class: 'header-inner' },
-      h('a', { class: 'brand', href: me ? '/matches' : '/' }, 'nsusosed'),
-      h('nav', { class: 'site-nav', 'aria-label': 'Main', 'data-i18n-attr': 'aria-label:nav.label' }, h('ul', {}, links)),
-      langButton(),
-    ),
-  );
-  applyI18n(header);
+// Where "home" is for this user: the logo and the end of onboarding go there.
+export function startPage(me) {
+  return roleOf(me) === 'host' ? '/home' : '/matches';
 }
 
-function renderFooter() {
-  const footer = document.getElementById('site-footer');
-  if (!footer) return;
-  footer.replaceChildren(
-    h(
-      'div',
-      { class: 'footer-inner' },
-      h('p', { i18n: 'footer.tagline' }),
-      h('p', {}, h('a', { href: '/privacy', i18n: 'footer.privacy' })),
-    ),
-  );
+// The account still needs onboarding: a language, a role and a questionnaire
+// of the current version.
+export function needsOnboarding(me) {
+  return Boolean(me) && (!me.language || !me.situation || !me.profile_complete);
+}
+
+// The header and footer are static markup in every page. Menu items carry
+// data-show="guest | seeker | host | onboarding" (several allowed) and start hidden.
+function showNav(me) {
+  // During onboarding there's no role yet: only Account (to log out).
+  const role = needsOnboarding(me) ? 'onboarding' : roleOf(me);
+  for (const item of document.querySelectorAll('.site-nav [data-show]')) {
+    item.hidden = !item.dataset.show.split(' ').includes(role);
+  }
+  if (me) document.querySelector('.brand')?.setAttribute('href', startPage(me));
 }
 
 function renderMockBanner() {
@@ -84,11 +52,12 @@ function renderMockBanner() {
 // auth: 'required' → redirect to /login when logged out;
 //       'optional' → load the user if there is one;
 //       'none'     → don't ask the API at all.
-export async function initPage({ auth = 'required', nav = null } = {}) {
+// onboarding: true on pages an unfinished account may use as they are
+// (the questionnaire itself, /join, Account, static pages); everywhere else
+// such an account is sent to the questionnaire first.
+export async function initPage({ auth = 'required', onboarding = false } = {}) {
   applyI18n();
   renderMockBanner();
-  renderHeader(undefined, nav);
-  renderFooter();
 
   let me = null;
   if (auth !== 'none') {
@@ -101,12 +70,17 @@ export async function initPage({ auth = 'required', nav = null } = {}) {
           return new Promise(() => {}); // The page is going away.
         }
       } else if (auth === 'required') {
-        renderHeader(null, nav);
         loadFailed(document.getElementById('main'), err, () => location.reload());
         return new Promise(() => {});
       }
     }
   }
-  renderHeader(me, nav);
+  if (me?.language) setLang(me.language);
+  if (needsOnboarding(me) && !onboarding) {
+    const next = location.pathname + location.search;
+    location.replace(`/questionnaire?next=${encodeURIComponent(next)}`);
+    return new Promise(() => {});
+  }
+  showNav(me);
   return { me };
 }

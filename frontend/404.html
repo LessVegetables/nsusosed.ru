@@ -12,7 +12,20 @@
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
-  <header id="site-header" class="site-header"></header>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/">nsusosed</a>
+      <nav class="site-nav" aria-label="Основное меню" data-i18n-attr="aria-label:nav.label">
+        <ul>
+          <li data-show="seeker" hidden><a href="/matches" data-i18n="nav.matches">Подборка</a></li>
+          <li data-show="host" hidden><a href="/home" data-i18n="nav.home">Моё жильё</a></li>
+          <li data-show="seeker host" hidden><a href="/questionnaire" data-i18n="nav.questionnaire">Анкета</a></li>
+          <li data-show="seeker host onboarding" hidden><a href="/account" data-i18n="nav.account">Аккаунт</a></li>
+          <li data-show="guest" hidden><a href="/login" data-i18n="nav.login">Войти</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
 
   <main id="main" class="container narrow" tabindex="-1">
     <h1 data-i18n="notFound.title">Страница не найдена</h1>
@@ -20,6 +33,11 @@
     <p><a class="btn" href="/" data-i18n="notFound.home">На главную</a></p>
   </main>
 
-  <footer id="site-footer" class="site-footer"></footer>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p data-i18n="footer.tagline">nsusosed.ru — подбор соседей для студентов НГУ</p>
+      <p><a href="/privacy" data-i18n="footer.privacy">Политика обработки персональных данных</a></p>
+    </div>
+  </footer>
 </body>
 </html>
