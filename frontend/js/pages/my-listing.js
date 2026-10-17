@@ -35,7 +35,7 @@ const REQUIRED = {
   both: ['capacity', 'occupied_count', 'contact_value'],
 };
 
-await initPage({ auth: 'required', nav: 'my-listing' });
+await initPage({ auth: 'required' });
 
 const content = document.getElementById('content');
 let listing = null; // ListingOwner from the API, or null

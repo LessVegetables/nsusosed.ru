@@ -12,7 +12,20 @@
 </head>
 <body>
   <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
-  <header id="site-header" class="site-header"></header>
+  <header class="site-header">
+    <div class="header-inner">
+      <a class="brand" href="/matches">nsusosed</a>
+      <nav class="site-nav" aria-label="Основное меню" data-i18n-attr="aria-label:nav.label">
+        <ul>
+          <li><a href="/matches" data-i18n="nav.matches">Совпадения</a></li>
+          <li><a href="/questionnaire" data-i18n="nav.questionnaire" aria-current="page">Анкета</a></li>
+          <li><a href="/my-listing" data-i18n="nav.myListing">Моя карточка</a></li>
+          <li><a href="/account" data-i18n="nav.account">Аккаунт</a></li>
+        </ul>
+      </nav>
+      <button type="button" class="lang-switch" lang="en">English</button>
+    </div>
+  </header>
 
   <main id="main" class="container narrow" tabindex="-1">
     <h1 data-i18n="questionnaire.title">Анкета</h1>
@@ -21,6 +34,11 @@
   </main>
 
   <div id="toast" class="toast" role="status" hidden></div>
-  <footer id="site-footer" class="site-footer"></footer>
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <p data-i18n="footer.tagline">nsusosed.ru — подбор соседей для студентов НГУ</p>
+      <p><a href="/privacy" data-i18n="footer.privacy">Политика обработки персональных данных</a></p>
+    </div>
+  </footer>
 </body>
 </html>

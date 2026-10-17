@@ -9,7 +9,7 @@ import { busy, clearError, clearFieldErrors, mmss, safeNext, showError, showFiel
 const params = new URLSearchParams(location.search);
 const next = safeNext(params.get('next'));
 
-const { me } = await initPage({ auth: 'optional', nav: 'login' });
+const { me } = await initPage({ auth: 'optional' });
 if (me) location.replace(next);
 
 const stepEmail = document.getElementById('step-email');

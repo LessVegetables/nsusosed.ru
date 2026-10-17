@@ -8,7 +8,7 @@ import { h, loadFailed, loading } from '../ui.js';
 
 const KINDS = ['dorm', 'apartment'];
 
-await initPage({ auth: 'required', nav: 'matches' });
+await initPage({ auth: 'required' });
 
 const params = new URLSearchParams(location.search);
 let kind = KINDS.includes(params.get('kind')) ? params.get('kind') : 'dorm';

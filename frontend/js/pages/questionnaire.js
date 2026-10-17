@@ -14,7 +14,7 @@ const BUDGET_MAX = 200000;
 const params = new URLSearchParams(location.search);
 const next = params.has('next') ? safeNext(params.get('next')) : null;
 
-await initPage({ auth: 'required', nav: 'questionnaire' });
+await initPage({ auth: 'required' });
 
 const content = document.getElementById('content');
 let questionnaire = null; // {version, questions}

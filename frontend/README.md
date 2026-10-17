@@ -129,7 +129,7 @@ Notes:
 
 ```
 frontend/
-├── *.html              one file per page: static skeleton + one <script type="module">
+├── *.html              one file per page: header, footer and static skeleton + one <script type="module">
 ├── css/style.css       all styles; mobile first, light and dark theme
 ├── favicon.svg
 ├── js/
@@ -138,7 +138,7 @@ frontend/
 │   ├── i18n.js         t(), language switch, data-i18n attributes
 │   ├── i18n/ru.js      Russian texts (default)
 │   ├── i18n/en.js      English texts
-│   ├── layout.js       header, footer, login check: initPage()
+│   ├── layout.js       menu links, language switch, login check: initPage()
 │   ├── ui.js           DOM helper h(), errors next to fields, busy buttons, dialogs
 │   ├── listing-view.js listing title, score, explanation, warnings (shared)
 │   ├── config.js       constants and the mock switch (no secrets, ever)

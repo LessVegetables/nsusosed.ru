@@ -5,7 +5,7 @@ import { initPage } from '../layout.js';
 import { session } from '../storage.js';
 import { busy, clearError, clearFieldErrors, confirmDialog, showError, showFieldErrors, toast } from '../ui.js';
 
-const { me } = await initPage({ auth: 'required', nav: 'account' });
+const { me } = await initPage({ auth: 'required' });
 
 // ---- Display name
 const nameForm = document.getElementById('name-form');

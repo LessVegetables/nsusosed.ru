@@ -5,7 +5,7 @@ import { initPage } from '../layout.js';
 import { explanation, facts, listingTitle, residentsList, scoreBadge, warnings } from '../listing-view.js';
 import { busy, h, loadFailed, loading, showError, toast } from '../ui.js';
 
-await initPage({ auth: 'required', nav: 'matches' });
+await initPage({ auth: 'required' });
 
 const content = document.getElementById('content');
 const id = new URLSearchParams(location.search).get('id');
