@@ -20,31 +20,33 @@ A closed website for NSU students. You fill in a short questionnaire about your 
 ## How it works
 
 1. **Sign up or log in** with an `@g.nsu.ru` email. There are no passwords: every time, we email a one-time code that's valid for 2 minutes. On sign-up you also agree to the personal-data policy.
-2. **Fill in the questionnaire** (9 questions). For each habit you give:
+2. **Onboarding**, one step per screen. First you pick the interface language (changeable later in Account) and say what you're after: **looking for a place**, or **have a place and need a roommate**. The rest depends on that answer.
+3. **The questionnaire** (10 questions). For each habit you give:
    - your own answer;
    - how important it is to you (1–10);
    - optionally, a **hard condition**: the answers you won't accept from a roommate (for example, "no smoking in the room").
 
-   At the end you say what you're after (a place, or a roommate for your room or apartment). If you're looking for an apartment, you also give your monthly budget.
-3. **List your room or apartment** if you already live somewhere with a free place, then send your roommates an invite link so their answers count too. Each person can have one listing and be a resident of one room. The author confirms the listing every 30 days, otherwise it's hidden.
-4. **Browse matches.** You see rooms with free places, sorted by compatibility %, with a short explanation (e.g. "sleep matches, cleaning differs").
-5. **Contact the author.** Each listing shows one contact: Telegram, WhatsApp, Max, a phone number, whatever the author chose. Moving in is arranged outside the site.
+   Seekers then give a monthly budget (needed for apartments). Hosts describe their home: room or apartment details, as many contacts as they like, photos, and whether roommates already live there (if so, they get an invite link to send them).
+4. **Homes have admins, not an owner.** Whoever adds a home is its admin. Admins edit it, invite roommates and can make any resident who has filled in the questionnaire an admin too. If the last admin leaves, the longest-standing resident becomes admin; when the last resident leaves, the home is deleted. Each person lives in at most one home, and someone living in a home isn't looking for one. An admin confirms the listing every 30 days, otherwise it's hidden.
+5. **Browse matches.** Seekers see homes with free places, sorted by compatibility %, with a short explanation (e.g. "sleep matches, cleaning differs"). "Show places I don't match with" also lists the ones that fail a hard condition or the budget, with the reasons.
+6. **Contact the residents.** A home lists all its contacts: Telegram, WhatsApp, Max, phone numbers, anything else. Moving in is arranged outside the site.
 
 ## The 3 core features
 
 | # | Feature | Done when |
 |---|---|---|
-| F1 | **Questionnaire.** Passwordless login with an email code; the 9-question questionnaire, which you can edit later | A user can log in with a code, save their answers and change them |
-| F2 | **Room / apartment listing.** Dorm: building, room, floor, capacity, occupied places, corner room, windows, view, layout. Apartment: district, monthly cost per person. Plus a description and contact. Residents join through an invite link | A listing exists, with its residents attached |
-| F3 | **Matches + contact.** Filtered and sorted list with an explanation of each score; the contact is shown on the listing | A user sees the rooms that suit them and can reach the author |
+| F1 | **Questionnaire.** Passwordless login with an email code; onboarding by role; the 10-question questionnaire, which you can edit later | A user can log in with a code, save their answers and change them |
+| F2 | **Home listing.** Dorm: building, room, floor, capacity, occupied places, corner room, windows, view, layout. Apartment: district, monthly cost per person. Plus a description, photos and any number of contacts. Residents join through an invite link; admins manage the home | A home exists, with its residents and admins attached |
+| F3 | **Matches + contact.** Filtered and sorted list with an explanation of each score, optionally with the places that don't fit; the contacts are shown on the home | A user sees the homes that suit them and can reach the residents |
 
 Also in the MVP: login/logout, editing and pausing a listing, deleting your account, Russian + English interface, layout that works on phones and computers.
 
 ## Matching rules
 
-- **Questions:** sleep time, night noise, cleaning, guests, smoking in the room, alcohol in the room, studying in the room, airing, temperature.
-- **Hard conditions filter first, in both directions.** If even one resident breaks your hard condition, or you break theirs, the room is hidden, however high its average.
-- **Apartments:** hidden if the price per person is above your budget.
+- **Questions:** bedtime, wake-up time, night noise, cleaning, guests, smoking in the room, alcohol in the room, studying in the room, airing, temperature.
+- **Hard conditions filter first, in both directions.** If even one resident breaks your hard condition, or you break theirs, the home is hidden, however high its average. "Show places I don't match with" shows it anyway, after the matches, with the reason.
+- **Apartments:** hidden (or, with that option, marked) if the price per person is above your budget.
+- **Older questionnaires** keep matching: a question one side hasn't answered yet is left out of the score.
 - **Room profile:** the average of the residents who filled in the questionnaire. If only some have, the card says "2 of 3 residents answered".
 - **Score (0–100%):** answer similarity on each question, weighted by how important it is to both sides. It's a similarity index, not a guarantee that you won't have conflicts.
 - Rooms with no free places, no answered residents, or a listing older than 30 days aren't shown.
@@ -62,8 +64,8 @@ FastAPI + PostgreSQL, plain HTML/CSS/JS (no framework), Nginx, one VPS at Select
 
 ## Open questions
 
-- [ ] Final wording of the 9 questions and their answer scales
-- [ ] Dispute over who owns a room's listing: who on the team handles it, and how users reach them
+- [ ] Final wording of the 10 questions and their answer scales
+- [ ] Disputes between a home's residents (for example, admins removing each other): who on the team handles them, and how users reach them
 
 ## Team
 
