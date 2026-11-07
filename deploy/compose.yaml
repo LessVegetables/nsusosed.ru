@@ -76,10 +76,14 @@ services:
       timeout: 5s
       retries: 3
       start_period: 30s
-    # The app writes nothing to disk.
+    # The app writes only listing photos, into /data/media (MEDIA_DIR's default).
+    # A host folder, not a named volume, so the host nginx can serve it at /media/.
+    # It must exist and belong to uid 10001 (deploy/README.md, step 2).
     user: "10001:10001"
     read_only: true
     tmpfs: [/tmp]
+    volumes:
+      - /srv/nsusosed/media:/data/media
     cap_drop: [ALL]
     security_opt: ["no-new-privileges:true"]
     logging: *logging

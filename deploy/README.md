@@ -6,6 +6,7 @@ Push or merge into the `deploy` branch and [`.github/workflows/deploy.yml`](../.
 
 ```
 internet ──443──▶ host nginx ──┬── /            static files in /var/www/nsusosed.ru
+                               ├── /media/      listing photos in /srv/nsusosed/media ◀── written by the api
                                └── /api/  ──▶ 127.0.0.1:1231 ──▶ [api container :8000]
                                                                         │  network "db" (internal)
                                                                   [db container: Postgres]
@@ -32,6 +33,7 @@ You can check this on the server at any time: `sudo ss -ltnp | grep docker` shou
 | `/etc/sudoers.d/nsusosed-deploy` | lets `gh_deploy` run the redeploy script, nothing else ([sudoers/nsusosed-deploy](sudoers/nsusosed-deploy)) | `root` |
 | `/etc/nsusosed.env` | secrets and settings | `root`, mode `600` |
 | `/etc/nginx/sites-available/nsusosed.ru` | host nginx config | `root` |
+| `/srv/nsusosed/media/` | listing photos, mounted into the api container as `/data/media` | uid `10001` (the container user) |
 | Docker volume `nsusosed_pgdata` | the database | Docker |
 
 ### The `gh_deploy` user
@@ -93,7 +95,11 @@ sudo chmod 700 /home/gh_deploy
 sudo install -d -o gh_deploy -g gh_deploy -m 755 /var/www/nsusosed.ru
 sudo install -d -o root      -g root      -m 755 /opt/nsusosed
 sudo install -d -o gh_deploy -g gh_deploy -m 755 /opt/nsusosed/app
+sudo install -d -o root      -g root      -m 755 /srv/nsusosed
+sudo install -d -o 10001     -g 10001     -m 755 /srv/nsusosed/media
 ```
+
+`/srv/nsusosed/media` holds listing photos. The api container runs as uid `10001` and writes there; nginx (`www-data`) only reads, which `755` folders and the `644` files the app creates allow.
 
 A few details:
 
@@ -261,7 +267,7 @@ If a workflow step fails with `gh-deploy-gate: refused`, run `sudo journalctl -t
   - nginx: `/var/log/nginx/nsusosed.ru.{access,error}.log`.
   - Refused deploy commands: `sudo journalctl -t gh-deploy-gate`.
 - **Database shell:** `cd /opt/nsusosed && sudo docker compose exec db sh -c 'psql -U "$POSTGRES_USER" "$POSTGRES_DB"'`.
-- **Backup:** `cd /opt/nsusosed && sudo docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > ~/nsusosed-$(date +%F).sql.gz`. Nothing does this automatically yet.
+- **Backup:** `cd /opt/nsusosed && sudo docker compose exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" "$POSTGRES_DB"' | gzip > ~/nsusosed-$(date +%F).sql.gz`, plus the photos: `sudo tar czf ~/nsusosed-media-$(date +%F).tar.gz -C /srv/nsusosed media`. Back up both together, since the database lists the photo files. Nothing does this automatically yet.
 
 If a `docker compose` command complains that `POSTGRES_USER` "is not set", it couldn't find the env file: check the `/opt/nsusosed/.env` link from step 6. Plain `docker` commands (`sudo docker logs nsusosed-api-1`, `sudo docker ps`) don't need it.
 
@@ -274,8 +280,8 @@ Every remote command below has a matching case in `gh-deploy-gate`. A new remote
 1. Checks that `frontend/` and `backend/` exist and that the i18n keys match, then test-builds the API image on GitHub's runner.
 2. Connects (`ssh vps true`).
 3. Warns if the server's copies of `compose.yaml`, `nsusosed-redeploy` or `gh-deploy-gate` differ from the repo (`cat <file>`).
-4. rsyncs `frontend/` into `/var/www/nsusosed.ru/`. It leaves out `tools/`, `dev_server.py`, `README.md` and `js/mock/`, and deletes files that are gone from the repo.
-5. rsyncs `backend/` into `/opt/nsusosed/app/`, leaving out tests and any `.env`.
+4. rsyncs `frontend/` into `/var/www/nsusosed.ru/`. It leaves out `tools/`, `dev_server.py` and `README.md`, and deletes files that are gone from the repo.
+5. rsyncs `backend/` into `/opt/nsusosed/app/`, leaving out tests, the dev seed script and any `.env`.
 6. Runs `sudo /usr/local/bin/nsusosed-redeploy`, which:
    - rebuilds the image;
    - runs `docker compose up --wait` (migrations run on container start);
