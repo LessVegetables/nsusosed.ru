@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from app.routers import auth, users, profiles, listings, memberships, matching
 from app.utils.errors import AppError, FieldErrors, make_error_response
@@ -47,6 +48,27 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     rid = str(uuid.uuid4())
     logger.warning("AppError %s %s: %s", exc.status_code, exc.code, rid)
     return make_error_response(exc.status_code, exc.code, exc.message, exc.fields, rid, exc.retry_after)
+
+
+# Проверки в сервисах («комната уже есть», «уже живёт в жилье») не спасают от гонки:
+# два одновременных запроса проходят проверку, и второй упирается в уникальный индекс.
+# Такой отказ — тот же конфликт, что и при проверке, а не 500.
+_UNIQUE_CONFLICTS = {
+    "uq_listings_dorm_addr": ("ROOM_TAKEN", "Карточка для этой комнаты уже существует."),
+    "memberships_user_id_key": ("ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате."),
+    "memberships_pkey": ("ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате."),
+    "profiles_pkey": ("VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию."),
+}
+
+
+@app.exception_handler(IntegrityError)
+async def integrity_error_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    rid = str(uuid.uuid4())
+    # asyncpg кладёт исходную ошибку Postgres в __cause__ ошибки DBAPI.
+    constraint = getattr(getattr(exc.orig, "__cause__", None), "constraint_name", None)
+    code, message = _UNIQUE_CONFLICTS.get(constraint, ("CONFLICT", "Данные изменились. Повторите действие."))
+    logger.warning("IntegrityError on %s -> 409 %s: %s", constraint, code, rid)
+    return make_error_response(409, code, message, request_id=rid)
 
 
 @app.exception_handler(RequestValidationError)
