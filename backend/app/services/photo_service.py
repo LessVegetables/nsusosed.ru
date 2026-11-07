@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import logging
 import shutil
+import time
 import uuid
 import warnings
 from pathlib import Path
@@ -15,6 +16,7 @@ from PIL import Image, ImageOps
 from sqlalchemy import select
 from starlette.concurrency import run_in_threadpool
 from app.config import settings
+from app.database import on_commit, on_rollback
 from app.models.listing import Listing, ListingPhoto
 from app.utils.errors import photo_bad_type, photo_too_large, too_many_photos, not_found, validation_error
 
@@ -25,6 +27,8 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_SIDE = 1600
 JPEG_QUALITY = 82
 ACCEPTED_FORMATS = {"JPEG", "PNG", "WEBP"}
+# Файл без строки в базе младше этого может принадлежать загрузке, которая ещё идёт.
+ORPHAN_MIN_AGE_SECONDS = 3600
 # Защита от «бомб»: картинка в 10 МБ может разжиматься в гигабайты.
 Image.MAX_IMAGE_PIXELS = 50_000_000
 
@@ -37,8 +41,10 @@ def photo_url(listing_id: uuid.UUID, file_name: str) -> str:
     return f"{settings.media_url}/listings/{listing_id}/{file_name}"
 
 
-def delete_listing_files(listing_id: uuid.UUID) -> None:
-    shutil.rmtree(listing_dir(listing_id), ignore_errors=True)
+def delete_listing_files(db, listing_id: uuid.UUID) -> None:
+    """Удалить папку с фото жилья — после коммита, когда жильё точно удалено."""
+    folder = listing_dir(listing_id)
+    on_commit(db, lambda: shutil.rmtree(folder, ignore_errors=True))
 
 
 def _reencode(data: bytes) -> tuple[bytes, int, int]:
@@ -85,7 +91,10 @@ async def add_photo(db, listing: Listing, data: bytes) -> None:
     file_name = f"{uuid.uuid4().hex}.jpg"
     tmp = folder / f".{file_name}.tmp"
     tmp.write_bytes(jpeg)
-    tmp.replace(folder / file_name)
+    final = folder / file_name
+    tmp.replace(final)
+    # Транзакция не дошла до коммита — файл никому не нужен.
+    on_rollback(db, lambda: final.unlink(missing_ok=True))
 
     db.add(ListingPhoto(listing_id=listing.id, position=count, file_name=file_name, width=width, height=height))
     await db.flush()
@@ -106,7 +115,8 @@ async def delete_photo(db, listing: Listing, photo_id: uuid.UUID) -> None:
     for i, p in enumerate(p for p in photos if p.id != photo_id):
         p.position = i
     await db.flush()
-    (listing_dir(listing.id) / photo.file_name).unlink(missing_ok=True)
+    path = listing_dir(listing.id) / photo.file_name
+    on_commit(db, lambda: path.unlink(missing_ok=True))
 
 
 async def reorder_photos(db, listing: Listing, photo_ids: list[uuid.UUID]) -> None:
@@ -119,12 +129,24 @@ async def reorder_photos(db, listing: Listing, photo_ids: list[uuid.UUID]) -> No
 
 
 async def sweep_orphan_folders(db) -> None:
-    """Удалить папки фото жилья, которого больше нет (например, после сбоя)."""
+    """Убрать с диска то, чего нет в базе (остатки после падения процесса посреди запроса):
+    папки удалённого жилья и файлы фото без строки в listing_photos. Свежие файлы
+    не трогаем: их загрузка может ещё идти в другом воркере."""
     root = Path(settings.media_dir) / "listings"
     if not root.is_dir():
         return
     existing = {str(row[0]) for row in (await db.execute(select(Listing.id))).all()}
+    known = {(str(lid), name) for lid, name in
+             (await db.execute(select(ListingPhoto.listing_id, ListingPhoto.file_name))).all()}
+    cutoff = time.time() - ORPHAN_MIN_AGE_SECONDS
     for folder in root.iterdir():
-        if folder.is_dir() and folder.name not in existing:
+        if not folder.is_dir():
+            continue
+        if folder.name not in existing:
             logger.info("Removing photos of a deleted listing: %s", folder.name)
             shutil.rmtree(folder, ignore_errors=True)
+            continue
+        for file in folder.iterdir():
+            if (folder.name, file.name) not in known and file.stat().st_mtime < cutoff:
+                logger.info("Removing orphan photo file: %s/%s", folder.name, file.name)
+                file.unlink(missing_ok=True)

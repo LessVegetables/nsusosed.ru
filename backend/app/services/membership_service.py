@@ -62,7 +62,7 @@ async def remove_member(db, membership: Membership) -> None:
     if not remaining:
         await db.delete(listing)
         await db.flush()
-        delete_listing_files(listing_id)
+        delete_listing_files(db, listing_id)
         return
 
     if not any(m.is_admin for m in remaining):
