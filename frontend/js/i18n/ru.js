@@ -27,8 +27,6 @@ export default {
   'footer.tagline': 'nsusosed.ru — подбор соседей для студентов НГУ',
   'footer.privacy': 'Политика обработки персональных данных',
 
-  'mock.banner': 'Тестовый режим: данные ненастоящие, код для входа — {code}.',
-  'mock.turnOff': 'Выключить',
 
   'common.loading': 'Загрузка…',
   'common.retry': 'Попробовать ещё раз',

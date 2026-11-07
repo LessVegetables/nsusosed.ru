@@ -27,7 +27,7 @@ def dict_keys(path):
 def used_keys(namespaces):
     used = set()
     for path in list(ROOT.glob("*.html")) + list((ROOT / "js").rglob("*.js")):
-        if path.parent.name == "i18n" or path.name == "i18n.js" or "mock" in path.parts:
+        if path.parent.name == "i18n" or path.name == "i18n.js":
             continue
         text = path.read_text(encoding="utf-8")
         used.update(DATA_I18N_RE.findall(text))

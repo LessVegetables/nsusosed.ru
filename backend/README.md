@@ -29,6 +29,15 @@
    curl http://localhost/api/questions
    ```
 
+## Тестовые данные
+
+Около 20 жилья с жильцами и анкетами для локальной разработки (работает только при `EMAIL_MODE=log`):
+```bash
+EMAIL_MODE=log python -m app.seed           # пустая база
+EMAIL_MODE=log python -m app.seed --reset   # стереть все таблицы и заполнить заново
+```
+Войти можно под любым адресом `@g.nsu.ru` (код — в логе бэкенда), в том числе под жильцами `student1@g.nsu.ru`, `student2@g.nsu.ru`… Ссылка-приглашение в комнату Ани: `{PUBLIC_ORIGIN}/join#token=demo-invite-token`.
+
 ## Миграции
 
 Применяются автоматически при старте контейнера app.

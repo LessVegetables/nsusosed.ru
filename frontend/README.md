@@ -2,23 +2,11 @@
 
 Plain HTML, CSS and JavaScript (ES modules in the browser). No framework, no build step, no npm: what is in this folder is exactly what the browser gets. The interface is in Russian and English: each user picks a language once during onboarding and can change it on the Account page.
 
-The product spec is the root [README.md](../README.md). The backend lives in [`backend/`](../backend) and is a teammate's area: this folder only talks to it through `/api/`.
+The product spec is the root [README.md](../README.md). The backend lives in [`backend/`](../backend); this folder only talks to it through `/api/`.
 
 ## Run it locally
 
-You need Python 3.8+ and nothing else.
-
-### Without the backend (mock API)
-
-```bash
-python3 frontend/dev_server.py
-```
-
-Open <http://localhost:8080/?mock=1>. A yellow banner says the mock is on. Any `@g.nsu.ru` address logs in with code **123456**. The mock keeps its data in `localStorage`, ships with about 20 sample homes, and follows the same contract as the real API (error codes, versions, admins, photos, the matching formula). The demo invite link is <http://localhost:8080/join#token=demo-invite-token>. Turn the mock off with `?mock=0`. To start over with fresh data, run `resetMockDb()` in the browser console.
-
-The mock only works on `localhost` / `127.0.0.1`, and the browser never downloads it otherwise.
-
-### Against the real backend
+The frontend always runs against the real backend; there is no fake API.
 
 1. Run the backend on `http://localhost:8000` (see [backend/README.md](../backend/README.md)) with these values in its `.env`:
 
@@ -30,6 +18,8 @@ The mock only works on `localhost` / `127.0.0.1`, and the browser never download
 
    `PUBLIC_ORIGIN` has to be the dev server's address. With `MEDIA_DIR=media` photos land in `backend/media`, which the dev server serves as `/media/` (`--media-dir` to change it). The backend rejects POST/PUT/DELETE requests whose `Origin` header doesn't match it, and it builds invite links from it. With `EMAIL_MODE=log` the login code shows up in the backend's log instead of in an email.
 
+   For sample homes to browse, seed the database once (from `backend/`): `EMAIL_MODE=log python -m app.seed`. That gives about 20 homes; the demo invite link is <http://localhost:8080/join#token=demo-invite-token>.
+
 2. Start the dev server and open <http://localhost:8080>:
 
    ```bash
@@ -40,7 +30,7 @@ The mock only works on `localhost` / `127.0.0.1`, and the browser never download
 
 The dev server serves pages the same way production nginx does (`/matches` → `matches.html`, unknown paths → `404.html`). It also proxies `/api/*` to the backend, so everything is same-origin and the session cookie works.
 
-**Cookie on http://localhost.** The backend sets `__Host-nsusosed` with `Secure`. Chrome, Edge and Firefox accept Secure cookies on `http://localhost`, so the login works there. If you log in and immediately land back on the login page, your browser refused the cookie on plain http: use Chrome or Firefox, or the mock.
+**Cookie on http://localhost.** The backend sets `__Host-nsusosed` with `Secure`. Chrome, Edge and Firefox accept Secure cookies on `http://localhost`, so the login works there. If you log in and immediately land back on the login page, your browser refused the cookie on plain http: use Chrome or Firefox.
 
 ### Checks
 
@@ -159,10 +149,9 @@ frontend/
 │   ├── home-form.js    home details, contacts editor, photo editor, invite link (onboarding and /home)
 │   ├── ui.js           DOM helper h(), errors next to fields, busy buttons, dialogs
 │   ├── listing-view.js listing title, score, explanation, warnings, reasons (shared)
-│   ├── config.js       constants and the mock switch (no secrets, ever)
+│   ├── config.js       constants (no secrets, ever)
 │   ├── storage.js      localStorage/sessionStorage wrapped in try/catch
-│   ├── pages/*.js      one script per page
-│   └── mock/           fake backend for local development
+│   └── pages/*.js      one script per page
 ├── dev_server.py       static files + /api proxy, standard library only
 └── tools/check_i18n.py translation key check
 ```

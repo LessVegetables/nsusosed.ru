@@ -6,7 +6,7 @@
 // retry_after}}; if something in between (nginx, the network) answers instead,
 // we make up a code from the HTTP status.
 
-import { API_BASE, USE_MOCK } from './config.js';
+import { API_BASE } from './config.js';
 
 export class ApiError extends Error {
   constructor(status, error = {}) {
@@ -41,16 +41,7 @@ function toResult(status, data, retryAfterHeader) {
   });
 }
 
-let mockHandle = null;
-
 async function request(method, path, body) {
-  if (USE_MOCK) {
-    // Loaded only when the mock is on, so production never downloads it.
-    mockHandle ??= (await import('./mock/server.js')).handle;
-    const { status, data } = await mockHandle(method, path, body);
-    return toResult(status, data);
-  }
-
   const headers = { Accept: 'application/json' };
   const init = { method, headers, credentials: 'same-origin', cache: 'no-store' };
   if (body instanceof FormData) {

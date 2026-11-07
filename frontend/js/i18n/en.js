@@ -24,8 +24,6 @@ export default {
   'footer.tagline': 'nsusosed.ru — roommate matching for NSU students',
   'footer.privacy': 'Personal data policy',
 
-  'mock.banner': 'Test mode: the data is fake, the login code is {code}.',
-  'mock.turnOff': 'Turn off',
 
   'common.loading': 'Loading…',
   'common.retry': 'Try again',
