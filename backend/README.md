@@ -56,6 +56,12 @@ A home (`listings` table) has no single owner. It exists while someone lives in 
 
 - `memberships.is_admin` says who manages it. Admins edit it (details, 1–10 `contacts`, photos), confirm, pause, delete, create invite links, make other residents admins (`POST/DELETE /api/listings/{id}/admins/{user_id}`) and remove residents (`DELETE /api/listings/{id}/members/{user_id}`). Only a resident with a questionnaire can be made admin.
 - When the last admin leaves (or is removed, or deletes their account), the longest-standing resident becomes admin, preferring one with a questionnaire. When the last resident leaves, the home and its photos are deleted.
+
+### Deleting an account
+
+`DELETE /api/me` (`{"confirm": "DELETE"}`) doesn't erase anything yet. It sets `users.deleted_at`, closes all sessions and hides the user: roommates and candidates don't see them, their answers leave matching, and if they were the home's only active admin, an active roommate becomes admin. A home whose only residents are deleting their accounts disappears from search.
+
+Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels the deletion; `verify-code` then returns `"account_restored": true`. After the grace period the account is erased for good: profile and sessions cascade, and the user leaves their home by the usual rules (last resident → home and photos deleted). The purge runs on every successful login and at startup, so it can happen a little after the 14 days if nobody logs in.
 - A user is a `seeker` or a `host` (`profiles.situation`). Creating or joining a home makes them a host; a resident can't switch to seeker without leaving.
 - `GET /api/me` returns `language`, `situation`, `profile_complete` (a questionnaire of the current version) and `home: {id, is_admin} | null`. `PUT /api/me` takes `display_name` and/or `language`.
 - `GET /api/matches?include_unmatched=true` also returns homes that break a hard condition or the budget, after the matches, with `fits: false` and `reasons`. Detail and contact work for them too.

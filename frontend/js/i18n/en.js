@@ -55,7 +55,7 @@ export default {
   'home.step2': 'Answer 10 questions: sleep, noise, cleaning, guests and more. Mark what matters to you and what you won’t accept.',
   'home.step3': 'Browse rooms and apartments with free places, ranked by compatibility, and contact the residents.',
   'home.step4': 'Have a free place yourself? Add your home with photos and invite your roommates so their answers count too.',
-  'home.deleted': 'Your account has been deleted. Thanks for using the site.',
+  'home.deleted': 'Your account will be deleted in 14 days. If you change your mind, just log in again. Thanks for using the site.',
 
   'login.title': 'Log in or sign up',
   'login.stepEmail': 'Email',
@@ -346,9 +346,9 @@ export default {
   'account.sessionTitle': 'Log out',
   'account.logout': 'Log out',
   'account.deleteTitle': 'Delete account',
-  'account.deleteText': 'We’ll delete your account and questionnaire and remove you from your home. If you are its last resident, the home is deleted too. This can’t be undone.',
+  'account.deleteText': 'Your account is hidden right away: you’re logged out everywhere, and your roommates and other users stop seeing you. After 14 days we erase your account and questionnaire for good and remove you from your home (if you are its last resident, the home and its photos are deleted too). Changed your mind? Just log in with your email within 14 days and everything comes back.',
   'account.deleteLabel': 'To confirm, type DELETE',
-  'account.delete': 'Delete my account permanently',
+  'account.delete': 'Delete my account',
 
   'privacy.title': 'Personal data policy',
   'privacy.draft': 'Draft. The final text will be published before launch.',
@@ -363,7 +363,7 @@ export default {
   'privacy.whoTitle': 'Who sees your data',
   'privacy.who': 'Your answers are never shown to other users: only the overall compatibility with a home is. Your roommates see your name, whether you’ve filled in the questionnaire and who is an admin. Logged-in users can see a home’s photos and contacts.',
   'privacy.deleteTitle': 'Deleting your data',
-  'privacy.delete': 'You can delete your account at any time on the Account page: your questionnaire goes with it and you are removed from your home (if you are its last resident, the home and its photos are deleted too).',
+  'privacy.delete': 'You can delete your account at any time on the Account page. It is hidden from other users right away and erased for good, with your questionnaire, after 14 days; you are removed from your home (if you are its last resident, the home and its photos are deleted too). The 14 days let you get the account back if you deleted it by mistake: just log in with your email.',
 
   'notFound.title': 'Page not found',
   'notFound.text': 'The link may be out of date or have a typo.',

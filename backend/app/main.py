@@ -18,7 +18,14 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.database import async_session_factory
+    from app.services.auth_service import purge_deleted_accounts
     from app.services.photo_service import sweep_orphan_folders
+    try:
+        async with async_session_factory() as db:
+            await purge_deleted_accounts(db)
+            await db.commit()
+    except Exception:
+        logger.exception("Purging deleted accounts failed")
     try:
         async with async_session_factory() as db:
             await sweep_orphan_folders(db)

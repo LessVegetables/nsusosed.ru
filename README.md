@@ -39,7 +39,7 @@ A closed website for NSU students. You fill in a short questionnaire about your 
 | F2 | **Home listing.** Dorm: building, room, floor, capacity, occupied places, corner room, windows, view, layout. Apartment: district, monthly cost per person. Plus a description, photos and any number of contacts. Residents join through an invite link; admins manage the home | A home exists, with its residents and admins attached |
 | F3 | **Matches + contact.** Filtered and sorted list with an explanation of each score, optionally with the places that don't fit; the contacts are shown on the home | A user sees the homes that suit them and can reach the residents |
 
-Also in the MVP: login/logout, editing and pausing a listing, deleting your account, Russian + English interface, layout that works on phones and computers.
+Also in the MVP: login/logout, editing and pausing a listing, deleting your account (hidden at once, erased after 14 days; logging in within that time restores it), Russian + English interface, layout that works on phones and computers.
 
 ## Matching rules
 

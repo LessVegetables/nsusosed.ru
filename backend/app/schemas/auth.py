@@ -36,3 +36,5 @@ class UserBrief(BaseModel):
 class AuthResponse(BaseModel):
     user: UserBrief
     profile_complete: bool
+    # Аккаунт был в очереди на удаление, и этот вход его восстановил.
+    account_restored: bool = False
