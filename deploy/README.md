@@ -1,6 +1,8 @@
 # Deploying nsusosed.ru
 
-Push or merge into the `deploy` branch and [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) ships it to the VPS. Production uses the files in this folder. The repo-root `nginx/` and `docker-compose.yml` are the dev setup and aren't used.
+Push or merge into the `deploy` branch and [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml) ships it to the VPS. Production uses the files in this folder.
+
+**Branches.** All work, this folder included, goes into `main`. `deploy` is only a pointer to the version running in production: to release, open a PR from `main` into `deploy` and merge it. Never commit to `deploy` directly, so it can always fast-forward to `main` and the two never drift apart.
 
 ## How it fits together
 
@@ -259,8 +261,8 @@ If a workflow step fails with `gh-deploy-gate: refused`, run `sudo journalctl -t
 
 ## Day to day
 
-- **Deploy:** merge into `deploy` and push, or open a PR into `deploy` and merge it. To re-run without a new commit, use Actions → Deploy → **Run workflow**.
-- **Roll back:** `git revert` the bad commit on `deploy` and push. Nothing on the server keeps old releases.
+- **Deploy:** open a PR from `main` into `deploy` and merge it. If the release changes anything in this folder that's installed by hand (nginx config, `compose.yaml`, the scripts), update the server first. To re-run without a new commit, use Actions → Deploy → **Run workflow**.
+- **Roll back:** `git revert` the bad commit on `main` and release again (or, in a hurry, revert on `deploy` and then merge `deploy` back into `main`). Nothing on the server keeps old releases.
 - **Change a setting or secret:** `sudo nano /etc/nsusosed.env && sudo nsusosed-redeploy`. The workflow never touches this file.
 - **Logs:**
   - API: `cd /opt/nsusosed && sudo docker compose logs -f api`.

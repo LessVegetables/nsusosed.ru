@@ -2,32 +2,35 @@
 
 Подбор соседей в общежитиях и съёмных квартирах НГУ.
 
-## Запуск
+## Запуск (локально, без Docker)
 
-1. Скопируйте и отредактируйте переменные (для локальной разработки без Postbox поставьте `EMAIL_MODE=log`):
+Нужны Python 3.12 и PostgreSQL 16. Команды — из папки `backend/`.
+
+1. Окружение и зависимости:
    ```bash
-   cp .env.example .env
-   nano .env
+   python3.12 -m venv .venv && source .venv/bin/activate
+   pip install -r requirements-dev.txt
    ```
 
-2. Сгенерируйте самоподписанный сертификат (для разработки):
+2. Настройки. Приложение читает `.env` из текущей папки, то есть `backend/.env`:
    ```bash
-   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-       -keyout nginx/certs/privkey.pem \
-       -out nginx/certs/fullchain.pem \
-       -subj "/CN=localhost"
+   cp ../.env.example .env
+   ```
+   Для разработки достаточно поправить `DATABASE_URL`; `EMAIL_MODE=log` пишет коды входа в лог вместо писем.
+
+3. База и миграции:
+   ```bash
+   createdb nsusosed
+   alembic upgrade head
    ```
 
-3. Запустите:
+4. Запуск и проверка:
    ```bash
-   docker compose up -d --build
+   uvicorn app.main:app --reload --port 8000
+   curl http://localhost:8000/api/health
    ```
 
-4. Проверка:
-   ```bash
-   curl http://localhost/health
-   curl http://localhost/api/questions
-   ```
+Сайт целиком (фронтенд + `/api` на одном адресе) — через `frontend/dev_server.py`, см. [frontend/README.md](../frontend/README.md).
 
 ## Тестовые данные
 
@@ -40,21 +43,19 @@ EMAIL_MODE=log python -m app.seed --reset   # стереть все таблиц
 
 ## Миграции
 
-Применяются автоматически при старте контейнера app.
-
-Вручную:
+В продакшене применяются автоматически при старте контейнера (`alembic upgrade head` в `Dockerfile`). Локально:
 ```bash
-docker compose exec app alembic upgrade head
-docker compose exec app alembic revision --autogenerate -m "description"
+alembic upgrade head
+alembic revision --autogenerate -m "description"   # потом прочитать и поправить файл
+alembic check                                        # модели и миграции совпадают
 ```
 
 ## Тесты
 
 ```bash
-cd backend
-pip install -r requirements-dev.txt
 # Отдельная пустая БД: таблицы очищаются перед каждым тестом
-TEST_DATABASE_URL=postgresql+asyncpg://nsusosed:PASSWORD@localhost:5432/nsusosed_test pytest
+createdb nsusosed_test
+TEST_DATABASE_URL=postgresql+asyncpg://localhost/nsusosed_test pytest
 ```
 
 Без `TEST_DATABASE_URL` запускаются только юнит-тесты формулы совместимости, остальные пропускаются.
@@ -65,12 +66,6 @@ A home (`listings` table) has no single owner. It exists while someone lives in 
 
 - `memberships.is_admin` says who manages it. Admins edit it (details, 1–10 `contacts`, photos), confirm, pause, delete, create invite links, make other residents admins (`POST/DELETE /api/listings/{id}/admins/{user_id}`) and remove residents (`DELETE /api/listings/{id}/members/{user_id}`). Only a resident with a questionnaire can be made admin.
 - When the last admin leaves (or is removed, or deletes their account), the longest-standing resident becomes admin, preferring one with a questionnaire. When the last resident leaves, the home and its photos are deleted.
-
-### Deleting an account
-
-`DELETE /api/me` (`{"confirm": "DELETE"}`) doesn't erase anything yet. It sets `users.deleted_at`, closes all sessions and hides the user: roommates and candidates don't see them, their answers leave matching, and if they were the home's only active admin, an active roommate becomes admin. A home whose only residents are deleting their accounts disappears from search.
-
-Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels the deletion; `verify-code` then returns `"account_restored": true`. After the grace period the account is erased for good: profile and sessions cascade, and the user leaves their home by the usual rules (last resident → home and photos deleted). The purge runs on every successful login and at startup, so it can happen a little after the 14 days if nobody logs in.
 - A user is a `seeker` or a `host` (`profiles.situation`). Creating or joining a home makes them a host; a resident can't switch to seeker without leaving.
 - `GET /api/me` returns `language`, `situation`, `profile_complete` (a questionnaire of the current version) and `home: {id, is_admin} | null`. `PUT /api/me` takes `display_name` and/or `language`.
 - `GET /api/matches?include_unmatched=true` also returns homes that break a hard condition or the budget, after the matches, with `fits: false` and `reasons`. Detail and contact work for them too.
@@ -78,42 +73,15 @@ Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels the deletion; `veri
 
 Photos: `POST /api/listings/{id}/photos` (multipart, field `file`), `DELETE /api/listings/{id}/photos/{photo_id}`, `PUT /api/listings/{id}/photos/order` (`{"photo_ids": [...]}`, the first is the cover). Each upload is turned by its EXIF orientation, stripped of all metadata (GPS included), shrunk to 1600 px and saved as JPEG in `MEDIA_DIR/listings/<id>/<random>.jpg`. nginx serves `MEDIA_DIR` at `MEDIA_URL` (`/media`). The file names can't be guessed; the files themselves are public to anyone with the URL.
 
+### Deleting an account
+
+`DELETE /api/me` (`{"confirm": "DELETE"}`) doesn't erase anything yet. It sets `users.deleted_at`, closes all sessions and hides the user: roommates and candidates don't see them, their answers leave matching, and if they were the home's only active admin, an active roommate becomes admin. A home whose only residents are deleting their accounts disappears from search.
+
+Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels the deletion; `verify-code` then returns `"account_restored": true`. After the grace period the account is erased for good: profile and sessions cascade, and the user leaves their home by the usual rules (last resident → home and photos deleted). The purge runs on every successful login and at startup, so it can happen a little after the 14 days if nobody logs in.
+
 ### Photos in production
 
-The production stack (`deploy/` on the `deploy` branch) needs three changes before this version ships:
-
-1. **A writable folder for the API container.** It runs read-only as user `10001`, so mount a host folder:
-   ```bash
-   sudo install -d -o 10001 -g 10001 -m 755 /var/lib/nsusosed/media
-   ```
-   In `deploy/compose.yaml`, service `api`:
-   ```yaml
-       volumes:
-         - /var/lib/nsusosed/media:/data/media
-       environment:
-         MEDIA_DIR: /data/media
-   ```
-2. **Host nginx** (`deploy/nginx/nsusosed.ru.conf`): serve the photos, and allow bigger bodies on the upload route only.
-   ```nginx
-   location /media/ {
-       alias /var/lib/nsusosed/media/;
-       expires 30d;
-       add_header Cache-Control "public, immutable" always;
-   }
-
-   location ~ ^/api/listings/[^/]+/photos$ {
-       proxy_pass http://nsusosed_api;
-       proxy_http_version 1.1;
-       proxy_set_header Connection "";
-       proxy_set_header Host              $host;
-       proxy_set_header X-Forwarded-For   $remote_addr;
-       proxy_set_header X-Forwarded-Proto $scheme;
-       proxy_read_timeout 30s;
-       client_max_body_size 11m;
-   }
-   ```
-   An `add_header` inside a location drops the server-level headers for it, so copy the security headers into `location /media/` too (or leave out its `add_header` and keep the server's `no-cache`). The CSP's `img-src 'self'` already allows the photos.
-3. **Backups:** back up `/var/lib/nsusosed/media` together with the database.
+The API container runs read-only, so photos go to the host folder `/srv/nsusosed/media`, mounted as `MEDIA_DIR=/data/media` (`deploy/compose.yaml`). Host nginx serves it at `/media/` and allows 11 MB bodies on the upload route only (`deploy/nginx/nsusosed.ru.conf`). Setup and backups: [deploy/README.md](../deploy/README.md).
 
 ## Коды ошибок API (API error codes)
 

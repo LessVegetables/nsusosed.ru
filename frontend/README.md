@@ -8,7 +8,7 @@ The product spec is the root [README.md](../README.md). The backend lives in [`b
 
 The frontend always runs against the real backend; there is no fake API.
 
-1. Run the backend on `http://localhost:8000` (see [backend/README.md](../backend/README.md)) with these values in its `.env`:
+1. Run the backend on `http://localhost:8000` (see [backend/README.md](../backend/README.md)). The template `.env.example` is already set up for this:
 
    ```
    PUBLIC_ORIGIN=http://localhost:8080
@@ -59,77 +59,14 @@ The menu depends on the role (`layout.js`, `data-show` on each item): seekers se
 
 ## Production: what nginx needs
 
-The site is static files on the same origin as the API: `https://nsusosed.ru`, with the API under `/api/`. Copy this folder to the server (for example `/var/www/nsusosed/frontend`). Then:
-
-```nginx
-server {
-    listen 443 ssl;
-    http2 on;               # nginx 1.25.1+; older versions: "listen 443 ssl http2;"
-    server_name nsusosed.ru;
-    # ssl_certificate / ssl_certificate_key ...
-
-    root /var/www/nsusosed/frontend;
-    index index.html;
-
-    # 1. API → FastAPI. Same origin, so the __Host- cookie and the Origin check work.
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 64k;
-    }
-
-    # 2. Pages without ".html": /matches → matches.html, /join → join.html,
-    #    /listing?id=… → listing.html (the query string is kept), / → index.html.
-    location / {
-        try_files $uri $uri.html $uri/ =404;
-    }
-    error_page 404 /404.html;
-
-    # 3. Listing photos, written by the backend to its MEDIA_DIR (see
-    #    backend/README.md, "Photos in production"). Uploads need a bigger
-    #    body limit than the rest of the API.
-    location /media/ {
-        alias /var/lib/nsusosed/media/;
-    }
-    location ~ ^/api/listings/[^/]+/photos$ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 11m;
-    }
-
-    # 4. Files in this folder that are for developers only.
-    location ~ ^/(tools/|dev_server\.py$|README\.md$) {
-        return 404;
-    }
-
-    # 5. Headers. Keep them all at the server level: an add_header inside a
-    #    location block would silently drop these.
-    #    No build step means no hashed file names, so browsers must revalidate
-    #    (they still get 304s, so it stays fast).
-    add_header Cache-Control "no-cache" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://stat.gehrman.me; style-src 'self'; img-src 'self' data:; connect-src 'self' https://stat.gehrman.me; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
-    add_header Referrer-Policy "same-origin" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Strict-Transport-Security "max-age=31536000" always;
-}
-
-server {
-    listen 80;
-    server_name nsusosed.ru;
-    return 301 https://$host$request_uri;
-}
-```
+The site is static files on the same origin as the API: `https://nsusosed.ru`, with the API under `/api/`. The production config is [`deploy/nginx/nsusosed.ru.conf`](../deploy/nginx/nsusosed.ru.conf); setup in [deploy/README.md](../deploy/README.md).
 
 Notes:
 
 - The only fallback rule that matters is `try_files $uri $uri.html $uri/ =404`. There is no single-page-app "everything → index.html" fallback: every page is its own HTML file.
 - `/join` must resolve to `join.html`. The backend builds invite links as `{PUBLIC_ORIGIN}/join#token=…`, so in production `PUBLIC_ORIGIN=https://nsusosed.ru`. The token is in the `#hash`, which browsers never send to the server, so it doesn't end up in nginx logs.
 - `.js` files must be served as JavaScript (`application/javascript` or `text/javascript`). The stock `mime.types` already does this; if pages come up blank, check this first.
-- The CSP above works because the code has no inline scripts, inline styles or `eval`. Keep it that way.
+- The CSP in that config works because the code has no inline scripts, inline styles or `eval`. Keep it that way.
 - Behind nginx, uvicorn needs `--proxy-headers` (and `FORWARDED_ALLOW_IPS=127.0.0.1`) to see real client IPs for its rate limits.
 
 ## How the code is organised
