@@ -1,0 +1,32 @@
+#!/bin/sh
+# Rebuilds and restarts the nsusosed.ru stack from /opt/nsusosed.
+# GitHub Actions runs it as gh_deploy through sudo (deploy/sudoers/nsusosed-deploy).
+#
+# Install: sudo install -m 755 -o root -g root nsusosed-redeploy /usr/local/bin/
+# Root-owned on purpose: gh_deploy may run it but must not be able to change it,
+# or the sudo rule would be root for anyone holding the GitHub key.
+set -eu
+
+compose() {
+    docker compose \
+        --project-directory /opt/nsusosed \
+        --file /opt/nsusosed/compose.yaml \
+        --env-file /etc/nsusosed.env \
+        "$@"
+}
+
+compose build --pull api
+
+if ! compose up --detach --remove-orphans --wait --wait-timeout 120; then
+    echo "nsusosed: the stack did not become healthy" >&2
+    compose ps >&2 || true
+    compose logs --tail 60 api >&2 || true
+    exit 1
+fi
+
+curl -fsS -o /dev/null http://127.0.0.1:1231/health
+
+# Old untagged images left behind by the rebuild.
+docker image prune --force >/dev/null
+
+echo "nsusosed: API is up"

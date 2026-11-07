@@ -1,0 +1,116 @@
+# Push (or merge) to `deploy` → ship to the VPS.
+#   frontend/ → /var/www/nsusosed.ru   (served by host nginx)
+#   backend/  → /opt/nsusosed/app      (build context of the docker compose stack)
+# Server setup and the secrets this needs: deploy/README.md.
+#
+# On the server, every ssh command below goes through deploy/gh-deploy-gate,
+# an allowlist. A new remote command here needs a matching case there, or it
+# fails with "gh-deploy-gate: refused".
+
+name: Deploy
+
+on:
+  push:
+    branches: [deploy]
+  workflow_dispatch: # "Run workflow" button on the Actions tab, for re-deploys
+
+# Never run two deploys at once; a newer push waits for the running one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Sanity checks
+        run: |
+          test -f frontend/index.html || { echo "::error::frontend/ is missing on this branch"; exit 1; }
+          test -f backend/Dockerfile || { echo "::error::backend/ is missing on this branch"; exit 1; }
+          if [ -f frontend/tools/check_i18n.py ]; then python3 frontend/tools/check_i18n.py; fi
+
+      # Catch a broken Dockerfile or requirements.txt before touching the server.
+      - name: Test-build the API image
+        run: docker build --quiet --tag nsusosed-api:ci backend
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<EOF
+          Host vps
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port ${SSH_PORT:-22}
+            IdentityFile ~/.ssh/deploy_key
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ConnectTimeout 15
+          EOF
+          ssh vps true
+
+      # These are installed by hand (root-owned), so a change to them in the
+      # repo doesn't reach the server by itself. Each path here must also be
+      # allowed as "cat <path>" in deploy/gh-deploy-gate.
+      - name: Check server copies of hand-installed files
+        run: |
+          check() {
+            if ! ssh vps cat "$2" | diff -u - "$1"; then
+              echo "::warning title=Server copy out of date::$2 differs from $1 in the repo (or the gate refused to show it). Copy it over by hand (deploy/README.md)."
+            fi
+          }
+          check deploy/compose.yaml /opt/nsusosed/compose.yaml
+          check deploy/nsusosed-redeploy /usr/local/bin/nsusosed-redeploy
+          check deploy/gh-deploy-gate /usr/local/bin/gh-deploy-gate
+
+      - name: Upload frontend
+        # --delay-updates: files appear all at once at the end, so a visitor
+        # never gets a new page with an old script.
+        run: |
+          rsync -rlptz --delete-delay --delay-updates --chmod=D755,F644 \
+            --exclude=/tools/ \
+            --exclude=/dev_server.py \
+            --exclude=/README.md \
+            --exclude=/js/mock/ \
+            --exclude=.DS_Store \
+            frontend/ vps:/var/www/nsusosed.ru/
+
+      - name: Upload backend
+        run: |
+          rsync -rlptz --delete --chmod=D755,F644 \
+            --exclude=__pycache__/ \
+            --exclude=/tests/ \
+            --exclude=/pytest.ini \
+            --exclude=/requirements-dev.txt \
+            --exclude=.env \
+            --exclude=.DS_Store \
+            backend/ vps:/opt/nsusosed/app/
+
+      - name: Rebuild and restart the stack
+        # Builds the image, runs migrations, waits for the healthchecks and
+        # prints the API logs if anything fails. See deploy/nsusosed-redeploy.
+        run: ssh vps sudo /usr/local/bin/nsusosed-redeploy
+
+      - name: Check the public site
+        run: |
+          curl -fsS -o /dev/null https://nsusosed.ru/
+          curl -fsS -o /dev/null https://nsusosed.ru/api/health
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

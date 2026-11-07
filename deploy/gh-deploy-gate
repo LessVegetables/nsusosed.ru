@@ -1,0 +1,40 @@
+#!/bin/sh
+# Lets gh_deploy run only what .github/workflows/deploy.yml runs.
+# sshd runs this for every gh_deploy login (ForceCommand in deploy/sshd/gh_deploy.conf);
+# the command the client asked for is in $SSH_ORIGINAL_COMMAND.
+#
+# Install: sudo install -m 755 -o root -g root gh-deploy-gate /usr/local/bin/
+# Refusals: journalctl -t gh-deploy-gate
+#
+# Keep in sync with the workflow: every remote command it runs must match a
+# case below, or that step fails with "gh-deploy-gate: refused".
+set -f                      # no filename globbing when we exec $cmd
+cmd=${SSH_ORIGINAL_COMMAND:-}
+
+refuse() {
+    logger -t gh-deploy-gate "refused: $cmd"
+    echo "gh-deploy-gate: refused" >&2
+    exit 1
+}
+
+case $cmd in
+    *[\;\&\|\`\$\<\>\(\)\\]*) refuse ;;
+esac
+
+case $cmd in
+    true) exit 0 ;;
+    "cat /opt/nsusosed/compose.yaml" | "cat /usr/local/bin/nsusosed-redeploy" | "cat /usr/local/bin/gh-deploy-gate")
+        exec $cmd ;;
+    "sudo /usr/local/bin/nsusosed-redeploy")
+        exec sudo /usr/local/bin/nsusosed-redeploy ;;
+    "rsync --server "*" . /var/www/nsusosed.ru/" | "rsync --server "*" . /opt/nsusosed/app/")
+        case $cmd in
+            *--sender* | *..*) refuse ;;   # no downloading, no path tricks
+            # Options that point rsync at other paths on disk: --copy-dest,
+            # --compare-dest, --link-dest, --temp-dir, --backup-dir,
+            # --partial-dir, --log-file, --files-from, --exclude-from, ...
+            *-dest* | *-dir* | *--log-file* | *-from*) refuse ;;
+        esac
+        exec $cmd ;;
+esac
+refuse
