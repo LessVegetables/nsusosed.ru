@@ -53,7 +53,7 @@ python3 frontend/tools/check_i18n.py   # ru.js and en.js have the same keys; no 
 | URL | File | What it does |
 |---|---|---|
 | `/` | `index.html` | Short intro; link to log in, or to matches / your home |
-| `/login` | `login.html` | Email + privacy checkbox → 6-digit code (2-minute timer, resend after 60 s) |
+| `/login` | `login.html` | Email + privacy checkbox → 6-digit code (10-minute timer, resend after 60 s) |
 | `/questionnaire` | `questionnaire.html` | Unfinished accounts: step-by-step onboarding (language → role → one screen per unanswered question → budget, or home, contacts, photos and invite). Finished accounts: role, 10 questions and budget on one page |
 | `/matches?kind=dorm\|apartment&page=N&all=1` | `matches.html` | Seekers: tabs, cards sorted by score, explanation, warnings, pagination; `all=1` also shows places that don't fit, with the reasons |
 | `/listing?id=<uuid>` | `listing.html` | Home detail: photos, question-by-question breakdown, why it doesn't fit, "Show contacts" |

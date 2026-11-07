@@ -4,7 +4,7 @@ Find roommates at NSU who live the way you do.
 
 A closed website for NSU students. You fill in a short questionnaire about your daily habits. The site then shows dorm rooms and apartments with free places, ranked by how well your habits match the people who already live there.
 
-[Русская версия](readme_ru.md)
+[Русская версия](README_RU.md)
 
 ## The problem
 
@@ -19,7 +19,7 @@ A closed website for NSU students. You fill in a short questionnaire about your 
 
 ## How it works
 
-1. **Sign up or log in** with an `@g.nsu.ru` email. There are no passwords: every time, we email a one-time code that's valid for 2 minutes. On sign-up you also agree to the personal-data policy.
+1. **Sign up or log in** with an `@g.nsu.ru` email. There are no passwords: every time, we email a one-time code that's valid for 10 minutes. On sign-up you also agree to the personal-data policy.
 2. **Onboarding**, one step per screen. First you pick the interface language (changeable later in Account) and say what you're after: **looking for a place**, or **have a place and need a roommate**. The rest depends on that answer.
 3. **The questionnaire** (10 questions). For each habit you give:
    - your own answer;

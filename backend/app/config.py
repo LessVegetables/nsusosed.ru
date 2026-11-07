@@ -33,7 +33,7 @@ class Settings(BaseSettings):
     postbox_region: str = "ru-central1"
 
     # ── OTP ─────────────────────────────────────────────
-    otp_ttl_seconds: int = 120
+    otp_ttl_seconds: int = 600
     otp_max_attempts: int = 5
     otp_code_length: int = 6
 

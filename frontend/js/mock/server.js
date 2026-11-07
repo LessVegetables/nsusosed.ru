@@ -16,7 +16,7 @@ import { seedDb } from './seed.js';
 
 const DB_KEY = 'nsusosed.mockdb.v2'; // v2: homes with admins, contacts, photos
 const LATENCY_MS = 300;
-const OTP_TTL_S = 120;
+const OTP_TTL_S = 600;
 const RESEND_COOLDOWN_S = 60;
 const LISTING_TTL_DAYS = 30;
 const INVITE_TTL_DAYS = 7;
