@@ -204,15 +204,6 @@ a:hover { color: var(--primary-hover); }
 }
 .footer-inner p { margin: 0 0 4px; }
 
-.mock-banner {
-  background: var(--warn-bg);
-  color: var(--warn);
-  padding: 6px var(--space);
-  font-size: 0.875rem;
-  text-align: center;
-}
-.mock-banner a { color: inherit; }
-
 /* ---------- buttons ---------- */
 
 .btn {

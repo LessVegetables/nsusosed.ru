@@ -1,7 +1,7 @@
 from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
-from sqlalchemy import String, DateTime, Integer, CheckConstraint, func
+from sqlalchemy import String, DateTime, Integer, CheckConstraint, Index, func, text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
@@ -9,7 +9,10 @@ from app.database import Base
 
 class User(Base):
     __tablename__ = "users"
-    __table_args__ = (CheckConstraint("language IN ('ru', 'en')", name="ck_users_language"),)
+    __table_args__ = (
+        CheckConstraint("language IN ('ru', 'en')", name="ck_users_language"),
+        Index("ix_users_deleted_at", "deleted_at", postgresql_where=text("deleted_at IS NOT NULL")),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
@@ -23,6 +26,9 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    # Попросил удалить аккаунт. Пока не прошёл срок ожидания, аккаунт скрыт и
+    # восстанавливается входом; потом стирается насовсем (purge_deleted_accounts).
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     profile: Mapped["Profile"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")

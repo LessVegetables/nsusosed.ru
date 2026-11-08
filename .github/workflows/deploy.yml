@@ -86,7 +86,6 @@ jobs:
             --exclude=/tools/ \
             --exclude=/dev_server.py \
             --exclude=/README.md \
-            --exclude=/js/mock/ \
             --exclude=.DS_Store \
             frontend/ vps:/var/www/nsusosed.ru/
 
@@ -97,6 +96,7 @@ jobs:
             --exclude=/tests/ \
             --exclude=/pytest.ini \
             --exclude=/requirements-dev.txt \
+            --exclude=/app/seed.py \
             --exclude=.env \
             --exclude=.DS_Store \
             backend/ vps:/opt/nsusosed/app/

@@ -16,6 +16,8 @@ class Settings(BaseSettings):
     max_sessions_per_user: int = 5
     listing_ttl_days: int = 30
     invite_ttl_days: int = 7
+    # Удалённый аккаунт сначала только скрыт: вход в течение этого срока его восстанавливает.
+    account_deletion_grace_days: int = 14
     # Фото жилья: файлы на диске, nginx отдаёт их как /media/...
     media_dir: str = "/data/media"
     media_url: str = "/media"
@@ -33,7 +35,7 @@ class Settings(BaseSettings):
     postbox_region: str = "ru-central1"
 
     # ── OTP ─────────────────────────────────────────────
-    otp_ttl_seconds: int = 120
+    otp_ttl_seconds: int = 600
     otp_max_attempts: int = 5
     otp_code_length: int = 6
 

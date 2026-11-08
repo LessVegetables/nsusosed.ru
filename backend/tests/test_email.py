@@ -63,9 +63,11 @@ async def test_send_otp_email_request(monkeypatch):
     assert body["FromEmailAddress"] == "noreply@codes.example.com"
     assert body["Destination"] == {"ToAddresses": ["ivan@g.nsu.ru"]}
     simple = body["Content"]["Simple"]
-    assert simple["Subject"]["Data"] == "Код подтверждения nsusosed"
-    assert "123456" in simple["Body"]["Text"]["Data"]
+    assert simple["Subject"]["Data"] == "123456 — ваш код"
+    # Первая строка продолжает тему, сразу за ней — код.
+    assert simple["Body"]["Text"]["Data"].startswith("Для подтверждения входа на NSUsosed.ru:\n\n123456\n")
     assert "123456" in simple["Body"]["Html"]["Data"]
+    assert "10 минут." in simple["Body"]["Text"]["Data"]
 
     # Подпись должна сходиться с телом, которое реально ушло.
     resigned = sign_headers(

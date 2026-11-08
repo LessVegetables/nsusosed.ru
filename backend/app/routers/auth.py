@@ -7,7 +7,7 @@ from app.schemas.auth import (
     VerifyCodeRequest, AuthResponse,
 )
 from app.services.auth_service import request_code, verify_code, logout
-from app.utils.deps import check_origin
+from app.utils.deps import check_origin, check_origin_no_body
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -36,6 +36,7 @@ async def api_verify_code(
 
 
 @router.post("/logout", status_code=204)
-async def api_logout(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+async def api_logout(request: Request, response: Response, db: AsyncSession = Depends(get_db),
+                     _o: None = Depends(check_origin_no_body)):
     await logout(db, request, response)
     return Response(status_code=204)
