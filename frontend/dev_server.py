@@ -189,7 +189,6 @@ def main():
     print(f"Frontend:  {origin}")
     print(f"API proxy: {origin}/api/* -> {args.backend}")
     print(f"Backend .env needs PUBLIC_ORIGIN={origin}")
-    print(f"No backend? Use the mock API: {origin}/?mock=1")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

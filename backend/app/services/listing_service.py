@@ -40,7 +40,8 @@ def photos_out(l: Listing) -> list[PhotoOut]:
 async def _residents(db, listing_id: uuid.UUID) -> list[HomeResident]:
     result = await db.execute(
         select(Membership, User).join(User, User.id == Membership.user_id)
-        .where(Membership.listing_id == listing_id).order_by(Membership.joined_at, Membership.user_id))
+        .where(Membership.listing_id == listing_id, User.deleted_at.is_(None))
+        .order_by(Membership.joined_at, Membership.user_id))
     rows = result.all()
     prof_r = await db.execute(select(Profile.user_id).where(Profile.user_id.in_([m.user_id for m, _ in rows])))
     profile_ids = {row[0] for row in prof_r.fetchall()}

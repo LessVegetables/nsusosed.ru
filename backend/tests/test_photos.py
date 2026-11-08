@@ -89,3 +89,60 @@ async def test_upload_rules(make_client, login):
         assert (await upload(owner, listing["id"], png_with_alpha())).status_code == 201
     r = await upload(owner, listing["id"], png_with_alpha())
     assert r.status_code == 409 and r.json()["error"]["code"] == "TOO_MANY_PHOTOS"
+
+
+def listing_files(listing_id: str) -> set[str]:
+    folder = Path(settings.media_dir) / "listings" / listing_id
+    return {p.name for p in folder.iterdir()} if folder.is_dir() else set()
+
+
+async def test_failed_upload_leaves_no_file(make_client, login, monkeypatch):
+    owner = make_client()
+    await login(owner, "owner@g.nsu.ru", situation="host")
+    listing = (await owner.post("/api/listings", json=DORM)).json()
+
+    # Файл уже записан, но запрос падает до коммита: строки в базе нет — и файла быть не должно.
+    async def boom(*args, **kwargs):
+        raise RuntimeError("after the file was written")
+    monkeypatch.setattr("app.routers.listings.to_home_dto", boom)
+    r = await upload(owner, listing["id"], png_with_alpha())
+    assert r.status_code == 500
+    assert listing_files(listing["id"]) == set()
+
+
+async def test_failed_delete_keeps_the_file(make_client, login, monkeypatch):
+    owner = make_client()
+    await login(owner, "owner@g.nsu.ru", situation="host")
+    listing = (await owner.post("/api/listings", json=DORM)).json()
+    photo = (await upload(owner, listing["id"], png_with_alpha())).json()["photos"][0]
+
+    async def boom(*args, **kwargs):
+        raise RuntimeError("before commit")
+    monkeypatch.setattr("app.routers.listings.to_home_dto", boom)
+    r = await owner.delete(f"/api/listings/{listing['id']}/photos/{photo['id']}")
+    assert r.status_code == 500
+    # Удаление откатилось — фото осталось и в базе, и на диске.
+    assert media_path(photo["url"]).exists()
+
+
+async def test_sweep_removes_old_orphans_only(db, make_client, login):
+    import os
+    import time
+    from app.database import async_session_factory
+    from app.services.photo_service import sweep_orphan_folders
+
+    owner = make_client()
+    await login(owner, "owner@g.nsu.ru", situation="host")
+    listing = (await owner.post("/api/listings", json=DORM)).json()
+    photo = (await upload(owner, listing["id"], png_with_alpha())).json()["photos"][0]
+    folder = media_path(photo["url"]).parent
+    old_orphan, fresh_orphan = folder / "old.jpg", folder / "fresh.jpg"
+    old_orphan.write_bytes(b"x")
+    fresh_orphan.write_bytes(b"x")
+    two_hours_ago = time.time() - 7200
+    os.utime(old_orphan, (two_hours_ago, two_hours_ago))
+    os.utime(media_path(photo["url"]), (two_hours_ago, two_hours_ago))
+
+    async with async_session_factory() as session:
+        await sweep_orphan_folders(session)
+    assert listing_files(listing["id"]) == {media_path(photo["url"]).name, "fresh.jpg"}

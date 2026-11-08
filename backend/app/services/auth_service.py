@@ -1,10 +1,12 @@
 from __future__ import annotations
-from datetime import datetime, timezone
+import logging
+from datetime import datetime, timedelta, timezone
 from fastapi import Request, Response
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from app.config import settings
 from app.models.user import User
 from app.models.profile import Profile
+from app.models.session import Session
 from app.schemas.auth import (
     RequestCodeRequest, RequestCodeResponse,
     VerifyCodeRequest, AuthResponse, UserBrief,
@@ -17,6 +19,8 @@ from app.utils.errors import AppError, validation_error, invalid_code
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
 from app.services import rate_limit_service as rl
+
+logger = logging.getLogger("nsusosed")
 
 
 async def request_code(db, body: RequestCodeRequest, request: Request) -> RequestCodeResponse:
@@ -82,6 +86,12 @@ async def verify_code(
         db.add(user)
         await db.flush()
 
+    # Вход в срок ожидания отменяет удаление аккаунта.
+    account_restored = user.deleted_at is not None
+    if account_restored:
+        user.deleted_at = None
+        await db.flush()
+
     # Анкета заполнена (и текущей версии)?
     prof_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
     profile = prof_result.scalar_one_or_none()
@@ -94,11 +104,13 @@ async def verify_code(
     await cleanup_expired_sessions(db)
     await cleanup_expired_otps(db)
     await rl.cleanup_old_events(db)
+    await purge_deleted_accounts(db)
     set_session_cookie(response, token)
 
     return AuthResponse(
         user=UserBrief(id=user.id, email=user.email, display_name=user.display_name),
         profile_complete=profile_complete,
+        account_restored=account_restored,
     )
 
 
@@ -134,11 +146,38 @@ async def update_me(db, user: User, body: UserUpdate) -> UserSelf:
 
 
 async def delete_me(db, user: User, response: Response) -> None:
+    """Удаление аккаунта, шаг 1: скрыть сразу, стереть через ACCOUNT_DELETION_GRACE_DAYS.
+
+    Сразу: все сессии закрыты, человек не виден соседям и кандидатам, его анкета не
+    участвует в подборе, админство в жилье переходит к активному соседу. Вход по коду
+    в течение срока всё отменяет (verify_code). Насовсем стирает purge_deleted_accounts.
+    """
+    from app.services.membership_service import ensure_active_admin, get_membership
     await db.execute(text("SELECT id FROM users WHERE id = :uid FOR UPDATE"), {"uid": user.id})
-    from app.services.membership_service import get_membership, remove_member
+    user.deleted_at = datetime.now(timezone.utc)
+    await db.execute(delete(Session).where(Session.user_id == user.id))
+    await db.flush()
     membership = await get_membership(db, user.id)
     if membership is not None:
-        await remove_member(db, membership)
-    await db.delete(user)
-    await db.flush()
+        await ensure_active_admin(db, membership.listing_id)
     clear_session_cookie(response)
+
+
+async def purge_deleted_accounts(db) -> int:
+    """Удаление аккаунта, шаг 2: стереть аккаунты, у которых истёк срок ожидания.
+    Анкета и сессии уходят каскадом; жильё — по обычным правилам ухода жильца
+    (последний ушёл — жильё и фото удаляются). Вызывается при каждом входе и при старте."""
+    from app.services.membership_service import get_membership, remove_member
+    cutoff = datetime.now(timezone.utc) - timedelta(days=settings.account_deletion_grace_days)
+    result = await db.execute(
+        select(User).where(User.deleted_at.is_not(None), User.deleted_at < cutoff).with_for_update(skip_locked=True))
+    users = list(result.scalars().all())
+    for user in users:
+        membership = await get_membership(db, user.id)
+        if membership is not None:
+            await remove_member(db, membership)
+        await db.delete(user)
+    if users:
+        await db.flush()
+        logger.info("Erased %d deleted accounts", len(users))
+    return len(users)

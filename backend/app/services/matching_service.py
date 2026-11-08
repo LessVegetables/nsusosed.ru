@@ -148,9 +148,11 @@ async def _candidate_profile(db, user, kind: str) -> Profile:
 
 
 async def _resident_profiles(db, listing_ids: List[uuid.UUID]) -> Dict[uuid.UUID, List[Dict[str, Any]]]:
+    # Анкеты тех, кто удаляет аккаунт, в подборе не участвуют.
     result = await db.execute(
         select(Membership.listing_id, Profile.answers).join(Profile, Profile.user_id == Membership.user_id)
-        .where(Membership.listing_id.in_(listing_ids)))
+        .join(User, User.id == Membership.user_id)
+        .where(Membership.listing_id.in_(listing_ids), User.deleted_at.is_(None)))
     by_listing: Dict[uuid.UUID, List[Dict[str, Any]]] = {}
     for listing_id, answers in result.all():
         by_listing.setdefault(listing_id, []).append(answers)
@@ -224,7 +226,8 @@ async def get_listing_detail(db, user, listing_id: uuid.UUID) -> dict:
 
     members_r = await db.execute(
         select(Membership, User).join(User, User.id == Membership.user_id)
-        .where(Membership.listing_id == l.id).order_by(Membership.joined_at, Membership.user_id))
+        .where(Membership.listing_id == l.id, User.deleted_at.is_(None))
+        .order_by(Membership.joined_at, Membership.user_id))
     members = members_r.all()
     p_r = await db.execute(select(Profile).where(Profile.user_id.in_([m.user_id for m, _ in members])))
     pmap = {p.user_id: p.answers for p in p_r.scalars().all()}

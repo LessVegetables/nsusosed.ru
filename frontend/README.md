@@ -2,25 +2,13 @@
 
 Plain HTML, CSS and JavaScript (ES modules in the browser). No framework, no build step, no npm: what is in this folder is exactly what the browser gets. The interface is in Russian and English: each user picks a language once during onboarding and can change it on the Account page.
 
-The product spec is the root [README.md](../README.md). The backend lives in [`backend/`](../backend) and is a teammate's area: this folder only talks to it through `/api/`.
+The product spec is the root [README.md](../README.md). The backend lives in [`backend/`](../backend); this folder only talks to it through `/api/`.
 
 ## Run it locally
 
-You need Python 3.8+ and nothing else.
+The frontend always runs against the real backend; there is no fake API.
 
-### Without the backend (mock API)
-
-```bash
-python3 frontend/dev_server.py
-```
-
-Open <http://localhost:8080/?mock=1>. A yellow banner says the mock is on. Any `@g.nsu.ru` address logs in with code **123456**. The mock keeps its data in `localStorage`, ships with about 20 sample homes, and follows the same contract as the real API (error codes, versions, admins, photos, the matching formula). The demo invite link is <http://localhost:8080/join#token=demo-invite-token>. Turn the mock off with `?mock=0`. To start over with fresh data, run `resetMockDb()` in the browser console.
-
-The mock only works on `localhost` / `127.0.0.1`, and the browser never downloads it otherwise.
-
-### Against the real backend
-
-1. Run the backend on `http://localhost:8000` (see [backend/README.md](../backend/README.md)) with these values in its `.env`:
+1. Run the backend on `http://localhost:8000` (see [backend/README.md](../backend/README.md)). The template `.env.example` is already set up for this:
 
    ```
    PUBLIC_ORIGIN=http://localhost:8080
@@ -29,6 +17,8 @@ The mock only works on `localhost` / `127.0.0.1`, and the browser never download
    ```
 
    `PUBLIC_ORIGIN` has to be the dev server's address. With `MEDIA_DIR=media` photos land in `backend/media`, which the dev server serves as `/media/` (`--media-dir` to change it). The backend rejects POST/PUT/DELETE requests whose `Origin` header doesn't match it, and it builds invite links from it. With `EMAIL_MODE=log` the login code shows up in the backend's log instead of in an email.
+
+   For sample homes to browse, seed the database once (from `backend/`): `EMAIL_MODE=log python -m app.seed`. That gives about 20 homes; the demo invite link is <http://localhost:8080/join#token=demo-invite-token>.
 
 2. Start the dev server and open <http://localhost:8080>:
 
@@ -40,7 +30,7 @@ The mock only works on `localhost` / `127.0.0.1`, and the browser never download
 
 The dev server serves pages the same way production nginx does (`/matches` → `matches.html`, unknown paths → `404.html`). It also proxies `/api/*` to the backend, so everything is same-origin and the session cookie works.
 
-**Cookie on http://localhost.** The backend sets `__Host-nsusosed` with `Secure`. Chrome, Edge and Firefox accept Secure cookies on `http://localhost`, so the login works there. If you log in and immediately land back on the login page, your browser refused the cookie on plain http: use Chrome or Firefox, or the mock.
+**Cookie on http://localhost.** The backend sets `__Host-nsusosed` with `Secure`. Chrome, Edge and Firefox accept Secure cookies on `http://localhost`, so the login works there. If you log in and immediately land back on the login page, your browser refused the cookie on plain http: use Chrome or Firefox.
 
 ### Checks
 
@@ -53,7 +43,7 @@ python3 frontend/tools/check_i18n.py   # ru.js and en.js have the same keys; no 
 | URL | File | What it does |
 |---|---|---|
 | `/` | `index.html` | Short intro; link to log in, or to matches / your home |
-| `/login` | `login.html` | Email + privacy checkbox → 6-digit code (2-minute timer, resend after 60 s) |
+| `/login` | `login.html` | Email + privacy checkbox → 6-digit code (10-minute timer, resend after 60 s) |
 | `/questionnaire` | `questionnaire.html` | Unfinished accounts: step-by-step onboarding (language → role → one screen per unanswered question → budget, or home, contacts, photos and invite). Finished accounts: role, 10 questions and budget on one page |
 | `/matches?kind=dorm\|apartment&page=N&all=1` | `matches.html` | Seekers: tabs, cards sorted by score, explanation, warnings, pagination; `all=1` also shows places that don't fit, with the reasons |
 | `/listing?id=<uuid>` | `listing.html` | Home detail: photos, question-by-question breakdown, why it doesn't fit, "Show contacts" |
@@ -69,77 +59,14 @@ The menu depends on the role (`layout.js`, `data-show` on each item): seekers se
 
 ## Production: what nginx needs
 
-The site is static files on the same origin as the API: `https://nsusosed.ru`, with the API under `/api/`. Copy this folder to the server (for example `/var/www/nsusosed/frontend`). Then:
-
-```nginx
-server {
-    listen 443 ssl;
-    http2 on;               # nginx 1.25.1+; older versions: "listen 443 ssl http2;"
-    server_name nsusosed.ru;
-    # ssl_certificate / ssl_certificate_key ...
-
-    root /var/www/nsusosed/frontend;
-    index index.html;
-
-    # 1. API → FastAPI. Same origin, so the __Host- cookie and the Origin check work.
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 64k;
-    }
-
-    # 2. Pages without ".html": /matches → matches.html, /join → join.html,
-    #    /listing?id=… → listing.html (the query string is kept), / → index.html.
-    location / {
-        try_files $uri $uri.html $uri/ =404;
-    }
-    error_page 404 /404.html;
-
-    # 3. Listing photos, written by the backend to its MEDIA_DIR (see
-    #    backend/README.md, "Photos in production"). Uploads need a bigger
-    #    body limit than the rest of the API.
-    location /media/ {
-        alias /var/lib/nsusosed/media/;
-    }
-    location ~ ^/api/listings/[^/]+/photos$ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        client_max_body_size 11m;
-    }
-
-    # 4. Files in this folder that are for developers only.
-    location ~ ^/(tools/|dev_server\.py$|README\.md$) {
-        return 404;
-    }
-
-    # 5. Headers. Keep them all at the server level: an add_header inside a
-    #    location block would silently drop these.
-    #    No build step means no hashed file names, so browsers must revalidate
-    #    (they still get 304s, so it stays fast).
-    add_header Cache-Control "no-cache" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://stat.gehrman.me; style-src 'self'; img-src 'self' data:; connect-src 'self' https://stat.gehrman.me; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'" always;
-    add_header Referrer-Policy "same-origin" always;
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header Strict-Transport-Security "max-age=31536000" always;
-}
-
-server {
-    listen 80;
-    server_name nsusosed.ru;
-    return 301 https://$host$request_uri;
-}
-```
+The site is static files on the same origin as the API: `https://nsusosed.ru`, with the API under `/api/`. The production config is [`deploy/nginx/nsusosed.ru.conf`](../deploy/nginx/nsusosed.ru.conf); setup in [deploy/README.md](../deploy/README.md).
 
 Notes:
 
 - The only fallback rule that matters is `try_files $uri $uri.html $uri/ =404`. There is no single-page-app "everything → index.html" fallback: every page is its own HTML file.
 - `/join` must resolve to `join.html`. The backend builds invite links as `{PUBLIC_ORIGIN}/join#token=…`, so in production `PUBLIC_ORIGIN=https://nsusosed.ru`. The token is in the `#hash`, which browsers never send to the server, so it doesn't end up in nginx logs.
 - `.js` files must be served as JavaScript (`application/javascript` or `text/javascript`). The stock `mime.types` already does this; if pages come up blank, check this first.
-- The CSP above works because the code has no inline scripts, inline styles or `eval`. Keep it that way.
+- The CSP in that config works because the code has no inline scripts, inline styles or `eval`. Keep it that way.
 - Behind nginx, uvicorn needs `--proxy-headers` (and `FORWARDED_ALLOW_IPS=127.0.0.1`) to see real client IPs for its rate limits.
 
 ## How the code is organised
@@ -159,10 +86,9 @@ frontend/
 │   ├── home-form.js    home details, contacts editor, photo editor, invite link (onboarding and /home)
 │   ├── ui.js           DOM helper h(), errors next to fields, busy buttons, dialogs
 │   ├── listing-view.js listing title, score, explanation, warnings, reasons (shared)
-│   ├── config.js       constants and the mock switch (no secrets, ever)
+│   ├── config.js       constants (no secrets, ever)
 │   ├── storage.js      localStorage/sessionStorage wrapped in try/catch
-│   ├── pages/*.js      one script per page
-│   └── mock/           fake backend for local development
+│   └── pages/*.js      one script per page
 ├── dev_server.py       static files + /api proxy, standard library only
 └── tools/check_i18n.py translation key check
 ```

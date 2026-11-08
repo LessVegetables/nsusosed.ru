@@ -163,7 +163,7 @@ async def test_last_admin_leaving_promotes_the_longest_resident(make_client, log
 
     # Последний жилец уходит — жилья больше нет.
     assert (await first.delete("/api/membership")).status_code == 204
-    assert (await second.request("DELETE", "/api/me", json={"confirm": "DELETE"})).status_code == 204
+    assert (await second.delete("/api/membership")).status_code == 204
     from app.database import engine
     from sqlalchemy import text
     async with engine.connect() as conn:

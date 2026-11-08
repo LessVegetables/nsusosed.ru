@@ -1,10 +1,9 @@
 // Shared page frame: which menu links to show, the account's language, the
-// mock-API banner, the login check and sending unfinished accounts to
+// login check and sending unfinished accounts to
 // onboarding. Every page script starts with
 //   const { me } = await initPage({ auth: 'required' });
 
 import { api } from './api.js';
-import { MOCK_LOGIN_CODE, USE_MOCK } from './config.js';
 import { applyI18n, setLang } from './i18n.js';
 import { h, loadFailed, loginUrl } from './ui.js';
 
@@ -36,19 +35,6 @@ function showNav(me) {
   if (me) document.querySelector('.brand')?.setAttribute('href', startPage(me));
 }
 
-function renderMockBanner() {
-  if (!USE_MOCK) return;
-  document.body.prepend(
-    h(
-      'div',
-      { class: 'mock-banner', role: 'note' },
-      h('span', { i18n: 'mock.banner', i18nArgs: { code: MOCK_LOGIN_CODE } }),
-      ' ',
-      h('a', { href: '?mock=0', i18n: 'mock.turnOff' }),
-    ),
-  );
-}
-
 // auth: 'required' → redirect to /login when logged out;
 //       'optional' → load the user if there is one;
 //       'none'     → don't ask the API at all.
@@ -57,7 +43,6 @@ function renderMockBanner() {
 // such an account is sent to the questionnaire first.
 export async function initPage({ auth = 'required', onboarding = false } = {}) {
   applyI18n();
-  renderMockBanner();
 
   let me = null;
   if (auth !== 'none') {

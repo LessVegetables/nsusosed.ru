@@ -5,6 +5,11 @@
 - ушёл последний админ — админом становится самый давний жилец (сначала из тех,
   кто заполнил анкету);
 - ушёл последний жилец — жильё удаляется.
+
+Жилец, который удаляет аккаунт, до конца срока ожидания остаётся в жилье, но
+скрыт: его не видно соседям и кандидатам, его анкета не участвует в подборе, и
+админом он не считается. Последним жильцом он перестаёт быть, только когда его
+аккаунт стёрт насовсем.
 """
 
 from __future__ import annotations
@@ -14,6 +19,7 @@ from sqlalchemy import select, text
 from app.models.listing import Listing
 from app.models.membership import Membership
 from app.models.profile import Profile
+from app.models.user import User
 from app.schemas.membership import JoinResponse
 from app.utils.security import sha256_hex
 from app.utils.errors import (profile_required, invite_invalid, invite_expired, already_in_room, room_full,
@@ -42,10 +48,26 @@ async def get_listing_as_admin(db, user, listing_id: uuid.UUID) -> Listing:
     return listing
 
 
-async def _members(db, listing_id: uuid.UUID) -> list[Membership]:
-    result = await db.execute(
-        select(Membership).where(Membership.listing_id == listing_id).order_by(Membership.joined_at, Membership.user_id))
+async def _members(db, listing_id: uuid.UUID, *, active_only: bool = False) -> list[Membership]:
+    """Жильцы по давности. active_only — без тех, кто удаляет аккаунт."""
+    q = select(Membership).where(Membership.listing_id == listing_id)
+    if active_only:
+        q = q.join(User, User.id == Membership.user_id).where(User.deleted_at.is_(None))
+    result = await db.execute(q.order_by(Membership.joined_at, Membership.user_id))
     return list(result.scalars().all())
+
+
+async def ensure_active_admin(db, listing_id: uuid.UUID) -> None:
+    """Если среди активных жильцов нет админа — назначить самого давнего
+    (сначала из тех, кто заполнил анкету). Нет активных жильцов — ничего не делать."""
+    active = await _members(db, listing_id, active_only=True)
+    if not active or any(m.is_admin for m in active):
+        return
+    prof = await db.execute(select(Profile.user_id).where(Profile.user_id.in_([m.user_id for m in active])))
+    with_profile = {row[0] for row in prof.fetchall()}
+    heir = next((m for m in active if m.user_id in with_profile), active[0])
+    heir.is_admin = True
+    await db.flush()
 
 
 async def remove_member(db, membership: Membership) -> None:
@@ -62,14 +84,10 @@ async def remove_member(db, membership: Membership) -> None:
     if not remaining:
         await db.delete(listing)
         await db.flush()
-        delete_listing_files(listing_id)
+        delete_listing_files(db, listing_id)
         return
 
-    if not any(m.is_admin for m in remaining):
-        prof = await db.execute(select(Profile.user_id).where(Profile.user_id.in_([m.user_id for m in remaining])))
-        with_profile = {row[0] for row in prof.fetchall()}
-        heir = next((m for m in remaining if m.user_id in with_profile), remaining[0])
-        heir.is_admin = True
+    await ensure_active_admin(db, listing_id)
     listing.version += 1
     await db.flush()
 
@@ -134,7 +152,7 @@ async def set_admin(db, user, listing_id: uuid.UUID, target_id: uuid.UUID, is_ad
         prof = await db.execute(select(Profile.user_id).where(Profile.user_id == target_id))
         if prof.scalar_one_or_none() is None:
             raise target_profile_required()
-    elif not any(m.is_admin and m.user_id != target_id for m in await _members(db, listing.id)):
+    elif not any(m.is_admin and m.user_id != target_id for m in await _members(db, listing.id, active_only=True)):
         raise last_admin()
     target.is_admin = is_admin
     listing.version += 1

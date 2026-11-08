@@ -26,31 +26,57 @@ def _minutes_ru(n: int) -> str:
     return f"{n} {word}"
 
 
+def otp_email(code: str) -> tuple[str, str, str]:
+    """Тема, текст и HTML письма с кодом.
+
+    Код стоит первым в теме, а первая строка письма продолжает тему
+    («123456 — ваш код» → «Для подтверждения входа на NSUsosed.ru: 123456»):
+    так код виден прямо в списке писем и в уведомлении, не открывая письмо.
+
+    HTML годится для светлой и тёмной темы: ни фона, ни цвета основного текста
+    не задаём (почтовый клиент подставит свои), рамка и второстепенный текст —
+    средне-серые, читаемые на обоих фонах; для клиентов, понимающих
+    prefers-color-scheme, серые чуть подстраиваются.
+    """
+    ttl = _minutes_ru(max(1, settings.otp_ttl_seconds // 60))
+    subject = f"{code} — ваш код"
+    text = (
+        f"Для подтверждения входа на NSUsosed.ru:\n\n"
+        f"{code}\n\n"
+        f"Код действует {ttl}. Никому его не сообщайте.\n"
+        f"Если вы не входили на сайт, просто проигнорируйте это письмо."
+    )
+    html = f"""<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{subject}</title>
+<style>
+  :root {{ color-scheme: light dark; supported-color-schemes: light dark; }}
+  @media (prefers-color-scheme: dark) {{
+    .code {{ border-color: #5c636d !important; }}
+    .muted {{ color: #a3abb5 !important; }}
+  }}
+</style>
+</head>
+<body style="margin:0; padding:24px 16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size:16px; line-height:1.5;">
+  <p style="margin:0 0 16px;">Для подтверждения входа на NSUsosed.ru:</p>
+  <div class="code" style="display:inline-block; margin:0 0 16px; padding:12px 20px; border:1px solid #c4c9d0; border-radius:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:32px; font-weight:700; letter-spacing:6px;">{code}</div>
+  <p class="muted" style="margin:0; font-size:14px; color:#7a828c;">Код действует {ttl}. Никому его не сообщайте.<br>Если вы не входили на сайт, просто проигнорируйте это письмо.</p>
+</body>
+</html>"""
+    return subject, text, html
+
+
 async def send_otp_email(to_email: str, code: str) -> bool:
     """
     Отправить код подтверждения через Postbox API.
     При EMAIL_MODE=log код пишется в лог (только для разработки).
     """
-    subject = "Код подтверждения nsusosed"
-    ttl = _minutes_ru(max(1, settings.otp_ttl_seconds // 60))
-    text = (
-        f"Ваш код для входа в nsusosed: {code}\n\n"
-        f"Код действителен {ttl}.\n"
-        f"Никому его не сообщайте."
-    )
-    html = f"""
-    <div style="font-family: Arial, sans-serif; max-width: 480px;">
-        <h2>Код подтверждения nsusosed</h2>
-        <p>Ваш код для входа:</p>
-        <div style="font-size: 32px; font-weight: bold; letter-spacing: 6px;
-                    background: #f0f0f0; padding: 16px; text-align: center;
-                    border-radius: 8px; margin: 16px 0;">
-            {code}
-        </div>
-        <p>Код действителен <b>{ttl}</b>.</p>
-        <p>Если вы не запрашивали код — проигнорируйте это письмо.</p>
-    </div>
-    """
+    subject, text, html = otp_email(code)
 
     # ── Тестовый режим ──────────────────────────────────
     if settings.email_mode == "log":
