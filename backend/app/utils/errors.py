@@ -103,3 +103,11 @@ def no_permission() -> AppError:
 
 def room_occupied(index: int) -> AppError:
     return AppError(409, "ROOM_OCCUPIED", "В этой комнате живут люди.", {f"rooms.{index}": "ROOM_OCCUPIED"})
+
+
+def invite_invalid() -> AppError:
+    return AppError(404, "INVITE_INVALID", "Приглашение не найдено, отозвано или истекло.")
+
+
+def last_manager() -> AppError:
+    return AppError(409, "LAST_MANAGER", "Хотя бы у одного жителя должно остаться право управлять жителями.")

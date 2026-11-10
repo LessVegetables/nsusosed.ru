@@ -323,6 +323,153 @@ function renderPhotos() {
     el('div', { class: 'photos' }, ...tiles, upload)));
 }
 
+// ── Residents and rights ────────────────────────────────
+
+const RIGHTS = ['can_edit', 'can_photos', 'can_invites', 'can_residents'];
+const rightLabel = (name) => ({
+  can_edit: t('home.rights.can_edit'), can_photos: t('home.rights.can_photos'),
+  can_invites: t('home.rights.can_invites'), can_residents: t('home.rights.can_residents'),
+}[name]);
+
+async function homeAction(action) {
+  try {
+    home = await action();
+    return true;
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    toast(t('error.title'), errorText(err), { error: true });
+    return false;
+  }
+}
+
+function avatar(person) {
+  return person.avatar_url
+    ? el('img', { class: 'avatar sm', src: person.avatar_url, alt: '' })
+    : el('span', { class: 'avatar sm', 'aria-hidden': 'true' }, person.first_name.slice(0, 1));
+}
+
+function renderResidents() {
+  const section = $('residents-section');
+  section.hidden = !home;
+  if (!home) return;
+  const manage = home.permissions.can_residents;
+  const roomName = (id) => {
+    const index = home.rooms.findIndex((r) => r.id === id);
+    return index < 0 ? '' : `${home.rooms[index].emoji} ${home.rooms[index].name || t('home.room.titleN', { n: index + 1 })}`;
+  };
+  const rows = home.residents.map((person) => {
+    const url = `/homes/${home.id}/residents/${person.user_id}`;
+    const update = async (change) => { await homeAction(() => put(url, change)); renderResidents(); renderInvites(); };
+    const rights = manage
+      ? el('div', { class: 'rights' }, ...RIGHTS.map((name) => {
+        const box = el('input', { type: 'checkbox' });
+        box.checked = person.permissions[name];
+        box.addEventListener('change', () => update({ [name]: box.checked }));
+        return el('label', { class: 'check' }, box, el('span', {}, rightLabel(name)));
+      }))
+      : el('p', { class: 'hint' }, RIGHTS.filter((name) => person.permissions[name]).map(rightLabel).join(' · ') || t('home.rights.none'));
+    let room = null;
+    if (home.kind === 'apartment' && home.rooms.length > 1) {
+      if (manage || person.is_you) {
+        const picker = el('select', { 'aria-label': t('home.residents.room') }, ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
+        picker.value = person.room_id ?? '';
+        picker.addEventListener('change', () => update({ room_id: picker.value }));
+        room = el('label', { class: 'field' }, el('span', {}, t('home.residents.room')), picker);
+      } else {
+        room = el('p', { class: 'hint' }, roomName(person.room_id));
+      }
+    }
+    return el('li', { class: 'resident' },
+      el('div', { class: 'row' }, avatar(person),
+        el('div', {}, el('b', {}, `${person.first_name} ${person.last_name}`),
+          person.is_you && el('span', { class: 'tag fill-yellow' }, t('home.residents.you')))),
+      room, rights,
+      manage && !person.is_you && el('div', {}, el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
+        if (!window.confirm(t('home.residents.removeConfirm', { name: person.first_name }))) return;
+        await homeAction(() => del(url));
+        render();
+      } }, t('home.residents.remove'))));
+  });
+  section.replaceChildren(el('div', { class: 'box pad hblock' },
+    el('h2', {}, t('home.residents.title')),
+    el('p', { class: 'hint' }, manage ? t('home.residents.hintManage') : t('home.residents.hint')),
+    el('ul', { class: 'residents' }, ...rows)));
+}
+
+// ── Invites ─────────────────────────────────────────────
+
+let invites = null;     // active invites, loaded once the person may see them
+let freshInvite = null; // the one just created: its link is shown once
+
+async function loadInvites() {
+  invites = null;
+  if (home?.permissions.can_invites) {
+    try { invites = await get(`/homes/${home.id}/invites`); } catch { invites = []; }
+  }
+}
+
+function renderInvites() {
+  const section = $('invites-section');
+  section.hidden = !home;
+  if (!home) return;
+  if (!home.permissions.can_invites) {
+    section.replaceChildren(el('div', { class: 'box pad hblock' },
+      el('h2', {}, t('home.invites.title')), el('p', { class: 'hint' }, t('home.invites.noRight'))));
+    return;
+  }
+  if (invites === null) { loadInvites().then(renderInvites); return; }
+  const date = (iso) => new Date(iso).toLocaleDateString(currentLang() === 'zh' ? 'zh-CN' : currentLang(), { day: 'numeric', month: 'long' });
+
+  let roomPicker = null;
+  if (home.kind === 'apartment' && home.rooms.length > 1) {
+    roomPicker = el('select', {}, ...home.rooms.map((r, i) => el('option', { value: r.id }, `${r.emoji} ${r.name || t('home.room.titleN', { n: i + 1 })}`)));
+  }
+  const create = el('button', { class: 'btn', type: 'button', onclick: async () => {
+    setBusy(create, true);
+    try {
+      freshInvite = await post(`/homes/${home.id}/invites`, { room_id: roomPicker?.value ?? null });
+      await loadInvites();
+    } catch (err) {
+      if (!(err instanceof ApiError)) throw err;
+      toast(t('error.title'), errorText(err), { error: true });
+    }
+    renderInvites();
+  } }, t('home.invites.create'));
+
+  let fresh = null;
+  if (freshInvite) {
+    const link = el('input', { readonly: true, 'aria-label': t('home.invites.link') });
+    link.value = freshInvite.url;
+    link.addEventListener('focus', () => link.select());
+    const copy = el('button', { class: 'btn secondary', type: 'button', onclick: async () => {
+      try { await navigator.clipboard.writeText(freshInvite.url); toast(t('home.invites.copied'), '', { ms: 2000 }); } catch { link.focus(); }
+    } }, t('home.invites.copy'));
+    fresh = el('div', { class: 'box pad fill-green invite-fresh' },
+      el('b', {}, t('home.invites.ready')),
+      el('label', { class: 'field' }, link),
+      el('p', { class: 'hint' }, t('home.invites.readyHint', { code: freshInvite.code, date: date(freshInvite.expires_at) })),
+      el('div', {}, copy));
+  }
+
+  const list = invites.length
+    ? el('ul', { class: 'residents' }, ...invites.map((inv) => el('li', { class: 'resident' },
+      el('p', {}, t('home.invites.item', { name: inv.created_by_name ?? '—', date: date(inv.expires_at), uses: inv.uses })),
+      el('div', {}, el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
+        try { await del(`/homes/${home.id}/invites/${inv.id}`); } catch (err) { if (!(err instanceof ApiError)) throw err; }
+        if (freshInvite?.id === inv.id) freshInvite = null;
+        await loadInvites();
+        renderInvites();
+      } }, t('home.invites.revoke'))))))
+    : el('p', { class: 'hint' }, t('home.invites.empty'));
+
+  section.replaceChildren(el('div', { class: 'box pad hblock' },
+    el('h2', {}, t('home.invites.title')),
+    el('p', { class: 'hint' }, t('home.invites.hint')),
+    roomPicker && el('label', { class: 'field' }, el('span', {}, t('home.invites.room')), roomPicker),
+    el('div', {}, create),
+    fresh, list));
+}
+
 function renderDanger() {
   $('danger').hidden = !home;
   if (!home) return;
@@ -375,6 +522,8 @@ function render() {
   }
   mountMap();
   renderPhotos();
+  renderResidents();
+  renderInvites();
   renderDanger();
 }
 

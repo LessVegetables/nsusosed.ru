@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     max_sessions_per_user: int = 5
     # Удалённый аккаунт сначала только скрыт: вход в течение этого срока его восстанавливает.
     account_deletion_grace_days: int = 14
+    invite_ttl_days: int = 7
     # Фото жилья: файлы на диске, nginx отдаёт их как /media/...
     media_dir: str = "/data/media"
     media_url: str = "/media"

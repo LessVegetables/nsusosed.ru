@@ -29,7 +29,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-TABLES = ["auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "home_photos", "memberships", "rooms", "homes", "users"]
+TABLES = ["auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "home_photos", "memberships", "rooms", "homes", "users"]
 
 
 @pytest.fixture(scope="session")

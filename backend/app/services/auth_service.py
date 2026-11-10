@@ -186,6 +186,11 @@ async def delete_me(db, user: User, response: Response) -> None:
     user.deleted_at = datetime.now(timezone.utc)
     await db.execute(delete(Session).where(Session.user_id == user.id))
     await db.flush()
+    from app.services.home_service import _home, ensure_manager, get_membership
+    membership = await get_membership(db, user.id)
+    if membership is not None:
+        ensure_manager(await _home(db, membership.home_id))
+        await db.flush()
     clear_session_cookie(response)
 
 

@@ -1,7 +1,7 @@
 // Login without a password, in three steps:
 //   1. email  →  2. name, while the code is on its way (first login only)  →  3. code.
 
-import { ApiError, post } from '../api.js';
+import { ApiError, get, post } from '../api.js';
 import { currentLang, t } from '../i18n.js';
 import { mountLangSwitch } from '../lang-switch.js';
 import { initPage } from '../layout.js';
@@ -169,7 +169,7 @@ steps.code.addEventListener('submit', async (e) => {
     local.set(KEYS.seenLogin, '1');
     session.remove(KEYS.lang);
     if (res.account_restored) session.set(KEYS.flash, 'flash.restored');
-    location.replace(homeFor(res));
+    location.replace(homeFor(await get('/me')));
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
     setBusy(button, false);

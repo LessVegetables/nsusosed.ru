@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 import unicodedata
+from datetime import datetime
 from typing import Literal, Optional
 from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -148,6 +149,60 @@ class Permissions(BaseModel):
     can_residents: bool
 
 
+class Resident(BaseModel):
+    """A host, as the other hosts of the same home see them."""
+
+    user_id: UUID
+    first_name: str
+    last_name: str
+    avatar_url: Optional[str] = None
+    room_id: Optional[UUID] = None
+    is_you: bool
+    permissions: Permissions
+
+
+class ResidentUpdate(BaseModel):
+    """Only the fields that were sent change. Rights need can_residents; anyone may set
+    their own room."""
+
+    room_id: Optional[UUID] = None
+    can_edit: Optional[bool] = None
+    can_photos: Optional[bool] = None
+    can_invites: Optional[bool] = None
+    can_residents: Optional[bool] = None
+
+
+class InviteIn(BaseModel):
+    room_id: Optional[UUID] = None
+
+
+class InviteOut(BaseModel):
+    id: UUID
+    room_id: Optional[UUID] = None
+    created_by_name: Optional[str] = None
+    created_at: datetime
+    expires_at: datetime
+    uses: int
+    # Only in the response that creates the invite: the code is not stored and can't be shown again.
+    code: Optional[str] = None
+    url: Optional[str] = None
+
+
+class InviteCode(BaseModel):
+    code: str = Field(..., min_length=4, max_length=300)
+
+
+class InvitePreview(BaseModel):
+    """What someone holding an invite sees before joining: enough to recognize the place."""
+
+    kind: str
+    building: Optional[str] = None
+    district: Optional[str] = None
+    emoji: str
+    room_name: str
+    hosts: list[str]
+
+
 class HomeOut(BaseModel):
     """A home as its hosts see it. Note what is absent: room_label is never sent to anyone."""
 
@@ -166,6 +221,7 @@ class HomeOut(BaseModel):
     internet_mode: Optional[str] = None
     rooms: list[RoomOut]
     photos: list[PhotoOut]
+    residents: list[Resident]
     permissions: Permissions
     # What still keeps seekers from seeing this home.
     needs_contact: bool      # no host has a phone, Telegram or VK yet

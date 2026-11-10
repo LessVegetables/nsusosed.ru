@@ -97,6 +97,23 @@ class Membership(Base):
     user: Mapped["User"] = relationship(lazy="selectin")
 
 
+class Invite(Base):
+    """A link a host sends to a roommate so they can attach themselves to the home.
+    Works for anyone who has it until it expires or is revoked; only its hash is stored."""
+
+    __tablename__ = "invites"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    home_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("homes.id", ondelete="CASCADE"), nullable=False, index=True)
+    # The room the invited person lives in (apartments); None = the home's first room.
+    room_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="SET NULL"), nullable=True)
+    code_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    uses: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
 class HomePhoto(Base):
     __tablename__ = "home_photos"
 

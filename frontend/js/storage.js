@@ -19,5 +19,6 @@ export const session = make('sessionStorage'); // this tab only
 export const KEYS = {
   lang: 'lang',           // local: the account's language, cached so pages don't flash; session: a guest's pick
   seenLogin: 'seenLogin', // local: this browser has logged in before → "/" skips the landing page
+  invite: 'invite',       // session: an invite code waiting for the person to log in
   flash: 'flash',         // session: i18n key prefix of a toast to show on the next page
 };

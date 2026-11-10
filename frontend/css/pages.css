@@ -89,6 +89,13 @@
   .hblock .note[data-error] { margin-top: 8px; }
   .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
   .row.spread { justify-content: space-between; }
+  .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .resident { display: grid; gap: 10px; padding: 14px; border: var(--border-thin); border-radius: var(--r-sm); }
+  .resident > * { margin: 0; }
+  .resident .tag { margin-left: 8px; padding: 3px 7px; }
+  .rights { display: grid; gap: 8px; }
+  .invite-fresh { display: grid; gap: 10px; }
+  .invite-fresh > * { margin: 0; }
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
 

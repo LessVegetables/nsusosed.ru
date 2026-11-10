@@ -11,6 +11,7 @@ import { ApiError, get, put } from '../api.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
+import { KEYS, session } from '../storage.js';
 import { el, errorText, setBusy, toast } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
@@ -187,7 +188,11 @@ function show(id) {
 }
 
 /** After the questionnaire: ask what they came for (once), then go to their page. */
-function finish() {
+async function finish() {
+  // Someone who came by invite link doesn't need to be asked what they are here for.
+  if (!user.intent && session.get(KEYS.invite)) {
+    try { user = await put('/me', { intent: 'join' }); } catch { /* the join page works without it */ }
+  }
   if (!user.intent) { show('intent'); return; }
   location.assign(homeFor({ ...user, questionnaire_complete: true }));
 }

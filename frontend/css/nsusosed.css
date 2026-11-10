@@ -512,6 +512,8 @@
     font-size: var(--fs-badge); font-weight: var(--w-black); text-transform: uppercase;
   }
 
+  .avatar.sm { width: 48px; height: 48px; font-size: var(--fs-card); box-shadow: none; }
+
   /* --- More (NEW, proposal): a fold-out hint under a field ("how do I open my DMs?"). --- */
   .more summary { display: inline-block; min-height: 32px; padding: 6px 0; cursor: pointer; font-size: var(--fs-small); font-weight: var(--w-heavy); text-decoration: underline; list-style: none; }
   .more summary::-webkit-details-marker { display: none; }
