@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nsusosed design specimen</title>
+<!-- Specimen only. Production self-hosts these fonts (see README, "Fonts"). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;600;700;800;900&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="nsusosed.css">
+<link rel="stylesheet" href="specimen.css">
+<script type="module" src="specimen.js"></script>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a class="logo" href="#"><span>nsu</span>sosed</a>
+    <nav class="site-nav" aria-label="Основное меню">
+      <a href="#matches" aria-current="page">Подборка</a>
+      <a href="#quiz">Анкета</a>
+      <a href="#listing">Моё жильё</a>
+      <a href="#forms">Аккаунт</a>
+    </nav>
+    <a class="btn" href="#forms">Войти</a>
+  </div>
+</header>
+<div class="ticker" aria-hidden="true"><div>
+  <span>★ только @g.nsu.ru</span><span>★ без паролей</span><span>★ 10 вопросов</span><span>★ общежитие и квартиры</span><span>★ совместимость в процентах</span>
+  <span>★ только @g.nsu.ru</span><span>★ без паролей</span><span>★ 10 вопросов</span><span>★ общежитие и квартиры</span><span>★ совместимость в процентах</span>
+</div></div>
+
+<div class="wrap spec-bar">
+  <div class="group" role="group" aria-label="Theme">
+    <span>Theme</span>
+    <div class="tog">
+      <button type="button" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button type="button" data-theme-set="light" aria-pressed="false">Light</button>
+      <button type="button" data-theme-set="dark-dim" aria-pressed="false">Dark 1 · dimmed</button>
+      <button type="button" data-theme-set="dark-muted" aria-pressed="false">Dark 2 · muted lines</button>
+      <button type="button" data-theme-set="dark-cards" aria-pressed="false">Dark 3 · light cards (default)</button>
+    </div>
+  </div>
+  <div class="group" role="group" aria-label="Language">
+    <span>Language</span>
+    <div class="tog">
+      <button type="button" data-lang-set="ru" aria-pressed="true">RU</button>
+      <button type="button" data-lang-set="en" aria-pressed="false">EN</button>
+      <button type="button" data-lang-set="zh" aria-pressed="false">中文</button>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- Hero -->
+  <section class="wrap section">
+    <span class="tag">Для студентов НГУ</span>
+    <h1 class="display" data-i18n="headline">Соседи, которые живут <mark class="highlight">так же,</mark> как вы</h1>
+    <p class="lead" data-i18n="lead">Короткая анкета о привычках — и комнаты в общежитии и квартиры со свободными местами, отсортированные по совместимости.</p>
+    <div class="row"><a class="btn" href="#forms" data-i18n="cta">Войти по почте →</a><a class="btn secondary" href="#how">Как это работает</a></div>
+  </section>
+
+  <!-- Colors -->
+  <section class="wrap section" id="colors">
+    <h2 class="spec-h">Color</h2>
+    <p class="spec-p">Flat fills with black text on them, on warm paper with a faint 28px grid. Fills are backgrounds only, never text colors. Green, yellow and red always mean match, partial and mismatch. The fills are the same in every theme; the page, surface, text and edge swatches change with the theme switch above.</p>
+    <div class="swatches">
+      <div class="box swatch"><div class="chip-color fill-yellow"></div><div class="txt"><b>Yellow</b><code>#ffd43b</code><br>primary · partial</div></div>
+      <div class="box swatch"><div class="chip-color fill-pink"></div><div class="txt"><b>Pink</b><code>#ff8fab</code><br>accent · logo</div></div>
+      <div class="box swatch"><div class="chip-color fill-blue"></div><div class="txt"><b>Blue</b><code>#74c0fc</code><br>info blocks</div></div>
+      <div class="box swatch"><div class="chip-color fill-green"></div><div class="txt"><b>Green</b><code>#8ce99a</code><br>match · success</div></div>
+      <div class="box swatch"><div class="chip-color fill-purple"></div><div class="txt"><b>Purple</b><code>#b197fc</code><br>questionnaire</div></div>
+      <div class="box swatch"><div class="chip-color fill-orange"></div><div class="txt"><b>Orange</b><code>#ffa94d</code><br>extra card color</div></div>
+      <div class="box swatch"><div class="chip-color fill-red"></div><div class="txt"><b>Red</b><code>#ff6b6b</code><br>mismatch · error</div></div>
+      <div class="box swatch"><div class="chip-color sw-page"></div><div class="txt"><b>Page</b><code>--page</code><br>page background</div></div>
+      <div class="box swatch"><div class="chip-color sw-surface"></div><div class="txt"><b>Surface</b><code>--surface</code><br>boxes, inputs</div></div>
+      <div class="box swatch"><div class="chip-color sw-text"></div><div class="txt"><b>Text</b><code>--text</code><br>text on surfaces</div></div>
+      <div class="box swatch"><div class="chip-color sw-edge"></div><div class="txt"><b>Edge</b><code>--edge</code><br>outlines, shadows</div></div>
+      <div class="box swatch"><div class="chip-color sw-soft"></div><div class="txt"><b>Soft</b><code>--soft</code><br>warning notes</div></div>
+      <div class="box swatch"><div class="chip-color sw-black"></div><div class="txt"><b>Black</b><code>#000000</code><br>badges, ticker (both themes)</div></div>
+    </div>
+  </section>
+
+  <!-- Type -->
+  <section class="wrap section" id="type">
+    <h2 class="spec-h">Type</h2>
+    <p class="spec-p">Rubik for everything, at heavy weights; JetBrains Mono, uppercase, for labels, meta lines and numbers you type. Chinese falls back to Noto Sans SC.</p>
+    <div class="typeset">
+      <span class="spec-label">Display · Rubik 900 · 42–84px</span>
+      <p class="display">Четыре шага. Всё.</p>
+      <span class="spec-label">Title · Rubik 900 · 32–54px</span>
+      <p class="title" data-i18n="title">Сначала самые совместимые</p>
+      <span class="spec-label">Card title · Rubik 900 · 22px</span>
+      <h3 class="card-title-sample">Корпус 7, комната 412</h3>
+      <span class="spec-label">Lead · Rubik 500 · 19px</span>
+      <p class="lead">Процент показывает, насколько привычки похожи, и не гарантирует, что конфликтов не будет.</p>
+      <span class="spec-label">Body · Rubik 500 · 16px / 1.5</span>
+      <p class="body-sample">Добавьте жильё с фото и пригласите соседей по ссылке. Их ответы тоже будут учитываться в проценте совместимости.</p>
+      <span class="spec-label">Meta · JetBrains Mono 700 · 12px · uppercase</span>
+      <p class="meta">4 этаж · 2 жильца · подтверждено 3 дня назад</p>
+    </div>
+  </section>
+
+  <!-- Shape -->
+  <section class="wrap section" id="shape">
+    <h2 class="spec-h">Lines, corners, shadows</h2>
+    <p class="spec-p">Every container has a 3px outline and a hard offset shadow with no blur. Small parts use 2px.</p>
+    <div class="row top">
+      <div class="shape line">3px line</div>
+      <div class="shape thin">2px line</div>
+      <div class="shape r-xs">radius 6</div>
+      <div class="shape r-sm">radius 8</div>
+      <div class="shape r">radius 10</div>
+      <div class="shape sh-sm">shadow 3</div>
+      <div class="shape sh">shadow 5</div>
+      <div class="shape sh-lg">shadow 8</div>
+    </div>
+  </section>
+
+  <!-- Buttons and small parts -->
+  <section class="wrap section" id="buttons">
+    <h2 class="spec-h">Buttons, tags, chips, notes</h2>
+    <span class="spec-label">Buttons: primary · secondary · accent · dark · disabled · busy</span>
+    <div class="row">
+      <button class="btn" type="button">Дальше →</button>
+      <button class="btn secondary" type="button">← Назад</button>
+      <button class="btn accent" type="button">Показать контакты</button>
+      <button class="btn dark" type="button">Войти →</button>
+      <button class="btn" type="button" disabled>Получить код</button>
+      <button class="btn" type="button" data-busy-demo>Сохранить</button>
+      <button class="linkbtn" type="button">Изменить почту</button>
+    </div>
+    <span class="spec-label">Tags</span>
+    <div class="row"><span class="tag">Подборка</span><span class="tag">Шаг 1 · почта</span><span class="tag">1 место</span></div>
+    <span class="spec-label">Chips: match · partial · mismatch</span>
+    <div class="chips"><span class="chip match">сон</span><span class="chip match">уборка</span><span class="chip partial">гости</span><span class="chip mismatch">шум ночью</span></div>
+    <span class="spec-label">Notes: warning · reason · success</span>
+    <div class="stack narrow">
+      <div class="note">⚠ Анкета есть у 1 из 2 жильцов — процент неполный.</div>
+      <div class="note error">✕ Не проходит по вашему жёсткому условию: курение</div>
+      <div class="note success">✓ Жильё подтверждено 3 дня назад</div>
+    </div>
+    <span class="spec-label">Toast</span>
+    <button class="btn secondary" type="button" data-toast-show>Показать уведомление</button>
+  </section>
+
+  <!-- Forms -->
+  <section class="wrap section" id="forms">
+    <h2 class="spec-h">Forms</h2>
+    <div class="auth">
+      <form class="box" action="#" novalidate>
+        <span class="tag">Шаг 1 · почта</span>
+        <h3>Ваша почта</h3>
+        <p>Мы пришлём на почту одноразовый код.</p>
+        <label class="field">Университетская почта<input type="email" value="student1@g.nsu.ru"><small>Только адреса @g.nsu.ru.</small></label>
+        <span class="spec-label">Invalid</span>
+        <label class="field">Университетская почта<input type="email" value="student1@gmail.com" aria-invalid="true" aria-describedby="email-err"><span class="error" id="email-err">Нужен адрес @g.nsu.ru</span></label>
+        <div class="stack">
+          <label class="check"><input type="checkbox" checked><span>Я согласен(на) с <a href="#">политикой обработки персональных данных</a></span></label>
+          <div><button class="btn" type="button">Получить код →</button></div>
+        </div>
+      </form>
+      <form class="box fill-blue" action="#" novalidate>
+        <span class="tag">Шаг 2 · код</span>
+        <h3>Код из письма</h3>
+        <p>Отправили на student1@g.nsu.ru. Нет письма — проверьте «Спам».</p>
+        <div class="code">
+          <input inputmode="numeric" maxlength="1" aria-label="Цифра 1"><input inputmode="numeric" maxlength="1" aria-label="Цифра 2"><input inputmode="numeric" maxlength="1" aria-label="Цифра 3"><input inputmode="numeric" maxlength="1" aria-label="Цифра 4"><input inputmode="numeric" maxlength="1" aria-label="Цифра 5"><input inputmode="numeric" maxlength="1" aria-label="Цифра 6">
+        </div>
+        <div class="timer">Код действует ещё <b>9:42</b></div>
+        <button class="btn dark" type="button">Войти →</button>
+        <p>Ещё раз через 0:48 · <button class="linkbtn" type="button">Изменить почту</button></p>
+      </form>
+    </div>
+  </section>
+
+  <!-- Matches -->
+  <section class="wrap section" id="matches">
+    <div class="shead">
+      <div><span class="tag">Подборка</span><h2 class="title">Сначала самые совместимые</h2></div>
+      <div class="tabs" role="tablist" aria-label="Тип жилья">
+        <button role="tab" type="button" aria-selected="true">Общежитие</button>
+        <button role="tab" type="button" aria-selected="false">Квартиры</button>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" checked><span>Показать неподходящие</span></label>
+    <p class="count">Найдено 14 вариантов</p>
+    <div class="cards">
+      <a class="card box" href="#listing">
+        <div class="top fill-blue"><span class="tag">1 место</span><span class="pct">92%</span></div>
+        <div class="body"><h3 data-i18n="card">Корпус 7, комната 412</h3><span class="meta" data-i18n="meta">4 этаж · 2 жильца</span>
+          <div class="chips"><span class="chip match">сон</span><span class="chip match">уборка</span><span class="chip match">учёба в тишине</span><span class="chip partial">гости</span></div></div>
+      </a>
+      <a class="card box" href="#listing">
+        <div class="top fill-pink"><span class="tag">2 места</span><span class="pct">84%</span></div>
+        <div class="body"><h3>Корпус 4, комната 218</h3><span class="meta">2 этаж · 2 жильца</span>
+          <div class="chips"><span class="chip match">курение</span><span class="chip partial">подъём</span></div>
+          <div class="note">⚠ Анкета есть у 1 из 2 жильцов — процент неполный.</div></div>
+      </a>
+      <a class="card box unfit" href="#listing">
+        <div class="top"><span class="tag">1 место</span><span class="pct">НЕ ПОДХОДИТ</span></div>
+        <div class="body"><h3>Корпус 2, комната 107</h3><span class="meta">1 этаж</span>
+          <div class="note error">✕ Не проходит по вашему жёсткому условию: курение</div></div>
+      </a>
+    </div>
+    <nav class="pager" aria-label="Страницы"><span aria-current="page">1</span><a href="#matches">2</a><a href="#matches">3</a><a href="#matches">→</a></nav>
+  </section>
+
+  <!-- Listing -->
+  <section class="wrap section" id="listing">
+    <div class="shead"><div><span class="tag">Карточка</span><h2 class="title">Корпус 7, комната 412</h2></div></div>
+    <div class="listing">
+      <div class="box gallery">
+        <div class="main fill-blue"></div>
+        <div class="thumbs">
+          <button class="fill-blue" type="button" aria-pressed="true" aria-label="Фото 1"></button>
+          <button class="fill-pink" type="button" aria-pressed="false" aria-label="Фото 2"></button>
+          <button class="fill-green" type="button" aria-pressed="false" aria-label="Фото 3"></button>
+          <button class="fill-orange" type="button" aria-pressed="false" aria-label="Фото 4"></button>
+        </div>
+      </div>
+      <div class="box info">
+        <span class="tag">Общежитие · свободно 1 место</span>
+        <div class="score"><span class="big-pct">92%</span><span class="meta">совместимость<br>с 2 жильцами</span></div>
+        <div class="facts">
+          <div><small>Этаж</small><b>4</b></div><div><small>Окон</small><b>2</b></div>
+          <div><small>Угловая</small><b>Да</b></div><div><small>Вид</small><b>На лес</b></div>
+        </div>
+        <button class="btn accent" type="button" data-reveal="contacts">Показать контакты</button>
+        <div class="contact-box" id="contacts" hidden><p>Telegram: @anya_412</p><p>ВКонтакте: vk.com/liza.nsu</p></div>
+      </div>
+    </div>
+    <div class="breakdown">
+      <div class="match">Сон<small>совпадает</small></div>
+      <div class="match">Подъём<small>совпадает</small></div>
+      <div class="partial">Шум ночью<small>немного отличается</small></div>
+      <div class="match">Уборка<small>совпадает</small></div>
+      <div class="mismatch">Проветривание<small>заметно отличается</small></div>
+    </div>
+  </section>
+
+  <!-- Questionnaire -->
+  <section class="wrap section" id="quiz">
+    <div class="box quiz">
+      <div class="quiz-top"><span class="tag">Шаг 3 из 12 · сон</span><div class="prog" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="now"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+      <h3 class="question">Во сколько вы обычно ложитесь спать?</h3>
+      <div class="opts" data-choice="single">
+        <button type="button" aria-pressed="false">До 23:00</button>
+        <button type="button" aria-pressed="true">С 23:00 до 00:30</button>
+        <button type="button" aria-pressed="false">С 00:30 до 02:00</button>
+        <button type="button" aria-pressed="false">После 02:00</button>
+      </div>
+      <div class="sub">
+        <div class="box"><b>Какие ответы соседей вам подходят</b>
+          <div class="tog" data-choice="multi">
+            <button type="button" aria-pressed="true">До 23:00</button><button type="button" aria-pressed="true">23:00–00:30</button><button type="button" aria-pressed="false">После 02:00</button>
+          </div></div>
+        <div class="box"><b>Насколько это важно (1–10)</b>
+          <div class="range"><input type="range" min="1" max="10" value="7" aria-label="Важность"><output>7</output></div>
+          <p class="hint">1 — почти неважно, 10 — очень важно.</p></div>
+      </div>
+      <div class="box hard"><label class="check"><input type="checkbox"><span>Жёсткое условие: не показывать жильё, где кто-то отвечает иначе</span></label></div>
+      <div class="qnav"><a class="btn secondary" href="#quiz">← Назад</a><a class="btn" href="#quiz">Дальше →</a></div>
+    </div>
+  </section>
+
+  <!-- Steps -->
+  <section class="wrap section" id="how">
+    <div class="shead"><div><span class="tag">Как это работает</span><h2 class="title">Четыре шага. Всё.</h2></div></div>
+    <div class="steps">
+      <div class="box"><span class="n">1</span><h3>Войдите</h3><p>С почтой @g.nsu.ru: без паролей, по одноразовому коду.</p></div>
+      <div class="box"><span class="n">2</span><h3>Ответьте</h3><p>10 вопросов: сон, шум, уборка, гости.</p></div>
+      <div class="box"><span class="n">3</span><h3>Выбирайте</h3><p>Жильё отсортировано по совместимости.</p></div>
+      <div class="box"><span class="n">4</span><h3>Есть место?</h3><p>Добавьте жильё и пригласите соседей.</p></div>
+    </div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast" role="status" hidden>
+  <b>С возвращением!</b>
+  Удаление вашего аккаунта отменено.
+  <button class="close" type="button" aria-label="Закрыть">×</button>
+</div>
+
+<footer class="site-footer"><div class="wrap"><span>nsusosed.ru — подбор соседей для студентов НГУ</span><a href="#">Политика обработки персональных данных</a></div></footer>
+
+</body>
+</html>
