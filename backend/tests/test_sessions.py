@@ -1,9 +1,7 @@
-"""Сессии, выход и гонки на уникальных индексах (нужен Postgres)."""
+"""Сессии и выход (нужен Postgres)."""
 
-import asyncio
 from sqlalchemy import text
 from app.config import settings
-from tests.test_api import DORM
 
 COOKIE = settings.cookie_name
 
@@ -37,23 +35,3 @@ async def test_logout_checks_origin(make_client, login):
     r = await c.post("/api/auth/logout", headers={"Origin": "https://testserver"})
     assert r.status_code == 204
     assert (await c.get("/api/me")).status_code == 401
-
-
-async def test_simultaneous_create_of_the_same_room_is_409_not_500(make_client, login):
-    a, b = make_client(), make_client()
-    await login(a, "a@g.nsu.ru", situation="host")
-    await login(b, "b@g.nsu.ru", situation="host")
-    ra, rb = await asyncio.gather(a.post("/api/listings", json=DORM), b.post("/api/listings", json=DORM))
-    assert sorted([ra.status_code, rb.status_code]) == [201, 409]
-    loser = ra if ra.status_code == 409 else rb
-    assert loser.json()["error"]["code"] == "ROOM_TAKEN"
-
-
-async def test_double_click_on_create_is_409_not_500(make_client, login):
-    c = make_client()
-    await login(c, "a@g.nsu.ru", situation="host")
-    r1, r2 = await asyncio.gather(c.post("/api/listings", json=DORM),
-                                  c.post("/api/listings", json=DORM | {"room_number": 102}))
-    assert sorted([r1.status_code, r2.status_code]) == [201, 409]
-    loser = r1 if r1.status_code == 409 else r2
-    assert loser.json()["error"]["code"] == "ALREADY_IN_ROOM"

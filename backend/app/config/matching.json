@@ -1,9 +1,0 @@
-{
-  "score_version": 1,
-  "rounding": "floor_plus_half",
-  "explanation_thresholds": {
-    "similar": 0.85,
-    "minor_difference": 0.60
-  },
-  "dispersion_threshold": 3
-}

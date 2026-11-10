@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routers import auth, users, profiles, listings, memberships, matching
+from app.routers import auth, meta, users
 from app.utils.errors import AppError, FieldErrors, make_error_response
 
 logger = logging.getLogger("nsusosed")
@@ -19,18 +19,12 @@ logging.basicConfig(level=logging.INFO)
 async def lifespan(app: FastAPI):
     from app.database import async_session_factory
     from app.services.auth_service import purge_deleted_accounts
-    from app.services.photo_service import sweep_orphan_folders
     try:
         async with async_session_factory() as db:
             await purge_deleted_accounts(db)
             await db.commit()
     except Exception:
         logger.exception("Purging deleted accounts failed")
-    try:
-        async with async_session_factory() as db:
-            await sweep_orphan_folders(db)
-    except Exception:
-        logger.exception("Photo folder sweep failed")
     yield
 
 
@@ -38,10 +32,7 @@ app = FastAPI(title="nsusosed API", version="1.0.0", lifespan=lifespan)
 
 app.include_router(auth.router)
 app.include_router(users.router)
-app.include_router(profiles.router)
-app.include_router(listings.router)
-app.include_router(memberships.router)
-app.include_router(matching.router)
+app.include_router(meta.router)
 
 
 @app.get("/health")
@@ -60,12 +51,7 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
 # Проверки в сервисах («комната уже есть», «уже живёт в жилье») не спасают от гонки:
 # два одновременных запроса проходят проверку, и второй упирается в уникальный индекс.
 # Такой отказ — тот же конфликт, что и при проверке, а не 500.
-_UNIQUE_CONFLICTS = {
-    "uq_listings_dorm_addr": ("ROOM_TAKEN", "Карточка для этой комнаты уже существует."),
-    "memberships_user_id_key": ("ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате."),
-    "memberships_pkey": ("ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате."),
-    "profiles_pkey": ("VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию."),
-}
+_UNIQUE_CONFLICTS: dict[str, tuple[str, str]] = {}
 
 
 @app.exception_handler(IntegrityError)

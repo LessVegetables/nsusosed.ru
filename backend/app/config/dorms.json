@@ -1,0 +1,17 @@
+{
+  "_note": "DRAFT — to be replaced by Daniel's full list. lat/lon are filled in and checked in stage 3 (exact, radius 0). faculties: ids from faculties.json whose students are normally housed there; empty = not known yet.",
+  "dorms": [
+    {"id": "1a",  "name": "1а",  "lat": null, "lon": null, "faculties": []},
+    {"id": "1b",  "name": "1б",  "lat": null, "lon": null, "faculties": ["med"]},
+    {"id": "2",   "name": "2",   "lat": null, "lon": null, "faculties": []},
+    {"id": "3",   "name": "3",   "lat": null, "lon": null, "faculties": []},
+    {"id": "4",   "name": "4",   "lat": null, "lon": null, "faculties": []},
+    {"id": "5",   "name": "5",   "lat": null, "lon": null, "faculties": []},
+    {"id": "6",   "name": "6",   "lat": null, "lon": null, "faculties": ["mmf"]},
+    {"id": "7",   "name": "7",   "lat": null, "lon": null, "faculties": []},
+    {"id": "8-1", "name": "8/1", "lat": null, "lon": null, "faculties": []},
+    {"id": "8-2", "name": "8/2", "lat": null, "lon": null, "faculties": ["fen"]},
+    {"id": "9",   "name": "9",   "lat": null, "lon": null, "faculties": []},
+    {"id": "10",  "name": "10",  "lat": null, "lon": null, "faculties": []}
+  ]
+}

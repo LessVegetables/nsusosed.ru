@@ -12,10 +12,9 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+asyncpg://nsusosed:nsusosed@localhost:5432/nsusosed"
     public_origin: str = "http://localhost:8000"
     allowed_email_domains: str = "g.nsu.ru"
-    session_ttl_seconds: int = 604_800
+    # 90 days, sliding: every visit in the second half of the term renews it.
+    session_ttl_seconds: int = 7_776_000
     max_sessions_per_user: int = 5
-    listing_ttl_days: int = 30
-    invite_ttl_days: int = 7
     # Удалённый аккаунт сначала только скрыт: вход в течение этого срока его восстанавливает.
     account_deletion_grace_days: int = 14
     # Фото жилья: файлы на диске, nginx отдаёт их как /media/...
@@ -65,7 +64,8 @@ class Settings(BaseSettings):
 settings = Settings()
 
 _CONFIG_DIR = Path(__file__).resolve().parent / "config"
-with open(_CONFIG_DIR / "questionnaire_v2.json", encoding="utf-8") as _f:
-    QUESTIONNAIRE: dict = json.load(_f)
-with open(_CONFIG_DIR / "matching.json", encoding="utf-8") as _f:
-    MATCHING_CONFIG: dict = json.load(_f)
+with open(_CONFIG_DIR / "faculties.json", encoding="utf-8") as _f:
+    FACULTIES: list[dict] = json.load(_f)["faculties"]
+with open(_CONFIG_DIR / "dorms.json", encoding="utf-8") as _f:
+    DORMS: list[dict] = json.load(_f)["dorms"]
+FACULTY_IDS = {f["id"] for f in FACULTIES}
