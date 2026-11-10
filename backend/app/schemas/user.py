@@ -35,6 +35,8 @@ class UserSelf(BaseModel):
     bio: str
     avatar_url: Optional[str] = None
     contacts: list[Contact] = []
+    # The home this person lives in (as a host), if any.
+    home_id: Optional[UUID] = None
     # Has answers for the current questionnaire version.
     questionnaire_complete: bool
 

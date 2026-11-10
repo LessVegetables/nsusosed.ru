@@ -8,10 +8,11 @@ from app.schemas.error import ErrorDetail, ErrorEnvelope
 def make_error_response(status_code: int, code: str, message: str,
                         fields: Optional[Dict[str, str]] = None,
                         request_id: Optional[str] = None,
-                        retry_after: Optional[int] = None) -> JSONResponse:
+                        retry_after: Optional[int] = None,
+                        data: Optional[dict] = None) -> JSONResponse:
     rid = request_id or str(uuid.uuid4())
     detail = ErrorDetail(code=code, message=message, fields=fields or {},
-                         request_id=rid, retry_after=retry_after)
+                         request_id=rid, retry_after=retry_after, data=data or {})
     envelope = ErrorEnvelope(error=detail)
     headers = {}
     if retry_after is not None:
@@ -31,7 +32,9 @@ class FieldErrors(ValueError):
 class AppError(Exception):
     def __init__(self, status_code: int, code: str, message: str,
                  fields: Optional[Dict[str, str]] = None,
-                 retry_after: Optional[int] = None):
+                 retry_after: Optional[int] = None,
+                 data: Optional[dict] = None):
+        self.data = data or {}
         self.status_code = status_code
         self.code = code
         self.message = message
@@ -60,38 +63,6 @@ def version_conflict():
     return AppError(409, "VERSION_CONFLICT", "Данные изменились. Загрузите актуальную версию.")
 
 
-def room_taken(building: str, room_number: int):
-    return AppError(409, "ROOM_TAKEN", f"Карточка для {building}, комн. {room_number} уже существует.")
-
-
-def already_in_room():
-    return AppError(409, "ALREADY_IN_ROOM", "Вы уже участвуете в другой комнате.")
-
-
-def room_full():
-    return AppError(409, "ROOM_FULL", "Достигнуто максимальное число привязанных жильцов.")
-
-
-def invite_invalid():
-    return AppError(404, "INVITE_INVALID", "Приглашение не найдено или недействительно.")
-
-
-def invite_expired():
-    return AppError(404, "INVITE_EXPIRED", "Приглашение истекло.")
-
-
-def occupancy_conflict():
-    return AppError(409, "OCCUPANCY_CONFLICT", "Занятых мест не может быть меньше числа жильцов.")
-
-
-def profile_required():
-    return AppError(422, "PROFILE_REQUIRED", "Заполните анкету.")
-
-
-def budget_required():
-    return AppError(422, "BUDGET_REQUIRED", "Укажите месячный бюджет.")
-
-
 def rate_limited(retry_after: int):
     return AppError(429, "RATE_LIMITED", f"Слишком много попыток. Повторите через {retry_after} с.",
                     retry_after=retry_after)
@@ -99,26 +70,6 @@ def rate_limited(retry_after: int):
 
 def validation_error(message: str, fields: Optional[Dict[str, str]] = None):
     return AppError(422, "VALIDATION_ERROR", message, fields)
-
-
-def not_admin():
-    return AppError(403, "NOT_ADMIN", "Это могут сделать только админы жилья.")
-
-
-def not_member():
-    return AppError(404, "NOT_MEMBER", "Этот человек не живёт в этом жилье.")
-
-
-def last_admin():
-    return AppError(409, "LAST_ADMIN", "В жилье должен остаться хотя бы один админ.")
-
-
-def target_profile_required():
-    return AppError(422, "TARGET_PROFILE_REQUIRED", "Админом можно сделать только того, кто заполнил анкету.")
-
-
-def leave_home_first():
-    return AppError(409, "LEAVE_HOME_FIRST", "Чтобы искать жильё, сначала покиньте своё.")
 
 
 def photo_bad_type():
@@ -131,3 +82,24 @@ def photo_too_large():
 
 def too_many_photos():
     return AppError(409, "TOO_MANY_PHOTOS", "Достигнуто максимальное число фото.")
+
+
+def room_taken(room_id) -> AppError:
+    """The dorm room is already listed. The page offers to contact the people who listed it."""
+    return AppError(409, "ROOM_TAKEN", "Эта комната уже есть на сайте.", data={"room_id": str(room_id)})
+
+
+def already_in_home() -> AppError:
+    return AppError(409, "ALREADY_IN_HOME", "Вы уже живёте в другом жилье на сайте.")
+
+
+def emoji_taken(index: int) -> AppError:
+    return AppError(409, "EMOJI_TAKEN", "Такие эмодзи уже заняты.", {f"rooms.{index}.emoji": "EMOJI_TAKEN"})
+
+
+def no_permission() -> AppError:
+    return AppError(403, "NO_PERMISSION", "У вас нет прав на это действие.")
+
+
+def room_occupied(index: int) -> AppError:
+    return AppError(409, "ROOM_OCCUPIED", "В этой комнате живут люди.", {f"rooms.{index}": "ROOM_OCCUPIED"})

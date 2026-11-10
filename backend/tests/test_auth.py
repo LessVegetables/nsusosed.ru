@@ -66,10 +66,17 @@ async def test_returning_user_skips_the_name_and_keeps_their_language(db, make_c
     assert (await c.get("/api/me")).json()["language"] == "ru"
 
 
-async def test_wrong_domain_and_missing_privacy(make_client):
+async def test_wrong_domain_and_missing_privacy(make_client, codes):
     c = make_client()
     r = await c.post("/api/auth/request-code", json={"email": "x@gmail.com", "privacy_accepted": True})
     assert r.json()["error"]["fields"] == {"email": "DOMAIN_NOT_ALLOWED"}
+    for bad in ("x@nsu.ru.evil.com", "x@notnsu.ru", "x@.nsu.ru", "@nsu.ru"):
+        r = await c.post("/api/auth/request-code", json={"email": bad, "privacy_accepted": True})
+        assert r.status_code == 422 and "email" in r.json()["error"]["fields"], bad
+    # Any address at nsu.ru or below it is fine.
+    for good in ("a@nsu.ru", "b@G.NSU.RU", "c@mail.sub.nsu.ru"):
+        r = await c.post("/api/auth/request-code", json={"email": good, "privacy_accepted": True})
+        assert r.status_code == 200, good
     r = await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": False})
     assert r.json()["error"]["fields"] == {"privacy_accepted": "MUST_ACCEPT"}
 

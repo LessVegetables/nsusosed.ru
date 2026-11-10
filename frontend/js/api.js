@@ -3,12 +3,13 @@
 // reason codes, which the pages translate themselves (see i18n keys "error.*").
 
 export class ApiError extends Error {
-  constructor(status, { code = 'NETWORK', fields = {}, retry_after: retryAfter = null } = {}) {
+  constructor(status, { code = 'NETWORK', fields = {}, retry_after: retryAfter = null, data = {} } = {}) {
     super(code);
     this.status = status;
     this.code = code;
     this.fields = fields;
     this.retryAfter = retryAfter;
+    this.data = data; // extra facts for some errors, e.g. { room_id } for ROOM_TAKEN
   }
 }
 

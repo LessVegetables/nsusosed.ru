@@ -20,6 +20,7 @@ function header(user) {
   return el('div', { class: 'wrap' },
     el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
     user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, 
+      el('a', { href: '/home', i18n: 'nav.myHome', 'aria-current': current('/home') }),
       el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') })),
     action);
 }

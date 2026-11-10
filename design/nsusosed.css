@@ -519,6 +519,26 @@
   .more[open] summary::before { content: "− "; }
   .more > :not(summary) { margin: 4px 0 0; }
 
+  /* --- Map (NEW, proposal): an outlined block holding a Leaflet map. The pin is a tilted
+     pink block; an apartment's approximate area is a circle drawn by script in --accent. --- */
+  .map { position: relative; z-index: 0; height: 280px; border: var(--border); border-radius: var(--r); box-shadow: var(--sh); overflow: hidden; background: var(--surface); }
+  .map-pin { width: 28px; height: 28px; background: var(--accent); border: var(--border); border-radius: var(--r-sm) var(--r-sm) var(--r-sm) 0; transform: rotate(-45deg); box-shadow: var(--sh-sm); }
+
+  /* --- Emoji label (NEW, proposal): the three emojis that stand in for a room number. --- */
+  .emoji { display: inline-block; padding: 4px 10px; background: var(--surface); color: var(--text); border: var(--border); border-radius: var(--r); box-shadow: var(--sh-sm); font-size: var(--fs-badge); line-height: 1.3; letter-spacing: .08em; white-space: nowrap; }
+
+  /* --- Photo grid (NEW, proposal): square thumbnails; the first is the cover. The last
+     tile can be a label.upload that opens the file picker. --- */
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }
+  .photos figure { position: relative; margin: 0; aspect-ratio: 1; border: var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--unfit); }
+  .photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photos figure:first-child { box-shadow: var(--sh-sm); outline: var(--line-w) solid var(--primary); outline-offset: -9px; }
+  .photos figcaption { position: absolute; left: 6px; right: 6px; bottom: 6px; display: flex; justify-content: space-between; gap: 6px; }
+  .photos figcaption button { min-width: 36px; min-height: 36px; border: var(--border-thin); border-radius: var(--r-xs); background: var(--surface); color: var(--text); font-weight: var(--w-black); cursor: pointer; }
+  .upload { display: grid; place-items: center; aspect-ratio: 1; padding: 10px; text-align: center; cursor: pointer; border: var(--line-w) dashed var(--edge); border-radius: var(--r-sm); background: var(--surface); color: var(--text); font-weight: var(--w-heavy); }
+  .upload:has(input:focus-visible) { outline: var(--line-w) solid var(--focus-ring); outline-offset: 3px; }
+  .upload[aria-busy="true"] { cursor: progress; opacity: .6; }
+
   /* --- Responsive --- */
   @media (max-width: 960px) {
     .listing, .auth { grid-template-columns: 1fr; }

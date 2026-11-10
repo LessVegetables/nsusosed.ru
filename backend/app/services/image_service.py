@@ -6,6 +6,7 @@ it is scaled down, and saved as JPEG under a random name.
 
 from __future__ import annotations
 import io
+import shutil
 import uuid
 import warnings
 from pathlib import Path
@@ -74,6 +75,30 @@ def store(db, folder: Path, jpeg: bytes) -> str:
 
 def remove_after_commit(db, path: Path) -> None:
     on_commit(db, lambda: path.unlink(missing_ok=True))
+
+
+# ── Home photos ───────────────────────────────────────
+
+MAX_HOME_PHOTOS = 10
+HOME_PHOTO_SIDE = 1600
+
+
+def home_dir(home_id) -> Path:
+    return Path(settings.media_dir) / "homes" / str(home_id)
+
+
+def home_photo_url(home_id, file_name: str) -> str:
+    return f"{settings.media_url}/homes/{home_id}/{file_name}"
+
+
+async def encode_home_photo(data: bytes) -> tuple[bytes, int, int]:
+    return await run_in_threadpool(reencode, data, max_side=HOME_PHOTO_SIDE)
+
+
+def remove_home_files(db, home_id) -> None:
+    """Delete a home's photo folder once the home is really gone (after commit)."""
+    folder = home_dir(home_id)
+    on_commit(db, lambda: shutil.rmtree(folder, ignore_errors=True))
 
 
 # ── Avatars ───────────────────────────────────────────

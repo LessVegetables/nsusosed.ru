@@ -220,7 +220,7 @@ for (const button of $('intent-opts').querySelectorAll('button')) {
     setBusy(button, true);
     try {
       user = await put('/me', { intent: button.dataset.value });
-      location.assign(homeFor(user));
+      location.assign(homeFor({ ...user, questionnaire_complete: true }));
     } catch (err) {
       if (!(err instanceof ApiError)) throw err;
       setBusy(button, false);

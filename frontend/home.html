@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="title.home">Моё жильё — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/home.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <div class="wrap section hpage">
+      <header class="qintro">
+        <span class="tag" data-i18n="home.eyebrow">Моё жильё</span>
+        <h1 class="title" id="page-title"></h1>
+        <p class="lead" id="page-lead"></p>
+      </header>
+
+      <!-- Everything below is built by js/pages/home.js from the current state. -->
+      <div id="status"></div>
+      <form id="home-form" novalidate></form>
+      <section id="photos-section" hidden></section>
+      <section id="danger" hidden></section>
+    </div>
+
+    <dialog class="dialog" id="leave-dialog" aria-labelledby="leave-title">
+      <h2 id="leave-title" data-i18n="home.leave.title">Убрать жильё с сайта?</h2>
+      <p data-i18n="home.leave.text">Ты перестанешь числиться в этом жилье. Если ты в нём последний, объявление и фото удалятся.</p>
+      <div class="row">
+        <button class="btn dark" type="button" id="leave-confirm" data-i18n="home.leave.confirm">Да, убрать</button>
+        <button class="btn secondary" type="button" id="leave-cancel" data-i18n="account.cancel" autofocus>Отмена</button>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>

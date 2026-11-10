@@ -207,6 +207,9 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Dialog (NEW, proposal) | `dialog.dialog > h2 + p + .row` | Confirmations; opened with `showModal()` |
 | Avatar (NEW, proposal) | `img.avatar` or `span.avatar` (first letter) | Square, outlined; blue when there is no photo |
 | More (NEW, proposal) | `details.more > summary + .note` | Fold-out hint under a field |
+| Map (NEW, proposal) | `.map` (Leaflet inside), `.map-pin` | Outlined map block; pink pin; apartment area as a circle |
+| Emoji label (NEW, proposal) | `span.emoji` | The three emojis that identify a listing |
+| Photo grid (NEW, proposal) | `.photos > figure (img + figcaption > button…) + label.upload` | Square thumbnails, first = cover; dashed upload tile |
 | Skip link (NEW) | `a.skip.btn` | First element in `<body>`; visible on focus |
 | Fills | `.fill-yellow / pink / blue / green / purple / orange / red` | Background + black text, instead of inline styles |
 

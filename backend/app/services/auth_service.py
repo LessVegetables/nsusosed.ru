@@ -54,7 +54,7 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
         email_masked=masked,
         ttl_seconds=settings.otp_ttl_seconds,
         # Tells the login page whether to ask for a name. This does reveal whether an
-        # address has an account; accepted for a closed @g.nsu.ru audience.
+        # address has an account; accepted for a closed NSU-email audience.
         is_new=await _find_user(db, email) is None,
     )
 
@@ -126,7 +126,10 @@ async def logout(db, request: Request, response: Response) -> None:
 
 
 async def get_me(db, user: User) -> UserSelf:
+    from app.services.home_service import get_membership
+    membership = await get_membership(db, user.id)
     return UserSelf(
+        home_id=membership.home_id if membership else None,
         id=user.id, email=user.email, first_name=user.first_name, last_name=user.last_name,
         language=user.language, gender=user.gender, faculty=user.faculty, is_adult=user.is_adult,
         intent=user.intent, bio=user.bio,
@@ -193,7 +196,11 @@ async def purge_deleted_accounts(db) -> int:
     result = await db.execute(
         select(User).where(User.deleted_at.is_not(None), User.deleted_at < cutoff).with_for_update(skip_locked=True))
     users = list(result.scalars().all())
+    from app.services.home_service import get_membership, remove_member
     for user in users:
+        membership = await get_membership(db, user.id)
+        if membership is not None:
+            await remove_member(db, membership)
         drop_avatar(db, user)
         await db.delete(user)
     if users:

@@ -65,11 +65,32 @@
   .qbar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
   .qbar-progress { flex: 1; min-width: 0; display: grid; gap: 6px; }
   .qbar .prog i { height: 10px; min-width: 0; }
+  .qbar .btn { white-space: nowrap; }
   .qbar .prog { max-width: none; }
   .solo-panel { display: grid; gap: 16px; justify-items: start; }
   .solo-panel > * { margin: 0; }
   .solo-panel .opts { justify-self: stretch; }
   @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
+
+  /* My home: same single column as the questionnaire. */
+  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
+  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
+  .hpage #status { gap: 10px; }
+  .hpage #status:empty { display: none; }
+  .hblock { display: grid; gap: 18px; }
+  .hblock > * { margin: 0; }
+  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
+  .hblock fieldset > * { margin: 0; }
+  .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .hblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .hblock .opts.results { grid-template-columns: 1fr; }
+  .hblock .field textarea { resize: vertical; }
+  .hblock .note[data-error] { margin-top: 8px; }
+  .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
+  .row.spread { justify-content: space-between; }
+  .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
 
   /* Privacy and other documents */
   .doc { max-width: 760px; }

@@ -11,7 +11,8 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://nsusosed:nsusosed@localhost:5432/nsusosed"
     public_origin: str = "http://localhost:8000"
-    allowed_email_domains: str = "g.nsu.ru"
+    # Each domain also allows all of its subdomains (nsu.ru → g.nsu.ru, …).
+    allowed_email_domains: str = "nsu.ru"
     # 90 days, sliding: every visit in the second half of the term renews it.
     session_ttl_seconds: int = 7_776_000
     max_sessions_per_user: int = 5

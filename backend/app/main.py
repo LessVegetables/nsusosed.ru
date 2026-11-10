@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from app.routers import auth, meta, questionnaire, users
+from app.routers import auth, homes, meta, questionnaire, users
 from app.utils.errors import AppError, FieldErrors, make_error_response
 
 logger = logging.getLogger("nsusosed")
@@ -34,6 +34,7 @@ app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(meta.router)
 app.include_router(questionnaire.router)
+app.include_router(homes.router)
 
 
 @app.get("/health")
@@ -46,13 +47,17 @@ async def health():
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     rid = str(uuid.uuid4())
     logger.warning("AppError %s %s: %s", exc.status_code, exc.code, rid)
-    return make_error_response(exc.status_code, exc.code, exc.message, exc.fields, rid, exc.retry_after)
+    return make_error_response(exc.status_code, exc.code, exc.message, exc.fields, rid, exc.retry_after, exc.data)
 
 
 # Проверки в сервисах («комната уже есть», «уже живёт в жилье») не спасают от гонки:
 # два одновременных запроса проходят проверку, и второй упирается в уникальный индекс.
 # Такой отказ — тот же конфликт, что и при проверке, а не 500.
-_UNIQUE_CONFLICTS: dict[str, tuple[str, str]] = {}
+_UNIQUE_CONFLICTS: dict[str, tuple[str, str]] = {
+    "uq_homes_dorm_room": ("ROOM_TAKEN", "Эта комната уже есть на сайте."),
+    "uq_memberships_user": ("ALREADY_IN_HOME", "Вы уже живёте в другом жилье на сайте."),
+    "rooms_emoji_key_key": ("EMOJI_TAKEN", "Такие эмодзи уже заняты."),
+}
 
 
 @app.exception_handler(IntegrityError)
