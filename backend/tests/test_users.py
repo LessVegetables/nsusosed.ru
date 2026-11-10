@@ -17,7 +17,7 @@ async def test_update_is_partial_and_validated(make_client, login):
 
     for bad, field in [({"faculty": "hogwarts"}, "faculty"), ({"language": "de"}, "language"),
                        ({"gender": "x"}, "gender"), ({"intent": "lurk"}, "intent"),
-                       ({"first_name": "   "}, "first_name"), ({"bio": "x" * 501}, "bio")]:
+                       ({"first_name": "   "}, "first_name"), ({"last_name": ""}, "last_name"), ({"bio": "x" * 501}, "bio")]:
         r = await c.put("/api/me", json=bad, headers=ORIGIN)
         assert r.status_code == 422 and field in r.json()["error"]["fields"], bad
 
@@ -29,7 +29,8 @@ async def test_me_requires_a_session(make_client):
 async def test_meta_lists_are_public_and_consistent(make_client):
     meta = (await make_client().get("/api/meta")).json()
     faculty_ids = {f["id"] for f in meta["faculties"]}
-    assert {"mmf", "fen", "med"} <= faculty_ids
+    assert len(faculty_ids) == len(meta["faculties"]) and "other" in faculty_ids
     assert all({"ru", "en", "zh"} <= f.keys() for f in meta["faculties"])
     assert len({d["id"] for d in meta["dorms"]}) == len(meta["dorms"])
-    assert all(set(d["faculties"]) <= faculty_ids for d in meta["dorms"])
+    unknown = {d["name"]: sorted(set(d["faculties"]) - faculty_ids) for d in meta["dorms"] if set(d["faculties"]) - faculty_ids}
+    assert not unknown, f"dorms.json names faculties that are not in faculties.json: {unknown}"

@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     media_dir: str = "/data/media"
     media_url: str = "/media"
     cookie_name: str = "__Host-nsusosed"
+    # Secure cookies need https. Chrome makes an exception for http://localhost, Safari and
+    # some in-app browsers do not, so local development over http drops the flag (and the
+    # __Host- prefix, which browsers only accept on Secure cookies). Derived from PUBLIC_ORIGIN.
+    cookie_secure: bool = True
 
     # ── Yandex Cloud Postbox ────────────────────────────
     # postbox — отправлять письма; log — писать коды в лог (только для разработки)
@@ -54,6 +58,13 @@ class Settings(BaseSettings):
                 "EMAIL_MODE=postbox requires POSTBOX_ACCESS_KEY_ID, POSTBOX_SECRET_ACCESS_KEY "
                 "and POSTBOX_SENDER_EMAIL (set EMAIL_MODE=log for local development)"
             )
+        return self
+
+    @model_validator(mode="after")
+    def relax_cookie_for_http(self) -> "Settings":
+        if self.public_origin.startswith("http://"):
+            self.cookie_secure = False
+            self.cookie_name = self.cookie_name.removeprefix("__Host-")
         return self
 
     @property

@@ -29,7 +29,7 @@ class User(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(254), unique=True, nullable=False, index=True)
     first_name: Mapped[str] = mapped_column(String(40), nullable=False)
-    last_name: Mapped[str] = mapped_column(String(40), nullable=False, default="")
+    last_name: Mapped[str] = mapped_column(String(40), nullable=False)
     language: Mapped[str] = mapped_column(String(2), nullable=False, default="ru")
     # Filled in during onboarding; None = not asked yet.
     gender: Mapped[str | None] = mapped_column(String(1), nullable=True)
@@ -51,3 +51,5 @@ class User(Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     sessions: Mapped[list["Session"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    contacts: Mapped[list["UserContact"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", order_by="UserContact.position", lazy="selectin")

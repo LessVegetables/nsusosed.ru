@@ -5,7 +5,7 @@ from sqlalchemy import text
 EMAIL = "student@g.nsu.ru"
 
 
-NAME = {"first_name": "Аня"}
+NAME = {"first_name": "Аня", "last_name": "Ким"}
 
 
 def wrong(code: str) -> str:
@@ -43,9 +43,12 @@ async def test_first_login_needs_a_name_and_does_not_burn_the_code(db, make_clie
     c = make_client()
     await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
     r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]})
-    assert r.status_code == 422 and r.json()["error"]["fields"] == {"first_name": "MISSING"}
-    assert await count_users(db, EMAIL) == 0
+    assert r.status_code == 422
+    assert r.json()["error"]["fields"] == {"first_name": "MISSING", "last_name": "MISSING"}
     r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL], "first_name": "Аня"})
+    assert r.json()["error"]["fields"] == {"last_name": "MISSING"}
+    assert await count_users(db, EMAIL) == 0
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]} | NAME)
     assert r.status_code == 200
 
 

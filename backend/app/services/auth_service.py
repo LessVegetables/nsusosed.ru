@@ -10,7 +10,10 @@ from app.schemas.auth import (
     RequestCodeRequest, RequestCodeResponse,
     VerifyCodeRequest, AuthResponse,
 )
-from app.schemas.user import UserSelf, UserUpdate
+from app.models.user_contact import UserContact
+from app.schemas.user import Contact, ContactsUpdate, UserSelf, UserUpdate
+from app.services.image_service import avatar_url, drop_avatar
+from app.utils.contact import PRIMARY_TYPES, contact_url, normalize_contact
 from app.utils.security import normalize_email, validate_email_domain
 from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
 from app.utils.errors import AppError, validation_error, invalid_code
@@ -40,7 +43,7 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
 
     code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
 
-    sent = await send_otp_email(email, code)
+    sent = await send_otp_email(email, code, body.language or "ru")
     if not sent:
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
 
@@ -68,8 +71,9 @@ async def verify_code(
     user = await _find_user(db, email)
     is_new = user is None
     # Checked before the code so that a missing name doesn't burn an attempt.
-    if is_new and not body.first_name:
-        raise validation_error("Укажите имя.", {"first_name": "MISSING"})
+    if is_new and not (body.first_name and body.last_name):
+        raise validation_error("Укажите имя и фамилию.", {
+            field: "MISSING" for field in ("first_name", "last_name") if not getattr(body, field)})
 
     otp = await verify_otp(db, email, body.code.strip())
     if otp is None:
@@ -84,7 +88,7 @@ async def verify_code(
         user = User(
             email=email,
             first_name=body.first_name,
-            last_name=body.last_name or "",
+            last_name=body.last_name,
             language=body.language or "ru",
             privacy_version=1,
             privacy_accepted_at=otp.privacy_accepted_at or datetime.now(timezone.utc),
@@ -125,7 +129,8 @@ async def get_me(db, user: User) -> UserSelf:
         id=user.id, email=user.email, first_name=user.first_name, last_name=user.last_name,
         language=user.language, gender=user.gender, faculty=user.faculty, is_adult=user.is_adult,
         intent=user.intent, bio=user.bio,
-        avatar_url=f"{settings.media_url}/avatars/{user.avatar_file}" if user.avatar_file else None,
+        avatar_url=avatar_url(user.avatar_file),
+        contacts=[Contact(type=c.type, value=c.value, url=contact_url(c.type, c.value)) for c in user.contacts],
         questionnaire_complete=False,  # stage 2
     )
 
@@ -136,6 +141,33 @@ async def update_me(db, user: User, body: UserUpdate) -> UserSelf:
         raise validation_error("Неизвестный факультет.", {"faculty": "UNKNOWN"})
     for field, value in changes.items():
         setattr(user, field, value)
+    await db.flush()
+    return await get_me(db, user)
+
+
+async def update_contacts(db, user: User, body: ContactsUpdate) -> UserSelf:
+    """Replace the person's contact list. An empty list is fine (a seeker needs none);
+    a non-empty one must include a phone, Telegram or VK."""
+    errors: dict[str, str] = {}
+    cleaned: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for i, item in enumerate(body.contacts):
+        value, reason = normalize_contact(item.type, item.value)
+        if reason is None and item.type in seen:
+            reason = "DUPLICATE_TYPE"
+        if reason:
+            errors[f"contacts.{i}.{'type' if reason in ('INVALID_CHOICE', 'DUPLICATE_TYPE') else 'value'}"] = reason
+            continue
+        seen.add(item.type)
+        cleaned.append((item.type, value))
+    if not errors and cleaned and not seen & set(PRIMARY_TYPES):
+        errors["contacts"] = "NEED_PRIMARY"
+    if errors:
+        raise validation_error("Проверьте контакты.", errors)
+
+    user.contacts.clear()
+    await db.flush()  # delete before insert: (user, type) is unique
+    user.contacts.extend(UserContact(position=i, type=t, value=v) for i, (t, v) in enumerate(cleaned))
     await db.flush()
     return await get_me(db, user)
 
@@ -161,6 +193,7 @@ async def purge_deleted_accounts(db) -> int:
         select(User).where(User.deleted_at.is_not(None), User.deleted_at < cutoff).with_for_update(skip_locked=True))
     users = list(result.scalars().all())
     for user in users:
+        drop_avatar(db, user)
         await db.delete(user)
     if users:
         await db.flush()

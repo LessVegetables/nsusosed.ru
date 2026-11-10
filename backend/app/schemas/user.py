@@ -5,6 +5,23 @@ from pydantic import BaseModel, Field, field_validator
 from app.schemas.auth import Language, clean_name
 
 
+class Contact(BaseModel):
+    type: str
+    value: str
+    url: Optional[str] = None  # tel:, t.me/…; None where the messenger has no profile links
+
+
+class ContactIn(BaseModel):
+    type: str = Field(..., max_length=10)
+    value: str = Field(..., max_length=200)
+
+
+class ContactsUpdate(BaseModel):
+    """The whole list at once, in display order."""
+
+    contacts: list[ContactIn] = Field(..., max_length=7)
+
+
 class UserSelf(BaseModel):
     id: UUID
     email: str
@@ -17,6 +34,7 @@ class UserSelf(BaseModel):
     intent: Optional[str] = None
     bio: str
     avatar_url: Optional[str] = None
+    contacts: list[Contact] = []
     # Has answers for the current questionnaire version.
     questionnaire_complete: bool
 
@@ -25,7 +43,7 @@ class UserUpdate(BaseModel):
     """Partial update: only the fields that were sent change."""
 
     first_name: Optional[str] = Field(default=None, min_length=1, max_length=40)
-    last_name: Optional[str] = Field(default=None, max_length=40)
+    last_name: Optional[str] = Field(default=None, min_length=1, max_length=40)
     language: Optional[Language] = None
     gender: Optional[Literal["m", "f"]] = None
     faculty: Optional[str] = Field(default=None, max_length=20)

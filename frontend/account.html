@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="title.account">Аккаунт — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/account.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <section class="wrap section account">
+      <div>
+        <span class="tag mono" id="email"></span>
+        <h1 class="title" data-i18n="account.title">Аккаунт</h1>
+      </div>
+
+      <div class="account-grid">
+        <form class="box pad" id="profile" novalidate>
+          <h2 data-i18n="account.profile.title">Профиль</h2>
+          <p class="hint" data-i18n="account.profile.hint">Имя, фото и пара слов о себе: их видят те, с кем ты подбираешься в соседи.</p>
+          <div class="row">
+            <span id="avatar"></span>
+            <div class="stack">
+              <label class="btn secondary"><input class="sr-only" type="file" id="avatar-file" accept="image/jpeg,image/png,image/webp"><span data-i18n="account.avatar.upload">Загрузить фото</span></label>
+              <div><button class="linkbtn" type="button" id="avatar-remove" data-i18n="account.avatar.remove" hidden>Убрать фото</button></div>
+            </div>
+          </div>
+          <label class="field"><span data-i18n="login.name.first">Имя</span>
+            <input id="first-name" autocomplete="given-name" maxlength="40" aria-describedby="first-name-err" required>
+            <span class="error" id="first-name-err" hidden></span>
+          </label>
+          <label class="field"><span data-i18n="login.name.last">Фамилия</span>
+            <input id="last-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
+            <span class="error" id="last-name-err" hidden></span>
+          </label>
+          <label class="field"><span data-i18n="account.bio.label">О себе</span>
+            <textarea id="bio" rows="4" maxlength="500" aria-describedby="bio-hint"></textarea>
+            <small id="bio-hint" data-i18n="account.bio.hint">Курс, чем увлекаешься, что важно в соседях. До 500 знаков.</small>
+          </label>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <form class="box pad" id="about" novalidate>
+          <h2 data-i18n="account.about.title">Что ищешь</h2>
+          <fieldset>
+            <legend data-i18n="account.intent.label">Зачем ты здесь</legend>
+            <div class="opts" data-choice="single" id="intent">
+              <button type="button" data-value="seek_dorm" aria-pressed="false" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
+              <button type="button" data-value="seek_apt" aria-pressed="false" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
+              <button type="button" data-value="host" aria-pressed="false" data-i18n="account.intent.host">Ищу соседа к себе</button>
+              <button type="button" data-value="join" aria-pressed="false" data-i18n="account.intent.join">Меня пригласили в жильё</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="account.gender.label">Пол</legend>
+            <div class="opts" data-choice="single" id="gender">
+              <button type="button" data-value="f" aria-pressed="false" data-i18n="account.gender.f">Женский</button>
+              <button type="button" data-value="m" aria-pressed="false" data-i18n="account.gender.m">Мужской</button>
+            </div>
+            <p class="hint" data-i18n="account.gender.hint">Комнаты в общежитиях раздельные: показываем те, куда тебя могут поселить.</p>
+          </fieldset>
+          <label class="field"><span data-i18n="account.faculty.label">Факультет</span>
+            <select id="faculty"></select>
+            <small data-i18n="account.faculty.hint">От факультета зависит, в каких общежитиях селят.</small>
+          </label>
+          <div>
+            <label class="check"><input type="checkbox" id="is-adult"><span data-i18n="account.adult.label">Мне есть 18</span></label>
+            <p class="hint" data-i18n="account.adult.hint">Дату рождения не спрашиваем. Младше 18 — не покажем вопросы о никотине.</p>
+          </div>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <form class="box pad" id="contacts" novalidate>
+          <h2 data-i18n="account.contacts.title">Как с тобой связаться</h2>
+          <p class="hint" data-i18n="account.contacts.hint">Общение идёт вне сайта. Контакты видят только вошедшие студенты — и только когда сами попросят показать. Если сдаёшь место, нужен хотя бы один основной способ: телефон, Telegram или VK.</p>
+          <p class="note error" id="contacts-err" role="alert" hidden></p>
+          <div id="contact-fields" class="stack"></div>
+          <p class="hint" data-i18n="account.contacts.meta">* Instagram принадлежит компании Meta, которая признана в России экстремистской организацией и запрещена.</p>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <div class="account-side">
+          <section class="box pad" id="language" aria-labelledby="language-title">
+            <h2 id="language-title" data-i18n="account.language.title">Язык</h2>
+            <div id="lang"></div>
+            <p class="hint" data-i18n="account.language.hint">Сохраняется в аккаунте: сайт и письма будут на этом языке на любом устройстве.</p>
+          </section>
+
+          <section class="box pad" aria-labelledby="session-title">
+            <h2 id="session-title" data-i18n="account.session.title">Вход</h2>
+            <p class="hint" data-i18n="account.session.hint">На этом устройстве ты остаёшься в аккаунте около трёх месяцев без повторного входа.</p>
+            <div class="row">
+              <button class="btn secondary" type="button" id="logout" data-i18n="account.logout">Выйти</button>
+              <button class="linkbtn" type="button" id="delete" data-i18n="account.delete">Удалить аккаунт</button>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <dialog class="dialog" id="delete-dialog" aria-labelledby="delete-title">
+      <h2 id="delete-title" data-i18n="account.delete.title">Удалить аккаунт?</h2>
+      <p data-i18n="account.delete.text">Он сразу скроется от всех, а через 14 дней сотрётся насовсем. Если передумаешь — просто войди по почте в эти 14 дней.</p>
+      <div class="row">
+        <button class="btn dark" type="button" id="delete-confirm" data-i18n="account.delete.confirm">Удалить</button>
+        <button class="btn secondary" type="button" id="delete-cancel" data-i18n="account.cancel" autofocus>Отмена</button>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>

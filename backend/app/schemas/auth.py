@@ -15,6 +15,8 @@ def clean_name(v):
 class RequestCodeRequest(BaseModel):
     email: str = Field(..., max_length=254)
     privacy_accepted: bool
+    # Language of the email; the page's current language.
+    language: Optional[Language] = None
 
     @field_validator("privacy_accepted")
     @classmethod

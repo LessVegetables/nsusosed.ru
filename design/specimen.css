@@ -43,3 +43,4 @@
 @media (max-width: 760px) {
   .two { grid-template-columns: 1fr; }
 }
+.dialog[open] { position: static; margin: 0; } /* shown in the page flow here, not as a modal */

@@ -7,14 +7,14 @@
 // It resolves to { user } (null for a guest) after the page is translated and shown.
 
 import { ApiError, get } from './api.js';
-import { detectLang, setLang, translate } from './i18n.js';
-import { KEYS, local } from './storage.js';
-import { el } from './ui.js';
+import { detectLang, setLang, t, translate } from './i18n.js';
+import { KEYS, local, session } from './storage.js';
+import { el, toast } from './ui.js';
 
 function header(user) {
   const action = user
     ? el('a', { class: 'btn secondary', href: '/account', i18n: 'nav.account' })
-    : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
+    : location.pathname.startsWith('/login') ? null : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
   return el('div', { class: 'wrap' },
     el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
     action);
@@ -64,5 +64,12 @@ export async function initPage({ auth = 'optional' } = {}) {
   document.querySelector('.site-footer')?.replaceChildren(footer(user));
   translate();
   document.documentElement.dataset.ready = '';
+
+  // A message left by the previous page ("flash.restored" → .title / .text).
+  const flash = session.get(KEYS.flash);
+  if (flash) {
+    session.remove(KEYS.flash);
+    toast(t(`${flash}.title`), t(`${flash}.text`));
+  }
   return { user };
 }

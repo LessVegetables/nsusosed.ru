@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="title.login">Вход — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/login.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <section class="wrap section login">
+      <div id="lang"></div>
+
+      <!-- Step 1: email -->
+      <form class="box pad stack" id="step-email" novalidate>
+        <h1 class="title" data-i18n="login.email.title">Твоя почта НГУ</h1>
+        <p data-i18n="login.email.text">Пришлём на неё одноразовый код.</p>
+        <label class="field"><span data-i18n="login.email.label">Университетская почта</span>
+          <input type="email" id="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="i.ivanov@g.nsu.ru" aria-describedby="email-err" required>
+          <span class="error" id="email-err" hidden></span>
+        </label>
+        <div>
+          <label class="check"><input type="checkbox" id="privacy" aria-describedby="privacy-err"><span><span data-i18n="login.privacy.before">Я согласен(на) с</span> <a href="/privacy" target="_blank" rel="noopener" data-i18n="login.privacy.link">политикой обработки персональных данных</a></span></label>
+          <p class="note error" id="privacy-err" hidden></p>
+        </div>
+        <div><button class="btn" type="submit" data-i18n="login.email.submit">Получить код →</button></div>
+        <p class="note" id="email-note" hidden></p>
+        <p class="hint"><span data-i18n="login.noEmail">Ещё нет почты @g.nsu.ru? Напиши в наш Telegram-бот</span> <a href="https://t.me/nsusosed_bot" target="_blank" rel="noopener">@nsusosed_bot</a> <span data-i18n="login.noEmail.or">или на</span> <a href="mailto:support@nsusosed.ru">support@nsusosed.ru</a>.</p>
+      </form>
+
+      <!-- Step 2: name (first login only) -->
+      <form class="box pad stack fill-purple" id="step-name" novalidate hidden>
+        <h1 class="title" data-i18n="login.name.title">Пока код летит на почту — как тебя зовут?</h1>
+        <label class="field"><span data-i18n="login.name.first">Имя</span>
+          <input id="first-name" name="given-name" autocomplete="given-name" maxlength="40" aria-describedby="first-name-err" required>
+          <span class="error" id="first-name-err" hidden></span>
+        </label>
+        <label class="field"><span data-i18n="login.name.last">Фамилия</span>
+          <input id="last-name" name="family-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
+          <span class="error" id="last-name-err" hidden></span>
+        </label>
+        <div><button class="btn dark" type="submit" data-i18n="login.name.submit">Дальше →</button></div>
+      </form>
+
+      <!-- Step 3: code -->
+      <form class="box pad stack fill-blue" id="step-code" novalidate hidden>
+        <h1 class="title" id="code-title"></h1>
+        <p id="code-text"></p>
+        <div class="code" id="code" role="group" data-i18n-attr="aria-label:login.code.label" aria-describedby="code-err">
+          <input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <p class="note error" id="code-err" hidden></p>
+        <div class="timer" id="timer" hidden><span data-i18n="login.code.validFor">Код действует ещё</span> <b id="timer-left"></b></div>
+        <div><button class="btn dark" type="submit" data-i18n="login.code.submit">Войти →</button></div>
+        <p class="hint">
+          <span id="resend-wait"></span>
+          <button class="linkbtn" type="button" id="resend" data-i18n="login.code.resend" hidden>Отправить код ещё раз</button>
+          · <button class="linkbtn" type="button" id="change-email" data-i18n="login.code.changeEmail">Изменить почту</button>
+        </p>
+      </form>
+    </section>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>

@@ -253,6 +253,7 @@
     border-right-color: transparent; border-radius: 50%; animation: busy .7s linear infinite;
   }
   @keyframes busy { to { transform: rotate(360deg); } }
+  .btn:has(input:focus-visible) { outline: var(--line-w) solid var(--focus-ring); outline-offset: 3px; } /* NEW: a file input inside a label.btn */
   .linkbtn { background: none; border: 0; padding: 0; font-weight: var(--w-heavy); text-decoration: underline; cursor: pointer; }
 
   /* --- Tag: small mono label in a pill (eyebrows, card badges, step labels). --- */
@@ -497,6 +498,26 @@
   /* --- Skip link (NEW): first thing a keyboard reaches; visible only while focused. --- */
   .skip { position: absolute; left: var(--gutter); top: -100px; z-index: 50; }
   .skip:focus { top: 10px; }
+
+  /* --- Dialog (NEW, proposal): a box over a dimmed page, for confirmations. Native <dialog>. --- */
+  .dialog { width: min(440px, calc(100vw - 2 * var(--gutter))); padding: 22px; background: var(--surface); color: var(--text); border: var(--border); border-radius: var(--r); box-shadow: var(--sh-lg); }
+  .dialog::backdrop { background: var(--black); opacity: .6; }
+  .dialog h2 { margin: 0 0 10px; font-size: var(--fs-card); }
+  .dialog p { margin: 0 0 18px; }
+
+  /* --- Avatar (NEW, proposal): square photo with the usual outline; a letter when there is none. --- */
+  .avatar {
+    flex: none; width: 96px; height: 96px; display: grid; place-items: center; overflow: hidden; object-fit: cover;
+    border: var(--border); border-radius: var(--r); box-shadow: var(--sh-sm); background: var(--info); color: var(--on-fill);
+    font-size: var(--fs-badge); font-weight: var(--w-black); text-transform: uppercase;
+  }
+
+  /* --- More (NEW, proposal): a fold-out hint under a field ("how do I open my DMs?"). --- */
+  .more summary { display: inline-block; min-height: 32px; padding: 6px 0; cursor: pointer; font-size: var(--fs-small); font-weight: var(--w-heavy); text-decoration: underline; list-style: none; }
+  .more summary::-webkit-details-marker { display: none; }
+  .more summary::before { content: "+ "; }
+  .more[open] summary::before { content: "− "; }
+  .more > :not(summary) { margin: 4px 0 0; }
 
   /* --- Responsive --- */
   @media (max-width: 960px) {

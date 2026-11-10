@@ -18,6 +18,38 @@
   .hero .lead { margin: 0; }
   .hero-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
 
+  /* Login: one narrow column; the three steps replace each other. */
+  .login { max-width: 520px; display: grid; gap: var(--gap); }
+  .login form { display: grid; gap: 16px; justify-items: start; }
+  .login form > * { margin: 0; }
+  .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  .hint { font-size: var(--fs-small); font-weight: var(--w-semibold); }
+
+  /* Landing: the "not a student?" box */
+  .about { display: grid; gap: 14px; justify-items: start; }
+  .about > * { margin: 0; }
+  .about p { max-width: 46em; }
+
+  /* Account: boxes in one column on phones, two on wide screens (not one stretched column). */
+  .account { display: grid; gap: var(--gap); }
+  .account .title { margin-top: 10px; }
+  .account-grid { display: grid; gap: var(--gap); align-items: start; }
+  .account-side { display: grid; gap: var(--gap); }
+  @media (min-width: 961px) { .account-grid { grid-template-columns: 1fr 1fr; } }
+  .account-grid .box { display: grid; gap: 16px; justify-items: start; }
+  .account-grid .box > * { margin: 0; }
+  .account-grid .box > :is(.field, .note, fieldset, #contact-fields) { justify-self: stretch; }
+  .account-grid fieldset { border: 0; padding: 0; min-width: 0; display: grid; gap: 10px; }
+  .account-grid legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .account-grid .opts button { padding: 14px; font-size: var(--fs-body); }
+  .account-grid .field .tag { margin-left: 8px; padding: 3px 7px; }
+  .account-grid .field textarea { resize: vertical; }
+
+  /* Privacy and other documents */
+  .doc { max-width: 760px; }
+  .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }
+  .doc li { margin-bottom: 8px; }
+
   /* 404 and other one-box pages */
   .solo { max-width: 560px; margin: 0 auto; }
   .solo .box { display: grid; gap: 16px; justify-items: start; }

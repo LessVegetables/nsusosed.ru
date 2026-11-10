@@ -34,9 +34,15 @@ export function toast(title, text = '', { error = false, ms = 6000 } = {}) {
   return node;
 }
 
+/** "45 s" under a minute, otherwise whole minutes rounded up ("19 min"). */
+export function waitText(seconds) {
+  if (!seconds) return '';
+  return seconds < 60 ? t('time.seconds', { n: seconds }) : t('time.minutes', { n: Math.ceil(seconds / 60) });
+}
+
 /** Translate an ApiError into a sentence for the person. */
 export function errorText(err) {
   const key = `error.${err.code}`;
-  const text = t(key, { seconds: err.retryAfter });
+  const text = t(key, { time: waitText(err.retryAfter) });
   return text === key ? t('error.generic') : text;
 }

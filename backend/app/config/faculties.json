@@ -1,5 +1,5 @@
 {
-  "_note": "DRAFT — to be verified by Daniel. Names are shown from here; ids are stored on users.",
+  "_note": "Checked against nsu.ru/n/education/departments-sections/ and english.nsu.ru (2026-11-10). Names are shown from here; ids are stored on users, so never rename an id.",
   "faculties": [
     {"id": "mmf",  "ru": "ММФ — Механико-математический факультет", "en": "Mechanics and Mathematics", "zh": "力学数学系"},
     {"id": "ff",   "ru": "ФФ — Физический факультет", "en": "Physics", "zh": "物理系"},
@@ -9,7 +9,7 @@
     {"id": "ef",   "ru": "ЭФ — Экономический факультет", "en": "Economics", "zh": "经济系"},
     {"id": "gi",   "ru": "ГИ — Гуманитарный институт", "en": "Institute for the Humanities", "zh": "人文学院"},
     {"id": "ifp",  "ru": "ИФП — Институт философии и права", "en": "Institute of Philosophy and Law", "zh": "哲学与法学院"},
-    {"id": "med",  "ru": "ИМПЗ — Институт медицины и психологии", "en": "Institute of Medicine and Psychology", "zh": "医学与心理学院"},
+    {"id": "immt",  "ru": "ИММТ — Институт медицины и медицинских технологий", "en": "Institute of Medicine and Medical Technologies", "zh": "医学与医疗技术学院"},
     {"id": "iir",  "ru": "ИИР — Институт интеллектуальной робототехники", "en": "Institute of Intelligent Robotics", "zh": "智能机器人学院"},
     {"id": "pish", "ru": "ПИШ — Передовая инженерная школа", "en": "Advanced Engineering School", "zh": "先进工程学院"},
     {"id": "other", "ru": "Другое", "en": "Other", "zh": "其他"}
