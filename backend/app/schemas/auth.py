@@ -49,5 +49,8 @@ class AuthResponse(BaseModel):
     user_id: UUID
     first_name: str
     is_new: bool
+    # Enough for the login page to send the person to their own page.
+    questionnaire_complete: bool
+    intent: Optional[str] = None
     # The account was waiting to be erased and this login restored it.
     account_restored: bool = False

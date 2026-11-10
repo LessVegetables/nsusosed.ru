@@ -1,0 +1,798 @@
+{
+ "version": 1,
+ "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead.",
+ "blocks": [
+  {
+   "id": "A",
+   "title": {
+    "ru": "Сон",
+    "en": "Sleep",
+    "zh": "睡眠"
+   }
+  },
+  {
+   "id": "B",
+   "title": {
+    "ru": "Порядок",
+    "en": "Tidiness",
+    "zh": "整洁"
+   }
+  },
+  {
+   "id": "C",
+   "title": {
+    "ru": "Шум и время в комнате",
+    "en": "Noise and time in the room",
+    "zh": "噪音与在房间的时间"
+   }
+  },
+  {
+   "id": "D",
+   "title": {
+    "ru": "Гости",
+    "en": "Guests",
+    "zh": "访客"
+   }
+  },
+  {
+   "id": "E",
+   "title": {
+    "ru": "Никотин и запахи",
+    "en": "Nicotine and smells",
+    "zh": "尼古丁与气味"
+   },
+   "note": {
+    "ru": "Этот ответ нужен только для подбора по запахам. Его не видят ни другие студенты, ни университет 🔒. Многие используют вейп или снюс — нам важно, чтобы рядом не оказался человек, которому от запаха плохо.",
+    "en": "This answer is only used to match people by smells. Neither other students nor the university can see it 🔒. Many people vape or use snus — what matters to us is that nobody ends up next to someone the smell makes unwell.",
+    "zh": "这个回答只用于按气味进行匹配，其他学生和学校都看不到 🔒。很多人用电子烟或唇烟——我们只想避免把对气味感到不适的人安排在旁边。"
+   }
+  },
+  {
+   "id": "F",
+   "title": {
+    "ru": "Вечера и ночи",
+    "en": "Evenings and nights",
+    "zh": "晚上与夜间"
+   }
+  },
+  {
+   "id": "G",
+   "title": {
+    "ru": "Общее и воздух",
+    "en": "Sharing and fresh air",
+    "zh": "共用物品与通风"
+   }
+  },
+  {
+   "id": "H",
+   "title": {
+    "ru": "Если что-то не так",
+    "en": "When something bothers you",
+    "zh": "遇到不满时"
+   }
+  }
+ ],
+ "questions": [
+  {
+   "id": "A1",
+   "block": "A",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Во сколько ты обычно ложишься спать — выключаешь свет и экран — перед учебным днём?",
+    "en": "What time do you usually go to bed — lights and screen off — before a class day?",
+    "zh": "上课日的前一晚，你通常几点睡觉（关灯、放下手机）？"
+   },
+   "options": [
+    {
+     "ru": "До 23:00",
+     "en": "Before 23:00",
+     "zh": "23:00 之前"
+    },
+    {
+     "ru": "23:00–23:59",
+     "en": "23:00–23:59",
+     "zh": "23:00–23:59"
+    },
+    {
+     "ru": "00:00–00:59",
+     "en": "00:00–00:59",
+     "zh": "00:00–00:59"
+    },
+    {
+     "ru": "01:00–01:59",
+     "en": "01:00–01:59",
+     "zh": "01:00–01:59"
+    },
+    {
+     "ru": "02:00 или позже",
+     "en": "02:00 or later",
+     "zh": "02:00 或更晚"
+    }
+   ]
+  },
+  {
+   "id": "A2",
+   "block": "A",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "А перед выходным, когда утром никуда не надо?",
+    "en": "And before a day off, when you don't have to be anywhere in the morning?",
+    "zh": "那休息日的前一晚、早上不用出门的时候呢？"
+   },
+   "options": [
+    {
+     "ru": "До 00:00",
+     "en": "Before 00:00",
+     "zh": "00:00 之前"
+    },
+    {
+     "ru": "00:00–00:59",
+     "en": "00:00–00:59",
+     "zh": "00:00–00:59"
+    },
+    {
+     "ru": "01:00–01:59",
+     "en": "01:00–01:59",
+     "zh": "01:00–01:59"
+    },
+    {
+     "ru": "02:00–02:59",
+     "en": "02:00–02:59",
+     "zh": "02:00–02:59"
+    },
+    {
+     "ru": "03:00 или позже",
+     "en": "03:00 or later",
+     "zh": "03:00 或更晚"
+    }
+   ]
+  },
+  {
+   "id": "A3",
+   "block": "A",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Что тебе нужно, чтобы уснуть?",
+    "en": "What do you need to fall asleep?",
+    "zh": "你需要什么条件才能入睡？"
+   },
+   "options": [
+    {
+     "ru": "Усну и при свете, и при разговоре рядом",
+     "en": "I can fall asleep with the light on and people talking nearby",
+     "zh": "开着灯、旁边有人说话也能睡着"
+    },
+    {
+     "ru": "Хватит, если выключен верхний свет; экран и тихий разговор не мешают",
+     "en": "The main light off is enough; a screen and quiet talking don't bother me",
+     "zh": "关掉顶灯就行；屏幕的光和小声说话不影响我"
+    },
+    {
+     "ru": "Нужна темнота; свет экрана и шёпот мешают",
+     "en": "I need darkness; screen light and whispering bother me",
+     "zh": "需要黑暗；屏幕的光和耳语都会影响我"
+    },
+    {
+     "ru": "Нужны полная темнота и тишина; просыпаюсь даже от вибрации телефона",
+     "en": "I need complete darkness and silence; even a phone vibrating wakes me up",
+     "zh": "需要完全黑暗和安静；手机震动都会把我吵醒"
+    }
+   ]
+  },
+  {
+   "id": "A4",
+   "block": "A",
+   "type": "single",
+   "required": false,
+   "hidden": false,
+   "text": {
+    "ru": "Сколько будильников обычно звонит, пока ты встанешь?",
+    "en": "How many alarms usually go off before you get up?",
+    "zh": "你起床前闹钟通常要响几次？"
+   },
+   "options": [
+    {
+     "ru": "Встаю сам или с первого",
+     "en": "I get up on my own or with the first one",
+     "zh": "自己醒，或第一个闹钟就起"
+    },
+    {
+     "ru": "2–3",
+     "en": "2–3",
+     "zh": "2–3"
+    },
+    {
+     "ru": "4 и больше",
+     "en": "4 or more",
+     "zh": "4 次或更多"
+    }
+   ]
+  },
+  {
+   "id": "B1",
+   "block": "B",
+   "type": "single",
+   "required": true,
+   "hidden": true,
+   "text": {
+    "ru": "После еды посуда у тебя обычно моется:",
+    "en": "After you eat, your dishes usually get washed:",
+    "zh": "吃完饭后，你的餐具通常："
+   },
+   "options": [
+    {
+     "ru": "Сразу или в течение часа",
+     "en": "Right away or within an hour",
+     "zh": "马上洗，或一小时内洗"
+    },
+    {
+     "ru": "В тот же день",
+     "en": "The same day",
+     "zh": "当天洗"
+    },
+    {
+     "ru": "На следующий день",
+     "en": "The next day",
+     "zh": "第二天洗"
+    },
+    {
+     "ru": "Когда она снова понадобится",
+     "en": "When I need them again",
+     "zh": "下次要用时再洗"
+    },
+    {
+     "ru": "Почти не ем в комнате и блоке",
+     "en": "I hardly ever eat in the room or the block",
+     "zh": "我几乎不在房间和宿舍单元里吃东西"
+    }
+   ]
+  },
+  {
+   "id": "B2",
+   "block": "B",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Вещи соседа — одежда, пакеты, кружки — лежат на общем столе или стуле. Когда это начнёт тебя напрягать?",
+    "en": "Your roommate's things — clothes, bags, mugs — are lying on the shared table or chair. When does it start to bother you?",
+    "zh": "室友的东西——衣服、袋子、杯子——放在公用的桌子或椅子上。多久之后你会开始介意？"
+   },
+   "options": [
+    {
+     "ru": "Сразу, в тот же вечер",
+     "en": "Right away, the same evening",
+     "zh": "马上，当天晚上"
+    },
+    {
+     "ru": "Если лежат 2–3 дня",
+     "en": "If they stay there 2–3 days",
+     "zh": "放了 2–3 天"
+    },
+    {
+     "ru": "Если лежат неделю и дольше",
+     "en": "If they stay there a week or longer",
+     "zh": "放了一周或更久"
+    },
+    {
+     "ru": "Не напрягает",
+     "en": "It doesn't bother me",
+     "zh": "不介意"
+    }
+   ]
+  },
+  {
+   "id": "B3",
+   "block": "B",
+   "type": "single",
+   "required": true,
+   "hidden": true,
+   "text": {
+    "ru": "Как обычно выглядит твоя часть комнаты в середине недели?",
+    "en": "What does your part of the room usually look like mid-week?",
+    "zh": "一周过半时，你那一半房间通常是什么样？"
+   },
+   "options": [
+    {
+     "ru": "Всё убрано, поверхности пустые",
+     "en": "Everything is put away, surfaces are clear",
+     "zh": "都收拾好了，桌面是空的"
+    },
+    {
+     "ru": "Пара вещей на стуле или столе",
+     "en": "A couple of things on the chair or desk",
+     "zh": "椅子或桌上有几样东西"
+    },
+    {
+     "ru": "Вещи на стуле, кровати и столе — разбираю раз в неделю",
+     "en": "Things on the chair, bed and desk — I sort them out once a week",
+     "zh": "椅子、床和桌上都有东西——每周整理一次"
+    },
+    {
+     "ru": "Разбираю, когда ждут гостей или проверку",
+     "en": "I tidy up when guests or an inspection are expected",
+     "zh": "有客人或检查时才整理"
+    }
+   ]
+  },
+  {
+   "id": "C1",
+   "block": "C",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Сколько вечеров в учебную неделю (пн–пт) ты обычно проводишь в комнате после 19:00?",
+    "en": "How many evenings in a school week (Mon–Fri) do you usually spend in the room after 19:00?",
+    "zh": "上课周（周一至周五）你通常有几个晚上 19:00 以后待在房间里？"
+   },
+   "options": [
+    {
+     "ru": "0–1",
+     "en": "0–1",
+     "zh": "0–1"
+    },
+    {
+     "ru": "2–3",
+     "en": "2–3",
+     "zh": "2–3"
+    },
+    {
+     "ru": "4–5",
+     "en": "4–5",
+     "zh": "4–5"
+    }
+   ]
+  },
+  {
+   "id": "C2",
+   "block": "C",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Когда сосед в комнате, видео, музыку и игры ты включаешь:",
+    "en": "When your roommate is in the room, you play videos, music and games:",
+    "zh": "室友在房间时，你看视频、听音乐、玩游戏："
+   },
+   "options": [
+    {
+     "ru": "Всегда в наушниках",
+     "en": "Always with headphones",
+     "zh": "总是戴耳机"
+    },
+    {
+     "ru": "В наушниках, кроме коротких видео до минуты",
+     "en": "With headphones, except short videos under a minute",
+     "zh": "戴耳机，一分钟以内的短视频除外"
+    },
+    {
+     "ru": "Вслух, на небольшой громкости",
+     "en": "Out loud, at low volume",
+     "zh": "外放，音量不大"
+    },
+    {
+     "ru": "Вслух, как привык(ла)",
+     "en": "Out loud, the way I'm used to",
+     "zh": "外放，按自己的习惯"
+    }
+   ]
+  },
+  {
+   "id": "C3",
+   "block": "C",
+   "type": "single",
+   "required": false,
+   "hidden": true,
+   "text": {
+    "ru": "Сколько раз в неделю у тебя бывают голосовые созвоны или игры с голосовым чатом после 23:00?",
+    "en": "How many times a week do you have voice calls or games with voice chat after 23:00?",
+    "zh": "你每周有几次在 23:00 之后语音通话或玩带语音聊天的游戏？"
+   },
+   "options": [
+    {
+     "ru": "0",
+     "en": "0",
+     "zh": "0"
+    },
+    {
+     "ru": "1–2",
+     "en": "1–2",
+     "zh": "1–2"
+    },
+    {
+     "ru": "3–5",
+     "en": "3–5",
+     "zh": "3–5"
+    },
+    {
+     "ru": "6–7",
+     "en": "6–7",
+     "zh": "6–7"
+    }
+   ]
+  },
+  {
+   "id": "D1",
+   "block": "D",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Как часто ты хотел(а) бы звать гостей к себе в комнату?",
+    "en": "How often would you like to have guests in your room?",
+    "zh": "你希望多久请一次客人到房间来？"
+   },
+   "options": [
+    {
+     "ru": "Реже раза в месяц",
+     "en": "Less than once a month",
+     "zh": "少于每月一次"
+    },
+    {
+     "ru": "1–3 раза в месяц",
+     "en": "1–3 times a month",
+     "zh": "每月 1–3 次"
+    },
+    {
+     "ru": "1–2 раза в неделю",
+     "en": "1–2 times a week",
+     "zh": "每周 1–2 次"
+    },
+    {
+     "ru": "3 раза в неделю и чаще",
+     "en": "3 times a week or more",
+     "zh": "每周 3 次或更多"
+    }
+   ]
+  },
+  {
+   "id": "D2",
+   "block": "D",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Гости соседа в комнате для тебя:",
+    "en": "Your roommate's guests in the room are:",
+    "zh": "对于室友带客人到房间，你觉得："
+   },
+   "options": [
+    {
+     "ru": "Ок, только если договорились заранее и не чаще раза в неделю",
+     "en": "OK only if agreed in advance and no more than once a week",
+     "zh": "可以，但要提前商量，且每周不超过一次"
+    },
+    {
+     "ru": "Ок, если предупредил хотя бы за пару часов",
+     "en": "OK if I get at least a couple of hours' notice",
+     "zh": "可以，只要提前至少几个小时告诉我"
+    },
+    {
+     "ru": "Ок без предупреждения до 23:00",
+     "en": "OK without notice until 23:00",
+     "zh": "23:00 之前不打招呼也可以"
+    },
+    {
+     "ru": "Ок в любое разрешённое правилами время (до 01:00)",
+     "en": "OK at any time the rules allow (until 01:00)",
+     "zh": "规定允许的任何时间都可以（01:00 之前）"
+    }
+   ]
+  },
+  {
+   "id": "E1",
+   "block": "E",
+   "type": "multi",
+   "required": true,
+   "hidden": true,
+   "text": {
+    "ru": "Никотин в твоей жизни:",
+    "en": "Nicotine in your life:",
+    "zh": "你和尼古丁："
+   },
+   "options": [
+    {
+     "ru": "Не использую",
+     "en": "I don't use it",
+     "zh": "不使用"
+    },
+    {
+     "ru": "Вейп или электронная сигарета",
+     "en": "Vape or e-cigarette",
+     "zh": "电子烟"
+    },
+    {
+     "ru": "Обычные сигареты",
+     "en": "Regular cigarettes",
+     "zh": "普通香烟"
+    },
+    {
+     "ru": "Нагреваемый табак (стики)",
+     "en": "Heated tobacco (sticks)",
+     "zh": "加热烟草（烟弹）"
+    },
+    {
+     "ru": "Снюс или никотиновые паучи",
+     "en": "Snus or nicotine pouches",
+     "zh": "唇烟或尼古丁袋"
+    },
+    {
+     "ru": "Кальян — только в кальянной или в гостях",
+     "en": "Hookah — only at a hookah bar or at someone's place",
+     "zh": "水烟——只在水烟馆或别人家"
+    },
+    {
+     "ru": "Не хочу отвечать",
+     "en": "I'd rather not say",
+     "zh": "不想回答"
+    }
+   ],
+   "adult_only": true,
+   "exclusive": [
+    0,
+    6
+   ],
+   "hint": {
+    "ru": "Можно выбрать несколько. Если выберешь «Не хочу отвечать», мы не будем предлагать тебя тем, кому от запахов плохо.",
+    "en": "You can pick several. If you choose \"I'd rather not say\", we won't suggest you to people who feel unwell from smells.",
+    "zh": "可多选。如果选择“不想回答”，我们不会把你推荐给对气味感到不适的人。"
+   }
+  },
+  {
+   "id": "E2",
+   "block": "E",
+   "type": "single",
+   "required": true,
+   "hidden": true,
+   "text": {
+    "ru": "Через сколько времени после пробуждения тебе обычно хочется первой затяжки или пакетика?",
+    "en": "How soon after waking up do you usually want your first puff or pouch?",
+    "zh": "醒来后多久，你通常会想吸第一口或用第一袋？"
+   },
+   "options": [
+    {
+     "ru": "В течение 5 минут",
+     "en": "Within 5 minutes",
+     "zh": "5 分钟内"
+    },
+    {
+     "ru": "6–30 минут",
+     "en": "6–30 minutes",
+     "zh": "6–30 分钟"
+    },
+    {
+     "ru": "31–60 минут",
+     "en": "31–60 minutes",
+     "zh": "31–60 分钟"
+    },
+    {
+     "ru": "Больше чем через час",
+     "en": "More than an hour later",
+     "zh": "一小时以后"
+    },
+    {
+     "ru": "Не каждый день",
+     "en": "Not every day",
+     "zh": "不是每天"
+    }
+   ],
+   "adult_only": true,
+   "show_if": {
+    "question": "E1",
+    "any_of": [
+     1,
+     2,
+     3,
+     4,
+     5
+    ]
+   }
+  },
+  {
+   "id": "E3",
+   "block": "E",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Насколько ты замечаешь запахи в комнате — табак от одежды, сладкий пар, кальянный дым?",
+    "en": "How much do you notice smells in the room — tobacco on clothes, sweet vapor, hookah smoke?",
+    "zh": "你对房间里的气味有多敏感——衣服上的烟味、甜味蒸汽、水烟的烟？"
+   },
+   "options": [
+    {
+     "ru": "Мне от этого плохо, нужно сразу проветрить",
+     "en": "It makes me feel unwell; the room needs airing right away",
+     "zh": "会让我不舒服，需要马上通风"
+    },
+    {
+     "ru": "Замечаю, и это неприятно",
+     "en": "I notice it and it's unpleasant",
+     "zh": "能闻到，而且不喜欢"
+    },
+    {
+     "ru": "Замечаю, но не мешает",
+     "en": "I notice it but it doesn't bother me",
+     "zh": "能闻到，但不影响我"
+    },
+    {
+     "ru": "Обычно не замечаю",
+     "en": "I usually don't notice",
+     "zh": "通常注意不到"
+    }
+   ]
+  },
+  {
+   "id": "F1",
+   "block": "F",
+   "type": "single",
+   "required": true,
+   "hidden": true,
+   "text": {
+    "ru": "Сколько вечеров в неделю ты обычно возвращаешься в общежитие после 23:00 или ночуешь не там?",
+    "en": "How many evenings a week do you usually come back to the dorm after 23:00 or sleep somewhere else?",
+    "zh": "你每周通常有几个晚上 23:00 以后才回宿舍，或在别处过夜？"
+   },
+   "options": [
+    {
+     "ru": "0",
+     "en": "0",
+     "zh": "0"
+    },
+    {
+     "ru": "1",
+     "en": "1",
+     "zh": "1"
+    },
+    {
+     "ru": "2–3",
+     "en": "2–3",
+     "zh": "2–3"
+    },
+    {
+     "ru": "4 и больше",
+     "en": "4 or more",
+     "zh": "4 次或更多"
+    }
+   ]
+  },
+  {
+   "id": "G1",
+   "block": "G",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Зимой форточку ты бы держал(а):",
+    "en": "In winter you would keep the window vent:",
+    "zh": "冬天你会让通风小窗："
+   },
+   "options": [
+    {
+     "ru": "Открытой почти всё время, и ночью тоже",
+     "en": "Open almost all the time, at night too",
+     "zh": "几乎一直开着，晚上也开"
+    },
+    {
+     "ru": "Открывал(а) бы 2–3 раза в день минут на 10–15",
+     "en": "Open 2–3 times a day for 10–15 minutes",
+     "zh": "每天开 2–3 次，每次 10–15 分钟"
+    },
+    {
+     "ru": "Раз в день или реже",
+     "en": "Once a day or less",
+     "zh": "每天一次或更少"
+    },
+    {
+     "ru": "Лучше не открывать — мне холодно",
+     "en": "Better closed — I get cold",
+     "zh": "最好别开——我怕冷"
+    }
+   ]
+  },
+  {
+   "id": "G2",
+   "block": "G",
+   "type": "single",
+   "required": true,
+   "hidden": false,
+   "text": {
+    "ru": "Общие вещи и еда:",
+    "en": "Shared things and food:",
+    "zh": "共用物品和食物："
+   },
+   "options": [
+    {
+     "ru": "У каждого всё своё, беру только спросив",
+     "en": "Everyone has their own; I only take things after asking",
+     "zh": "各用各的，要用先问"
+    },
+    {
+     "ru": "Мелочи общие (соль, чай, средство для посуды), остальное — спрашиваем",
+     "en": "Small things are shared (salt, tea, dish soap); for the rest we ask",
+     "zh": "小东西共用（盐、茶、洗洁精），其他的先问"
+    },
+    {
+     "ru": "Можно брать почти всё, кроме личного (одежда, техника)",
+     "en": "Almost anything can be taken, except personal things (clothes, devices)",
+     "zh": "除了私人物品（衣服、电子设备），几乎都可以拿"
+    },
+    {
+     "ru": "Мне без разницы, бери что хочешь",
+     "en": "I don't mind, take whatever you want",
+     "zh": "无所谓，随便拿"
+    }
+   ]
+  },
+  {
+   "id": "G3",
+   "block": "G",
+   "type": "single",
+   "required": false,
+   "hidden": false,
+   "text": {
+    "ru": "Какие отношения с соседом тебе ближе?",
+    "en": "What kind of relationship with a roommate suits you best?",
+    "zh": "你更喜欢和室友保持什么样的关系？"
+   },
+   "options": [
+    {
+     "ru": "Вежливые соседи, у каждого своя жизнь",
+     "en": "Polite roommates, each with their own life",
+     "zh": "礼貌相处，各过各的"
+    },
+    {
+     "ru": "Иногда вместе поесть, поболтать, куда-то сходить",
+     "en": "Sometimes eat together, chat, go somewhere",
+     "zh": "偶尔一起吃饭、聊天、出去走走"
+    },
+    {
+     "ru": "Хочу дружить и проводить много времени вместе",
+     "en": "I want to be friends and spend a lot of time together",
+     "zh": "想成为朋友，经常待在一起"
+    }
+   ]
+  },
+  {
+   "id": "H1",
+   "block": "H",
+   "type": "single",
+   "required": false,
+   "hidden": true,
+   "text": {
+    "ru": "Если в быту что-то не устраивает, ты обычно:",
+    "en": "If something about living together bothers you, you usually:",
+    "zh": "如果生活上有什么让你不满，你通常："
+   },
+   "options": [
+    {
+     "ru": "Говорю в тот же день, спокойно",
+     "en": "Say so the same day, calmly",
+     "zh": "当天就平静地说出来"
+    },
+    {
+     "ru": "Говорю, если повторилось 2–3 раза",
+     "en": "Say so if it has happened 2–3 times",
+     "zh": "重复两三次后才说"
+    },
+    {
+     "ru": "Пишу в мессенджер — вживую неловко",
+     "en": "Write a message — it's awkward in person",
+     "zh": "发消息说——当面说有点尴尬"
+    },
+    {
+     "ru": "Молчу, пока не накопится",
+     "en": "Keep quiet until it builds up",
+     "zh": "不说，直到忍不住"
+    }
+   ]
+  }
+ ]
+}

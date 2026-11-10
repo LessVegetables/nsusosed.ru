@@ -200,6 +200,13 @@ $('contacts').addEventListener('submit', async (e) => {
   }
 });
 
+// ── Questionnaire status ────────────────────────────────
+
+const renderQuizStatus = () => {
+  $('quiz-status').textContent = user.questionnaire_complete ? t('account.quiz.done') : t('account.quiz.todo');
+};
+renderQuizStatus();
+
 // ── Language ────────────────────────────────────────────
 
 mountLangSwitch($('lang'), {
@@ -219,6 +226,7 @@ document.addEventListener('langchange', () => {
   renderFaculties();
   renderContacts();
   renderAvatar();
+  renderQuizStatus();
 });
 
 // ── Logout and deletion ─────────────────────────────────

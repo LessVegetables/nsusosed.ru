@@ -15,6 +15,9 @@ from pathlib import Path
 
 # До импорта app: настройки читаются при импорте.
 os.environ.setdefault("EMAIL_MODE", "log")
+# The tests assert the production limits, whatever a developer's .env relaxes them to.
+os.environ.update(OTP_MAX_REQUESTS_PER_HOUR="5", OTP_RESEND_COOLDOWN_SECONDS="60",
+                  OTP_MAX_FAILED_VERIFIES_PER_HOUR="10", AUTH_IP_MAX_REQUESTS="20", AUTH_IP_WINDOW_SECONDS="600")
 os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
 os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="nsusosed-media-"))
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
@@ -26,7 +29,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-TABLES = ["auth_events", "otp_codes", "sessions", "user_contacts", "users"]
+TABLES = ["auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "users"]
 
 
 @pytest.fixture(scope="session")

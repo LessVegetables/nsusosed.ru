@@ -15,8 +15,12 @@ function header(user) {
   const action = user
     ? el('a', { class: 'btn secondary', href: '/account', i18n: 'nav.account' })
     : location.pathname.startsWith('/login') ? null : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
+  const here = location.pathname.replace(/\.html$/, '');
+  const current = (href) => (here === href ? 'page' : null);
   return el('div', { class: 'wrap' },
     el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
+    user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, 
+      el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') })),
     action);
 }
 

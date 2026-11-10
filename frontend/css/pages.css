@@ -45,6 +45,32 @@
   .account-grid .field .tag { margin-left: 8px; padding: 3px 7px; }
   .account-grid .field textarea { resize: vertical; }
 
+  /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
+     fieldsets inside them. The save bar sticks to the bottom so it is always under the thumb. */
+  .qpage { max-width: 760px; }
+  .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
+  .qintro { display: grid; gap: 12px; justify-items: start; }
+  .qintro > * { margin: 0; }
+  .qblock { display: grid; gap: 28px; }
+  .qblock > * { margin: 0; }
+  .qblock > h2 { font-size: var(--fs-panel); }
+  .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+  .qblock fieldset > * { margin: 0; }
+  .qblock legend { padding: 0; margin-bottom: 12px; font-size: var(--fs-card); font-weight: var(--w-black); line-height: 1.15; letter-spacing: var(--track-tight); }
+  .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
+  .qblock .opts { grid-template-columns: 1fr; gap: 10px; }
+  .qblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
+  #about .opts { grid-template-columns: 1fr 1fr; }
+  .qbar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
+  .qbar-progress { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .qbar .prog i { height: 10px; min-width: 0; }
+  .qbar .prog { max-width: none; }
+  .solo-panel { display: grid; gap: 16px; justify-items: start; }
+  .solo-panel > * { margin: 0; }
+  .solo-panel .opts { justify-self: stretch; }
+  @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
+
   /* Privacy and other documents */
   .doc { max-width: 760px; }
   .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }

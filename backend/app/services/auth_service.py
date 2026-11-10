@@ -19,7 +19,7 @@ from app.utils.session import create_session, set_session_cookie, clear_session_
 from app.utils.errors import AppError, validation_error, invalid_code
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
-from app.services import rate_limit_service as rl
+from app.services import questionnaire_service, rate_limit_service as rl
 
 logger = logging.getLogger("nsusosed")
 
@@ -113,7 +113,8 @@ async def verify_code(
     set_session_cookie(response, token)
 
     return AuthResponse(user_id=user.id, first_name=user.first_name, is_new=is_new,
-                        account_restored=account_restored)
+                        questionnaire_complete=await questionnaire_service.is_complete(db, user),
+                        intent=user.intent, account_restored=account_restored)
 
 
 async def logout(db, request: Request, response: Response) -> None:
@@ -131,7 +132,7 @@ async def get_me(db, user: User) -> UserSelf:
         intent=user.intent, bio=user.bio,
         avatar_url=avatar_url(user.avatar_file),
         contacts=[Contact(type=c.type, value=c.value, url=contact_url(c.type, c.value)) for c in user.contacts],
-        questionnaire_complete=False,  # stage 2
+        questionnaire_complete=await questionnaire_service.is_complete(db, user),
     )
 
 
