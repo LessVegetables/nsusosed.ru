@@ -1,0 +1,26 @@
+// One key per line, sentence case (uppercase comes from CSS). tools/check_i18n.py keeps
+// the three languages in step.
+export default {
+  "title.index": "nsusosed — roommates for NSU students",
+  "title.notFound": "Page not found — nsusosed",
+  "a11y.skip": "Skip to content",
+  "a11y.close": "Close",
+  "lang.label": "Language",
+  "nav.home": "nsusosed — home",
+  "nav.login": "Log in",
+  "nav.account": "Account",
+  "footer.label": "Links",
+  "footer.tagline": "nsusosed.ru — roommates for NSU students",
+  "footer.language": "Language",
+  "footer.privacy": "Personal data",
+  "index.eyebrow": "For NSU students",
+  "index.headline": "Roommates who live [[the way]] you do",
+  "index.lead": "A short questionnaire about your habits, then dorm rooms and apartments with free places, sorted by how well you match the people who live there.",
+  "index.cta": "Log in with @g.nsu.ru email →",
+  "notFound.title": "This page doesn't exist",
+  "notFound.text": "The link may be out of date, or there's a typo in the address.",
+  "notFound.home": "Go to the home page →",
+  "error.generic": "Something went wrong. Please try again.",
+  "error.NETWORK": "Can't reach the server. Check your connection and try again.",
+  "error.RATE_LIMITED": "Too many attempts. Try again in {seconds} s.",
+};

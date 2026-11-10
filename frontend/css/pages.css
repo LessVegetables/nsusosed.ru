@@ -1,0 +1,26 @@
+/* Page-level layout only. Colors, fonts and sizes come from nsusosed.css tokens
+   (design/README.md, section 15). One file for the whole site: it is small. */
+
+@layer pages {
+  /* Pages are translated by script. Until that's done, keep the Russian defaults out of
+     sight so English and Chinese readers don't see them flash (2s safety net below). */
+  html:not([data-ready]) body { visibility: hidden; animation: reveal 0s 2s forwards; }
+  @keyframes reveal { to { visibility: visible; } }
+
+  /* Footer sits at the bottom even on short pages. */
+  body { min-height: 100dvh; display: flex; flex-direction: column; }
+  main { flex: 1; }
+  .site-footer { margin-top: 0; }
+  .site-footer a { font-weight: var(--w-bold); }
+
+  /* Landing */
+  .hero { display: grid; gap: var(--gap); align-content: start; }
+  .hero .lead { margin: 0; }
+  .hero-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+
+  /* 404 and other one-box pages */
+  .solo { max-width: 560px; margin: 0 auto; }
+  .solo .box { display: grid; gap: 16px; justify-items: start; }
+  .solo h1 { margin: 0; }
+  .solo p { margin: 0; }
+}

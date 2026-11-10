@@ -1,0 +1,26 @@
+// One key per line, sentence case (uppercase comes from CSS). tools/check_i18n.py keeps
+// the three languages in step.
+export default {
+  "title.index": "nsusosed — 新西伯利亚国立大学学生找室友",
+  "title.notFound": "页面不存在 — nsusosed",
+  "a11y.skip": "跳到正文",
+  "a11y.close": "关闭",
+  "lang.label": "语言",
+  "nav.home": "nsusosed — 首页",
+  "nav.login": "登录",
+  "nav.account": "账户",
+  "footer.label": "链接",
+  "footer.tagline": "nsusosed.ru — 新西伯利亚国立大学学生找室友",
+  "footer.language": "语言",
+  "footer.privacy": "个人信息",
+  "index.eyebrow": "面向新西伯利亚国立大学学生",
+  "index.headline": "找到和你[[生活习惯]]一样的室友",
+  "index.lead": "填写一份简短的生活习惯问卷，即可查看有空位的宿舍和公寓，并按与现有住户的匹配度排序。",
+  "index.cta": "用 @g.nsu.ru 邮箱登录 →",
+  "notFound.title": "没有这个页面",
+  "notFound.text": "链接可能已失效，或者地址有误。",
+  "notFound.home": "返回首页 →",
+  "error.generic": "出了点问题，请再试一次。",
+  "error.NETWORK": "无法连接服务器，请检查网络后重试。",
+  "error.RATE_LIMITED": "尝试次数过多，请在 {seconds} 秒后重试。",
+};

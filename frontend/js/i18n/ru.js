@@ -1,0 +1,26 @@
+// One key per line, sentence case (uppercase comes from CSS). tools/check_i18n.py keeps
+// the three languages in step.
+export default {
+  "title.index": "nsusosed — соседи для студентов НГУ",
+  "title.notFound": "Страница не найдена — nsusosed",
+  "a11y.skip": "Перейти к содержимому",
+  "a11y.close": "Закрыть",
+  "lang.label": "Язык",
+  "nav.home": "nsusosed — на главную",
+  "nav.login": "Войти",
+  "nav.account": "Аккаунт",
+  "footer.label": "Ссылки",
+  "footer.tagline": "nsusosed.ru — соседи для студентов НГУ",
+  "footer.language": "Язык",
+  "footer.privacy": "Персональные данные",
+  "index.eyebrow": "Для студентов НГУ",
+  "index.headline": "Соседи, которые живут [[так же,]] как вы",
+  "index.lead": "Короткая анкета о привычках — и комнаты в общежитии и квартиры со свободными местами, отсортированные по совместимости.",
+  "index.cta": "Войти по почте @g.nsu.ru →",
+  "notFound.title": "Такой страницы нет",
+  "notFound.text": "Возможно, ссылка устарела или в адресе опечатка.",
+  "notFound.home": "На главную →",
+  "error.generic": "Что-то пошло не так. Попробуйте ещё раз.",
+  "error.NETWORK": "Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.",
+  "error.RATE_LIMITED": "Слишком много попыток. Повторите через {seconds} с.",
+};
