@@ -6,7 +6,6 @@
 .spec-h { font-size: 28px; margin: 0 0 6px; }
 .spec-p { max-width: 46em; margin: 0 0 22px; }
 .spec-label { display: block; font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; margin: 22px 0 10px; }
-.row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 .row.top { align-items: flex-start; }
 .two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
 .narrow { max-width: 420px; }

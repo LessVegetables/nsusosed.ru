@@ -202,6 +202,9 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Steps | `.steps > .box > .n + h3 + p` | Number badge cycles yellow, pink, blue, green |
 | Toast | `.toast[role=status] > b + text + button.close` | Green; `.error` red; phones: full width |
 | Footer | `.site-footer` | Yellow band |
+| Row (NEW) | `.row` | Buttons or controls side by side; wraps |
+| Language switch (NEW, proposal) | `.langsw[role=group] > button[aria-pressed]` | RU / EN / 中文; current = black, like a tab. Landing, login and account pages only |
+| Skip link (NEW) | `a.skip.btn` | First element in `<body>`; visible on focus |
 | Fills | `.fill-yellow / pink / blue / green / purple / orange / red` | Background + black text, instead of inline styles |
 
 **Icons.** Text glyphs only: → ← ✓ ✕ ⚠ ★ ×. If real icons are needed later, use a heavy outline set (2–3px strokes) colored with `--text`.

@@ -479,6 +479,25 @@
   .auth p { margin: 0 0 16px; }
   .auth .btn + p { margin-top: 14px; }
 
+  /* --- Row (NEW): buttons or controls side by side, wrapping on narrow screens. --- */
+  .row { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+  /* --- Language switch (NEW, proposal): one outlined block, three segments; the current
+     language is black and pressed in, like a selected tab. Only on the landing, login and
+     account pages. --- */
+  .langsw { display: inline-flex; border: var(--border); border-radius: var(--r); background: var(--surface); box-shadow: var(--sh-sm); overflow: hidden; }
+  .langsw button {
+    min-width: 52px; min-height: 44px; padding: 8px 12px; border: 0; background: none; color: var(--text); cursor: pointer;
+    font: var(--w-bold) var(--fs-small) / 1 var(--mono); text-transform: uppercase; letter-spacing: var(--track-caps);
+  }
+  .langsw button + button { border-left: var(--border); }
+  .langsw button[aria-pressed="true"] { background: var(--black); color: var(--on-black); }
+  .langsw button:focus-visible { outline-offset: -6px; outline-color: currentColor; }
+
+  /* --- Skip link (NEW): first thing a keyboard reaches; visible only while focused. --- */
+  .skip { position: absolute; left: var(--gutter); top: -100px; z-index: 50; }
+  .skip:focus { top: 10px; }
+
   /* --- Responsive --- */
   @media (max-width: 960px) {
     .listing, .auth { grid-template-columns: 1fr; }
