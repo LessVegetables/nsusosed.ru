@@ -1,155 +1,126 @@
-# nsusosed — Backend & Infrastructure
+# nsusosed — backend
 
-Подбор соседей в общежитиях и съёмных квартирах НГУ.
+The API behind nsusosed.ru: FastAPI, PostgreSQL 16, SQLAlchemy (async), Alembic. Python 3.12.
 
-## Запуск (локально, без Docker)
+## Run it locally (no Docker)
 
-Нужны Python 3.12 и PostgreSQL 16. Команды — из папки `backend/`.
+Commands are run from `backend/`.
 
-1. Окружение и зависимости:
+1. Environment and dependencies:
    ```bash
    python3.12 -m venv .venv && source .venv/bin/activate
    pip install -r requirements-dev.txt
    ```
 
-2. Настройки. Приложение читает `.env` из текущей папки, то есть `backend/.env`:
+2. Settings. The app reads `.env` from the current folder, so `backend/.env`:
    ```bash
    cp ../.env.example .env
    ```
-   Для разработки достаточно поправить `DATABASE_URL`; `EMAIL_MODE=log` пишет коды входа в лог вместо писем.
+   For development it is enough to fix `DATABASE_URL`. `EMAIL_MODE=log` writes login codes to the log instead of emailing them. With `PUBLIC_ORIGIN=http://…` the session cookie is sent without `Secure` (Safari refuses Secure cookies on plain http, even on localhost).
 
-3. База и миграции:
+3. Database and migrations:
    ```bash
    createdb nsusosed
    alembic upgrade head
    ```
 
-4. Запуск и проверка:
+4. Start and check:
    ```bash
    uvicorn app.main:app --reload --port 8000
    curl http://localhost:8000/api/health
    ```
 
-Сайт целиком (фронтенд + `/api` на одном адресе) — через `frontend/dev_server.py`, см. [frontend/README.md](../frontend/README.md).
+The whole site (pages and `/api` on one address) runs through `frontend/dev_server.py`; see [frontend/README.md](../frontend/README.md). Log in with any `@nsu.ru` or `@*.nsu.ru` address; the code is in the backend log.
 
-## Тестовые данные
-
-Около 20 жилья с жильцами и анкетами для локальной разработки (работает только при `EMAIL_MODE=log`):
-```bash
-EMAIL_MODE=log python -m app.seed           # пустая база
-EMAIL_MODE=log python -m app.seed --reset   # стереть все таблицы и заполнить заново
-```
-Войти можно под любым адресом `@g.nsu.ru` (код — в логе бэкенда), в том числе под жильцами `student1@g.nsu.ru`, `student2@g.nsu.ru`… Ссылка-приглашение в комнату Ани: `{PUBLIC_ORIGIN}/join#token=demo-invite-token`.
-
-## Миграции
-
-В продакшене применяются автоматически при старте контейнера (`alembic upgrade head` в `Dockerfile`). Локально:
-```bash
-alembic upgrade head
-alembic revision --autogenerate -m "description"   # потом прочитать и поправить файл
-alembic check                                        # модели и миграции совпадают
-```
-
-## Тесты
+## Tests
 
 ```bash
-# Отдельная пустая БД: таблицы очищаются перед каждым тестом
-createdb nsusosed_test
+createdb nsusosed_test     # a separate database: its tables are emptied before every test
 TEST_DATABASE_URL=postgresql+asyncpg://localhost/nsusosed_test pytest
 ```
 
-Без `TEST_DATABASE_URL` запускаются только юнит-тесты формулы совместимости, остальные пропускаются.
+Without `TEST_DATABASE_URL` only the tests that need no database run (scoring, emojis, contacts, settings). The tests pin the login rate limits to their production values, whatever `.env` says.
 
-## Homes, admins and photos
+## Migrations
 
-A home (`listings` table) has no single owner. It exists while someone lives in it:
+Applied automatically in production when the container starts. Locally:
 
-- `memberships.is_admin` says who manages it. Admins edit it (details, 1–10 `contacts`, photos), confirm, pause, delete, create invite links, make other residents admins (`POST/DELETE /api/listings/{id}/admins/{user_id}`) and remove residents (`DELETE /api/listings/{id}/members/{user_id}`). Only a resident with a questionnaire can be made admin.
-- When the last admin leaves (or is removed, or deletes their account), the longest-standing resident becomes admin, preferring one with a questionnaire. When the last resident leaves, the home and its photos are deleted.
-- A user is a `seeker` or a `host` (`profiles.situation`). Creating or joining a home makes them a host; a resident can't switch to seeker without leaving.
-- `GET /api/me` returns `language`, `situation`, `profile_complete` (a questionnaire of the current version) and `home: {id, is_admin} | null`. `PUT /api/me` takes `display_name` and/or `language`.
-- `GET /api/matches?include_unmatched=true` also returns homes that break a hard condition or the budget, after the matches, with `fits: false` and `reasons`. Detail and contact work for them too.
-- Questionnaire v2 adds `wake` after `sleep`. v1 profiles keep matching; a question one side hasn't answered is skipped.
-
-Photos: `POST /api/listings/{id}/photos` (multipart, field `file`), `DELETE /api/listings/{id}/photos/{photo_id}`, `PUT /api/listings/{id}/photos/order` (`{"photo_ids": [...]}`, the first is the cover). Each upload is turned by its EXIF orientation, stripped of all metadata (GPS included), shrunk to 1600 px and saved as JPEG in `MEDIA_DIR/listings/<id>/<random>.jpg`. nginx serves `MEDIA_DIR` at `MEDIA_URL` (`/media`). The file names can't be guessed; the files themselves are public to anyone with the URL.
-
-### Deleting an account
-
-`DELETE /api/me` (`{"confirm": "DELETE"}`) doesn't erase anything yet. It sets `users.deleted_at`, closes all sessions and hides the user: roommates and candidates don't see them, their answers leave matching, and if they were the home's only active admin, an active roommate becomes admin. A home whose only residents are deleting their accounts disappears from search.
-
-Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels the deletion; `verify-code` then returns `"account_restored": true`. After the grace period the account is erased for good: profile and sessions cascade, and the user leaves their home by the usual rules (last resident → home and photos deleted). The purge runs on every successful login and at startup, so it can happen a little after the 14 days if nobody logs in.
-
-### Photos in production
-
-The API container runs read-only, so photos go to the host folder `/srv/nsusosed/media`, mounted as `MEDIA_DIR=/data/media` (`deploy/compose.yaml`). Host nginx serves it at `/media/` and allows 11 MB bodies on the upload route only (`deploy/nginx/nsusosed.ru.conf`). Setup and backups: [deploy/README.md](../deploy/README.md).
-
-## Коды ошибок API (API error codes)
-
-Every error response looks like this:
-
-```json
-{"error": {"code": "ROOM_FULL", "message": "…", "fields": {}, "request_id": "…", "retry_after": null}}
+```bash
+alembic upgrade head
+alembic revision --autogenerate -m "description"   # then read and fix the file
 ```
 
-The frontend picks the text to show from `code`, and from `fields` for validation errors. `message` is a Russian fallback for debugging; don't show it to users.
+The pilot's migrations start again at `001`; nothing is carried over from the MVP (see `deploy/README.md` for the one-time reset of a server that ran the MVP).
 
-### `error.code`
+## What is where
+
+| Path | What |
+|---|---|
+| `app/main.py` | The app, routers, the single error envelope |
+| `app/routers/` | `auth`, `users` (`/api/me…`), `questionnaire`, `homes` (homes, photos, residents, invites, emojis, address search), `feed` (feed, room page, contacts), `meta` |
+| `app/services/` | The logic behind each router |
+| `app/models/`, `alembic/versions/` | Tables and their migrations |
+| `app/questionnaires/vN/` | One questionnaire version: `questions.json`, `scoring.json` and the scorer |
+| `app/config/faculties.json`, `dorms.json` | Reference lists served by `GET /api/meta` |
+| `app/utils/` | Sessions, origin check, contacts, emojis, errors |
+
+## Data and privacy rules the code enforces
+
+- **Dorm room label** (`homes.room_label`, e.g. `100б`): stored normalized, used only for the "this room is already listed" check, **never returned by any endpoint**.
+- **Apartments**: only `district`, `lat`, `lon`, `radius_m`. The circle is produced in the host's browser; the server rejects a radius outside 300–500 m (so an exact point can't be stored) and coordinates outside the Novosibirsk area. There is no address column.
+- **Address search** (`POST /api/geo/search`) proxies OpenStreetMap's Nominatim. The query is not stored, and the HTTP client's request logging is turned off so it does not reach the log either.
+- **Questionnaire answers**: stored with their version. Hidden answers are returned only to their owner. Compatibility leaves the server only as `{percent, badges}`: a percent rounded to 5 and one of three levels per topic.
+- **Hard blocks** make a room look exactly like one that does not exist (404, absent from the feed).
+- **Contacts** belong to the user. They are returned by `GET /api/me` to their owner and by `POST /api/rooms/{id}/contacts` to a logged-in student with a completed questionnaire; nowhere else.
+- **Photos and avatars** are re-encoded: EXIF orientation applied, all metadata (GPS included) dropped, saved as JPEG under a random name in `MEDIA_DIR`. nginx serves `MEDIA_DIR` at `/media`; the names can't be guessed, but the files are public to anyone with the URL.
+- **Emojis** identify a listing for people; the unique index is on an order-independent key. They are never used as an identifier in code.
+
+## Homes, residents, rights
+
+A home is a dorm room or an apartment with up to six rooms; seekers see rooms. Whoever lists a home lives in it and holds every right. People who join by invite start with none. Rights are per person: `can_edit` (the listing), `can_photos`, `can_invites`, `can_residents` (remove people, change rights). Someone can always manage residents: if the last person who could leaves or asks to delete their account, the longest-standing resident gets every right. When the last resident leaves, the home and its photos are deleted. A person lives in at most one home.
+
+A home is visible to seekers once one of its residents has a phone, Telegram or VK, and it has a free place.
+
+Invite codes are eight characters, valid for `INVITE_TTL_DAYS` (7); only their hash is stored, so a code is shown once, when it is created. `/api/invites/preview` and `/join` accept the bare code or the whole link.
+
+## Deleting an account
+
+`DELETE /api/me` (`{"confirm": "DELETE"}`) erases nothing yet. It sets `users.deleted_at`, closes all sessions and hides the person everywhere. Logging in within `ACCOUNT_DELETION_GRACE_DAYS` (14) cancels it (`verify-code` returns `"account_restored": true`). After that the account is erased: answers, contacts and sessions cascade, the avatar file is removed, and the person leaves their home by the usual rules. The purge runs on every successful login and at startup.
+
+## Errors
+
+Every error looks like this:
+
+```json
+{"error": {"code": "ROOM_TAKEN", "message": "…", "fields": {}, "request_id": "…", "retry_after": null, "data": {"room_id": "…"}}}
+```
+
+The frontend chooses what to show from `code`, and from `fields` for validation errors (`{"rooms.0.emoji": "EMOJI_TAKEN"}`). `message` is a Russian fallback for debugging and is not shown to users. `data` carries facts some errors need.
 
 | HTTP | code | When |
 |---|---|---|
-| 401 | `AUTH_REQUIRED` | No valid session: log in again |
+| 401 | `AUTH_REQUIRED` | No valid session |
 | 401 | `INVALID_CODE` | Wrong or expired login code |
-| 403 | `FORBIDDEN` | Not allowed, or a bad `Origin` |
-| 403 | `NOT_ADMIN` | Only the home's admins can do this |
-| 404 | `NOT_FOUND` | The home (or photo) doesn't exist, or isn't shown to this user (paused, expired, full) |
-| 404 | `NOT_MEMBER` | The user named in the URL doesn't live in this home |
-| 404 | `INVITE_INVALID` | Unknown invite token |
-| 404 | `INVITE_EXPIRED` | Invite link has expired |
-| 409 | `VERSION_CONFLICT` | `expected_version` is stale: reload, then retry |
-| 409 | `ROOM_TAKEN` | This dorm building and room is already on the site |
-| 409 | `ALREADY_IN_ROOM` | The user already lives in a home (creating or joining another one) |
-| 409 | `ROOM_FULL` | The home already has as many residents on the site as occupied places |
-| 409 | `OCCUPANCY_CONFLICT` | `occupied_count` is lower than the number of residents on the site |
-| 409 | `LAST_ADMIN` | Unmaking the only admin; make someone else admin first |
-| 409 | `LEAVE_HOME_FIRST` | A resident tried to switch their questionnaire to `seeker` |
-| 409 | `TOO_MANY_PHOTOS` | The home already has 10 photos |
-| 413 | `PHOTO_TOO_LARGE` | The photo is over 10 MB, or decodes to too many pixels |
-| 415 | `PHOTO_BAD_TYPE` | Not a JPEG, PNG or WebP image |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | The request body isn't JSON (or `multipart/form-data` for photo uploads) |
+| 403 | `FORBIDDEN` | A bad `Origin` |
+| 403 | `NO_PERMISSION` | The resident lacks the right for this action |
+| 404 | `NOT_FOUND` | Doesn't exist, or isn't shown to this person |
+| 404 | `INVITE_INVALID` | Unknown, revoked or expired invite |
+| 409 | `ROOM_TAKEN` | That dorm room is already listed; `data.room_id` is the listing |
+| 409 | `EMOJI_TAKEN` | Another listing has these three emojis |
+| 409 | `ALREADY_IN_HOME` | The person already lives in a home |
+| 409 | `ROOM_OCCUPIED` | Removing a room someone lives in |
+| 409 | `LAST_MANAGER` | Nobody would be left able to manage residents |
+| 409 | `ABOUT_REQUIRED` | Answer "are you 18?" before the questionnaire |
+| 409 | `QUESTIONNAIRE_OUTDATED` | The page has an old questionnaire version: reload |
+| 409 | `QUESTIONNAIRE_REQUIRED` | The feed and contacts need a completed questionnaire |
+| 409 | `TOO_MANY_PHOTOS` | A home has 10 photos already |
+| 413 | `PHOTO_TOO_LARGE` | Over 10 MB, or too many pixels |
+| 415 | `PHOTO_BAD_TYPE` | Not JPEG, PNG or WebP |
+| 415 | `UNSUPPORTED_MEDIA_TYPE` | The body isn't JSON (or multipart for uploads) |
 | 422 | `VALIDATION_ERROR` | Invalid input; see `fields` |
-| 422 | `PROFILE_REQUIRED` | Fill in the questionnaire first |
-| 422 | `TARGET_PROFILE_REQUIRED` | Only a resident with a questionnaire can be made admin |
-| 422 | `BUDGET_REQUIRED` | Set a monthly budget first (needed for apartments) |
-| 429 | `RATE_LIMITED` | Too many login attempts; `retry_after` is in seconds (also sent as the `Retry-After` header) |
+| 429 | `RATE_LIMITED` | Too many attempts; `retry_after` is in seconds |
 | 503 | `EMAIL_SEND_FAILED` | The login code couldn't be emailed |
-| 500 | `INTERNAL_ERROR` | Unexpected error; quote `request_id` when reporting it |
-| other | `METHOD_NOT_ALLOWED`, `PAYLOAD_TOO_LARGE`, `HTTP_ERROR` | Generic HTTP errors |
+| 503 | `GEO_UNAVAILABLE` | Address search is down; the pin can be placed by hand |
+| 500 | `INTERNAL_ERROR` | Unexpected; quote `request_id` |
 
-### `error.fields` (with `VALIDATION_ERROR`)
-
-`fields` maps a field path to a reason code, for example `{"answers.sleep.allowed": "REQUIRED_WHEN_HARD"}` or `{"email": "DOMAIN_NOT_ALLOWED"}`. Query parameters are prefixed with `query.`, and `_` means the request as a whole.
-
-Reasons set by our own checks:
-
-| Reason | Meaning |
-|---|---|
-| `REQUIRED` | Required for this listing type (`building`, `room_number`, `floor` for dorms; `district`, `monthly_cost_per_person_rub` for apartments), or a contact (`contacts.N.value`) is empty |
-| `MUST_BE_EMPTY` | The field doesn't apply here (a dorm field on an apartment or vice versa; `allowed` when `hard` is false) |
-| `INVALID_CHOICE` | Not one of the allowed values (`kind`, `status`, `view`, `contacts.N.type`, `situation`) |
-| `EXCEEDS_CAPACITY` | `occupied_count` is greater than `capacity` |
-| `INVALID_TELEGRAM` | Not a Telegram username (5–32 characters: Latin letters, digits, `_`) |
-| `INVALID_PHONE` | Not a phone number (phone, WhatsApp) |
-| `TOO_LONG` | A contact is longer than 100 characters, or `contacts` has more than 10 items |
-| `TOO_SHORT` | `contacts` is empty (a home needs at least one) |
-| `INVALID_SET` | `photo_ids` must list every photo of the home exactly once |
-| `DOMAIN_NOT_ALLOWED` | The email isn't on an allowed domain (`@g.nsu.ru`) |
-| `INVALID_EMAIL` | Not an email address |
-| `MUST_ACCEPT` | `privacy_accepted` must be true |
-| `MUST_BE_DELETE` | Deleting the account needs `{"confirm": "DELETE"}` |
-| `REQUIRED_WHEN_HARD` | `allowed` must not be empty when `hard` is true |
-| `DUPLICATES` | `allowed` contains repeated values |
-| `OUT_OF_SCALE` | An answer value (or a value in `allowed`) is outside the question's scale |
-| `INVALID_QUESTION_SET` | `answers` must contain exactly the 10 question keys |
-| `UNSUPPORTED_VERSION` | Only `questionnaire_version: 2` is supported |
-
-Anything else is a pydantic error type, uppercased: `MISSING`, `STRING_TOO_SHORT`, `STRING_TOO_LONG`, `GREATER_THAN_EQUAL`, `LESS_THAN_EQUAL`, `INT_PARSING`, `BOOL_PARSING`, `STRING_PATTERN_MISMATCH`, and so on. The frontend can show a generic "invalid value" message for these.
+Reason codes in `fields` are either set by our checks (`REQUIRED`, `DOMAIN_NOT_ALLOWED`, `NEED_PRIMARY`, `INVALID_PHONE`, `INVALID_EMOJI`, `BAD_RADIUS`, `OUTSIDE_AREA`, `MORE_THAN_CAPACITY`, `INVALID_CHOICE`, `EXCLUSIVE_OPTION`, …) or pydantic's error type in capitals (`MISSING`, `STRING_TOO_LONG`, `LITERAL_ERROR`, …). The frontend translates the ones it knows (`error.field.*` in `frontend/js/i18n/`) and shows a generic message for the rest.

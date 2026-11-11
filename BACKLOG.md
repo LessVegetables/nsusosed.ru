@@ -22,6 +22,15 @@ Things we decided to do later. Not ordered. Remove an item when it's done.
 - **Dorm coordinates** in `dorms.json` were looked up by address in OpenStreetMap and not checked by a
   person. 8/1 and 8/2 share one address, so they share one point. Check each pin on a room page.
 
+- **`intstruction.md` and `screenshots/`** describe the MVP. Rewrite or delete them before showing the
+  repo to anyone as documentation of the pilot.
+- **CI does not run the backend tests** (they need Postgres). Add a job with a Postgres service.
+- **A request without an `Origin` header skips the Origin check** (`backend/app/utils/deps.py`). Browsers
+  send it on every POST/PUT/DELETE and the cookie is SameSite=Lax, so this only lets non-browser clients
+  through; tighten it if that ever matters.
+- **Feed scoring loads every home of a kind** and scores it in Python. Fine for a pilot; needs paging
+  and precomputed scores at scale.
+
 ## Pages to rework
 
 - **Landing page.** The current one is a first cut; to be redone.

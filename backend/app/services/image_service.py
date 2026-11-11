@@ -7,6 +7,7 @@ it is scaled down, and saved as JPEG under a random name.
 from __future__ import annotations
 import io
 import shutil
+import time
 import uuid
 import warnings
 from pathlib import Path
@@ -99,6 +100,34 @@ def remove_home_files(db, home_id) -> None:
     """Delete a home's photo folder once the home is really gone (after commit)."""
     folder = home_dir(home_id)
     on_commit(db, lambda: shutil.rmtree(folder, ignore_errors=True))
+
+
+async def sweep_orphans(db) -> None:
+    """Remove from disk what the database no longer knows: folders of deleted homes and
+    avatar files nobody points at (left behind if the process died mid-request). Recent files
+    are left alone: their upload may still be running in another worker."""
+    from sqlalchemy import select
+    from app.models.home import Home, HomePhoto
+    from app.models.user import User
+    cutoff = time.time() - 3600
+    homes_root = Path(settings.media_dir) / "homes"
+    if homes_root.is_dir():
+        existing = {str(row[0]) for row in (await db.execute(select(Home.id))).all()}
+        known = {(str(h), f) for h, f in (await db.execute(select(HomePhoto.home_id, HomePhoto.file_name))).all()}
+        for folder in homes_root.iterdir():
+            if not folder.is_dir():
+                continue
+            if folder.name not in existing:
+                shutil.rmtree(folder, ignore_errors=True)
+                continue
+            for file in folder.iterdir():
+                if (folder.name, file.name) not in known and file.stat().st_mtime < cutoff:
+                    file.unlink(missing_ok=True)
+    if avatar_dir().is_dir():
+        used = {row[0] for row in (await db.execute(select(User.avatar_file).where(User.avatar_file.is_not(None)))).all()}
+        for file in avatar_dir().iterdir():
+            if file.name not in used and file.stat().st_mtime < cutoff:
+                file.unlink(missing_ok=True)
 
 
 # ── Avatars ───────────────────────────────────────────

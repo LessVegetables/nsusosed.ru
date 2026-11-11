@@ -25,6 +25,12 @@ async def lifespan(app: FastAPI):
             await db.commit()
     except Exception:
         logger.exception("Purging deleted accounts failed")
+    try:
+        from app.services.image_service import sweep_orphans
+        async with async_session_factory() as db:
+            await sweep_orphans(db)
+    except Exception:
+        logger.exception("Media sweep failed")
     yield
 
 
