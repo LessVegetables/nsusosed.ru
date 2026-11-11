@@ -40,7 +40,7 @@ def production_csp() -> str | None:
 
 class Handler(BaseHTTPRequestHandler):
     api = "http://127.0.0.1:8000"
-    csp = production_csp()
+    csp = None #production_csp()
     protocol_version = "HTTP/1.1"
 
     # ── static files ──────────────────────────────────────

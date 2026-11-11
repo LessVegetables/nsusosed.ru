@@ -210,6 +210,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Map (NEW, proposal) | `.map` (Leaflet inside), `.map-pin` | Outlined map block; pink pin; apartment area as a circle |
 | Emoji label (NEW, proposal) | `span.emoji` | The three emojis that identify a listing |
 | Photo grid (NEW, proposal) | `.photos > figure (img + figcaption > button…) + label.upload` | Square thumbnails, first = cover; dashed upload tile |
+| Tab bar (NEW, proposal) | `nav.tabbar > a[aria-current]` | The phone menu: fixed bottom bar at ≤ 640px, current section yellow |
 | Skip link (NEW) | `a.skip.btn` | First element in `<body>`; visible on focus |
 | Fills | `.fill-yellow / pink / blue / green / purple / orange / red` | Background + black text, instead of inline styles |
 
@@ -235,7 +236,7 @@ Not designed yet: loading skeletons, empty states ("Нет подходящег�
 - One column, 16px gutters, nothing wider than the screen (`html, body { overflow-x: clip }` stops tilted elements from causing sideways scrolling).
 - No overlapping decoration; anything with `.decor` is hidden at ≤ 640px. One clear card instead of a pile.
 - Tap targets at least 44px (buttons 48px, tabs 44px, toggles 40px with spacing).
-- The header nav is hidden at ≤ 640px. **The rewrite needs a phone menu** (menu button or bottom bar); D didn't have one.
+- The header nav is hidden at ≤ 640px; the sections move to the bottom tab bar (`.tabbar`, a proposal).
 - Toasts span the width with 16px margins.
 
 ## 11. Languages (RU / EN / 中文)

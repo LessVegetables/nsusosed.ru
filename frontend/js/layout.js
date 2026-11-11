@@ -19,10 +19,22 @@ function header(user) {
   const current = (href) => (here === href ? 'page' : null);
   return el('div', { class: 'wrap' },
     el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
-    user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, 
+    user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' },
+      el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
       el('a', { href: '/home', i18n: 'nav.myHome', 'aria-current': current('/home') }),
       el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') })),
     action);
+}
+
+/** Phones: the header has no room for a menu, so the sections live in a bar at the bottom. */
+function tabbar() {
+  const here = location.pathname.replace(/\.html$/, '');
+  const current = (href) => (here === href ? 'page' : null);
+  return el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' },
+    el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
+    el('a', { href: '/home', i18n: 'nav.homeShort', 'aria-current': current('/home') }),
+    el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') }),
+    el('a', { href: '/account', i18n: 'nav.account', 'aria-current': current('/account') }));
 }
 
 function footer(user) {
@@ -67,6 +79,7 @@ export async function initPage({ auth = 'optional' } = {}) {
 
   document.querySelector('.site-header')?.replaceChildren(header(user));
   document.querySelector('.site-footer')?.replaceChildren(footer(user));
+  if (user && !document.querySelector('.tabbar')) document.body.append(tabbar());
   translate();
   document.documentElement.dataset.ready = '';
 

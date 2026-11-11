@@ -2,8 +2,7 @@
 //   no questionnaire yet (or a new version came out) → the questionnaire;
 //   questionnaire done but never said what they came for → the questionnaire page asks;
 //   an invite link opened in this tab → the join page;
-//   hosts → their home; invited people → the join page; seekers → the account page until
-//   the feed exists (stage 5).
+//   hosts → their home; invited people → the join page; seekers → the feed on their tab.
 
 import { KEYS, session } from './storage.js';
 
@@ -16,5 +15,5 @@ export function homeFor(user) {
   // Hosts go to their home: the form if it isn't listed yet, the listing if it is.
   if (user.intent === 'host' || user.home_id) return '/home';
   if (user.intent === 'join') return '/join';
-  return '/account';
+  return user.intent === 'seek_apt' ? '/feed?kind=apartment' : '/feed?kind=dorm';
 }

@@ -541,6 +541,22 @@
   .upload:has(input:focus-visible) { outline: var(--line-w) solid var(--focus-ring); outline-offset: 3px; }
   .upload[aria-busy="true"] { cursor: progress; opacity: .6; }
 
+  /* --- Tab bar (NEW, proposal): the phone menu. Fixed to the bottom on screens up to 640px,
+     where the header nav is hidden; the current section is yellow. --- */
+  .tabbar { display: none; }
+  @media (max-width: 640px) {
+    .tabbar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+      background: var(--surface); color: var(--text); border-top: var(--border); padding-bottom: env(safe-area-inset-bottom);
+    }
+    .tabbar a { display: grid; place-items: center; min-height: 56px; padding: 6px 2px; text-align: center; text-decoration: none; font-size: var(--fs-label); font-weight: var(--w-heavy); line-height: 1.1; }
+    .tabbar a + a { border-left: var(--border-thin); }
+    .tabbar a[aria-current="page"] { background: var(--primary); color: var(--on-fill); }
+    .tabbar a:focus-visible { outline-offset: -6px; }
+    body:has(.tabbar) { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
+    body:has(.tabbar) .site-header .btn { display: none; } /* "Account" is in the bar */
+  }
+
   /* --- Responsive --- */
   @media (max-width: 960px) {
     .listing, .auth { grid-template-columns: 1fr; }

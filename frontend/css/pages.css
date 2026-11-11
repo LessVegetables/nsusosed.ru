@@ -99,6 +99,47 @@
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
 
+  /* Above the phone tab bar. */
+  @media (max-width: 640px) { body:has(.tabbar) .qbar { bottom: calc(68px + env(safe-area-inset-bottom)); } }
+
+  /* Feed */
+  .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+  .feed-more:empty { display: none; }
+  .card .top { overflow: hidden; }
+  .card .cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .card .top > :not(.cover) { position: relative; }
+  .card .emoji { font-size: var(--fs-card); }
+  .card .body > * { margin: 0; }
+  .empty { display: grid; gap: 10px; }
+  .empty > * { margin: 0; }
+
+  /* Room page */
+  .rpage { display: grid; gap: var(--gap); }
+  .rpage > * { margin: 0; min-width: 0; }
+  .listing.single { grid-template-columns: minmax(0, 640px); }
+  .info { display: grid; gap: 14px; justify-items: start; }
+  .info > * { margin: 0; }
+  .info > :is(.facts, .contact-box, .note, .stack) { justify-self: stretch; }
+  .info .title { font-size: var(--fs-panel); }
+  .info .facts b { font-size: var(--fs-body); }
+  .rpage .breakdown { margin-top: 0; }
+  .rblock { display: grid; gap: 12px; }
+  .rblock > * { margin: 0; }
+  .rblock > h2:not(.title) { font-size: var(--fs-panel); }
+  .prewrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .resident-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+  .resident-card { display: grid; gap: 12px; align-content: start; }
+  .resident-card > * { margin: 0; }
+  .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
+  .resident-card .meta { margin: 0; }
+  .compare { display: grid; gap: 12px; }
+  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding-top: 12px; border-top: var(--border-thin); }
+  .compare-row > * { margin: 0; font-size: var(--fs-small); }
+  .compare-q { grid-column: 1 / -1; font-weight: var(--w-heavy); }
+  .compare-row small { display: block; font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .contact-box > div + div { margin-top: 10px; }
+
   /* Privacy and other documents */
   .doc { max-width: 760px; }
   .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }

@@ -221,7 +221,7 @@ function costsSection() {
       textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500' }),
       { path: 'utilities_rub', hint: t('home.costs.utilitiesHint') }),
     choice(t('home.costs.internet'), state, 'internet_mode',
-      [['included', t('home.costs.included')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode' }));
+      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode' }));
 }
 
 function roomSection(room, index) {

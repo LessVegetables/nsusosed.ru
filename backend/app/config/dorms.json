@@ -1,17 +1,17 @@
 {
-  "_note": "Faculty → dorm mapping and addresses from nsu.ru/n/life/campus/dormitories/ (2026-11-10). 4, 5, 6, 8/1, 8/2, 9, 10 are for bachelor's students; 1а, 1б, 2, 3 are for master's and PhD students, students with disabilities and international students (1б, 3: master's; 1а, 2: PhD). lat/lon are filled in and checked in stage 3 (exact, radius 0). faculties: ids from faculties.json whose students are normally housed there; empty = none listed on nsu.ru.",
+  "_note": "Faculty → dorm mapping and addresses from nsu.ru/n/life/campus/dormitories/ (2026-11-10). 4, 5, 6, 8/1, 8/2, 9, 10 are for bachelor's students; 1а, 1б, 2, 3 are for master's and PhD students, students with disabilities and international students (1б, 3: master's; 1а, 2: PhD). lat/lon were looked up by address in OpenStreetMap on 2026-11-11 and are NOT yet checked by a person (8/1 and 8/2 share one address and so one point). faculties: ids from faculties.json whose students are normally housed there; empty = none listed on nsu.ru.",
   "dorms": [
-    {"id": "1a",  "name": "1а",  "address": "ул. Ляпунова, 4",   "lat": null, "lon": null, "faculties": ["iir"]},
-    {"id": "1b",  "name": "1б",  "address": "ул. Ляпунова, 2",   "lat": null, "lon": null, "faculties": ["iir"]},
-    {"id": "2",   "name": "2",   "address": "ул. Пирогова, 4/2", "lat": null, "lon": null, "faculties": []},
-    {"id": "3",   "name": "3",   "address": "ул. Пирогова, 4/1", "lat": null, "lon": null, "faculties": []},
-    {"id": "4",   "name": "4",   "address": "ул. Пирогова, 8",   "lat": null, "lon": null, "faculties": ["ef"]},
-    {"id": "5",   "name": "5",   "address": "ул. Пирогова, 14",  "lat": null, "lon": null, "faculties": ["ff", "fit"]},
-    {"id": "6",   "name": "6",   "address": "ул. Пирогова, 16",  "lat": null, "lon": null, "faculties": ["mmf"]},
-    {"id": "7",   "name": "7",   "address": "ул. Пирогова, 18",  "lat": null, "lon": null, "faculties": []},
-    {"id": "8-1", "name": "8/1", "address": "ул. Пирогова, 20",  "lat": null, "lon": null, "faculties": ["immt", "ifp"]},
-    {"id": "8-2", "name": "8/2", "address": "ул. Пирогова, 20",  "lat": null, "lon": null, "faculties": ["fen"]},
-    {"id": "9",   "name": "9",   "address": "ул. Пирогова, 18а", "lat": null, "lon": null, "faculties": ["ggf", "iir"]},
-    {"id": "10",  "name": "10",  "address": "ул. Пирогова, 10",  "lat": null, "lon": null, "faculties": ["gi"]}
+    {"id": "1a",  "name": "1а",  "address": "ул. Ляпунова, 4",   "lat": 54.84555, "lon": 83.09596, "faculties": ["iir"]},
+    {"id": "1b",  "name": "1б",  "address": "ул. Ляпунова, 2",   "lat": 54.84487, "lon": 83.09619, "faculties": ["iir"]},
+    {"id": "2",   "name": "2",   "address": "ул. Пирогова, 4/2", "lat": 54.84439, "lon": 83.09405, "faculties": []},
+    {"id": "3",   "name": "3",   "address": "ул. Пирогова, 4/1", "lat": 54.84427, "lon": 83.09287, "faculties": []},
+    {"id": "4",   "name": "4",   "address": "ул. Пирогова, 8",   "lat": 54.84645, "lon": 83.09221, "faculties": ["ef"]},
+    {"id": "5",   "name": "5",   "address": "ул. Пирогова, 14",  "lat": 54.8473, "lon": 83.0922, "faculties": ["ff", "fit"]},
+    {"id": "6",   "name": "6",   "address": "ул. Пирогова, 16",  "lat": 54.84815, "lon": 83.09222, "faculties": ["mmf"]},
+    {"id": "7",   "name": "7",   "address": "ул. Пирогова, 18",  "lat": 54.84895, "lon": 83.09225, "faculties": []},
+    {"id": "8-1", "name": "8/1", "address": "ул. Пирогова, 20",  "lat": 54.85009, "lon": 83.09269, "faculties": ["immt", "ifp"]},
+    {"id": "8-2", "name": "8/2", "address": "ул. Пирогова, 20",  "lat": 54.85009, "lon": 83.09269, "faculties": ["fen"]},
+    {"id": "9",   "name": "9",   "address": "ул. Пирогова, 18а", "lat": 54.84796, "lon": 83.09323, "faculties": ["ggf", "iir"]},
+    {"id": "10",  "name": "10",  "address": "ул. Пирогова, 10",  "lat": 54.84737, "lon": 83.09358, "faculties": ["gi"]}
   ]
 }

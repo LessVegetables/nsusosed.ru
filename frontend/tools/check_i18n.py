@@ -19,7 +19,7 @@ from pathlib import Path
 FRONTEND = Path(__file__).resolve().parent.parent
 LANGS = ("ru", "en", "zh")
 # Keys assembled in code, e.g. t(`error.${code}`).
-DYNAMIC_PREFIXES = ("error.", "flash.", "contact.")
+DYNAMIC_PREFIXES = ("error.", "flash.", "contact.")  # contact.<type> is built in account.js and room.js  # contact.<type> is built in account.js and room.js
 
 ENTRY = re.compile(r'^\s*("(?:[^"\\]|\\.)+"):\s*("(?:[^"\\]|\\.)*"),\s*$')
 

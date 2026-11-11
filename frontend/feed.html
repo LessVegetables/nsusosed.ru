@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title data-i18n="title.feed">Подборка — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/feed.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <section class="wrap section">
+      <div class="shead">
+        <div><span class="tag" data-i18n="feed.eyebrow">Подборка</span><h1 class="title" data-i18n="feed.title">Сначала самые совместимые</h1></div>
+        <div class="tabs" role="tablist" data-i18n-attr="aria-label:feed.tabs">
+          <button type="button" role="tab" id="tab-dorm" data-kind="dorm" aria-selected="false" aria-controls="list" data-i18n="feed.tab.dorm">Общежитие</button>
+          <button type="button" role="tab" id="tab-apartment" data-kind="apartment" aria-selected="false" aria-controls="list" data-i18n="feed.tab.apartment">Квартиры</button>
+        </div>
+      </div>
+      <p class="count" id="count" aria-live="polite"></p>
+      <div id="list" role="tabpanel"></div>
+      <div class="feed-more" id="more"></div>
+    </section>
+
+    <dialog class="dialog" id="campus-dialog" aria-labelledby="campus-title">
+      <h2 id="campus-title" data-i18n="feed.campus.title">Показать весь кампус?</h2>
+      <p data-i18n="feed.campus.text">Эти общежития не относятся к твоему факультету. Чтобы поселиться в них, нужно отдельное разрешение: его дают не всегда, и бумаг будет больше.</p>
+      <div class="row">
+        <button class="btn" type="button" id="campus-yes" data-i18n="feed.campus.yes">Понятно, показать</button>
+        <button class="btn secondary" type="button" id="campus-no" data-i18n="account.cancel" autofocus>Отмена</button>
+      </div>
+    </dialog>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>
