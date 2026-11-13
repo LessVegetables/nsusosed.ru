@@ -2,95 +2,131 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.account">Аккаунт — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
   <script type="module" src="/js/pages/account.js"></script>
   <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
   <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="/">nsusosed</a>
-      <nav class="site-nav" aria-label="Основное меню" data-i18n-attr="aria-label:nav.label">
-        <ul>
-          <li data-show="seeker" hidden><a href="/matches" data-i18n="nav.matches">Подборка</a></li>
-          <li data-show="host" hidden><a href="/home" data-i18n="nav.home">Моё жильё</a></li>
-          <li data-show="seeker host" hidden><a href="/questionnaire" data-i18n="nav.questionnaire">Анкета</a></li>
-          <li data-show="seeker host onboarding" hidden><a href="/account" data-i18n="nav.account" aria-current="page">Аккаунт</a></li>
-          <li data-show="guest" hidden><a href="/login" data-i18n="nav.login">Войти</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
 
-  <main id="main" class="container narrow stack" tabindex="-1">
-    <h1 data-i18n="account.title">Аккаунт</h1>
+  <main id="main" tabindex="-1">
+    <section class="wrap section account">
+      <div>
+        <span class="tag mono" id="email" data-private></span>
+        <h1 class="title" data-i18n="account.title">Аккаунт</h1>
+      </div>
 
-    <section class="card stack" aria-labelledby="name-title">
-      <h2 id="name-title" data-i18n="account.profileTitle">Профиль</h2>
-      <p><span class="muted" data-i18n="account.email">Почта:</span> <span id="email" data-private></span></p>
-      <form id="name-form" class="stack" novalidate>
-        <div class="field" data-field="display_name">
-          <label for="display-name" data-i18n="account.displayName">Имя</label>
-          <input id="display-name" type="text" autocomplete="nickname"
-                 minlength="2" maxlength="60" required aria-describedby="display-name-hint">
-          <p id="display-name-hint" class="hint" data-i18n="account.displayNameHint">Его видят соседи по жилью. 2–60 символов.</p>
+      <div class="account-grid">
+        <form class="box pad" id="profile" novalidate>
+          <h2 data-i18n="account.profile.title">Профиль</h2>
+          <p class="hint" data-i18n="account.profile.hint">Имя, фото и пара слов о себе: их видят те, с кем ты подбираешься в соседи.</p>
+          <div class="row">
+            <span id="avatar" data-private></span>
+            <div class="stack">
+              <label class="btn secondary"><input class="sr-only" type="file" id="avatar-file" accept="image/jpeg,image/png,image/webp"><span data-i18n="account.avatar.upload">Загрузить фото</span></label>
+              <div><button class="linkbtn" type="button" id="avatar-remove" data-i18n="account.avatar.remove" hidden>Убрать фото</button></div>
+            </div>
+          </div>
+          <label class="field"><span data-i18n="login.name.first">Имя</span>
+            <input id="first-name" autocomplete="given-name" maxlength="40" aria-describedby="first-name-err" required>
+            <span class="error" id="first-name-err" hidden></span>
+          </label>
+          <label class="field"><span data-i18n="login.name.last">Фамилия</span>
+            <input id="last-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
+            <span class="error" id="last-name-err" hidden></span>
+          </label>
+          <label class="field"><span data-i18n="account.bio.label">О себе</span>
+            <textarea id="bio" rows="4" maxlength="500" aria-describedby="bio-hint"></textarea>
+            <small id="bio-hint" data-i18n="account.bio.hint">Курс, чем увлекаешься, что важно в соседях. До 500 знаков.</small>
+          </label>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <form class="box pad" id="about" novalidate data-private>
+          <h2 data-i18n="account.about.title">Что ищешь</h2>
+          <fieldset>
+            <legend data-i18n="account.intent.label">Зачем ты здесь</legend>
+            <div class="opts" data-choice="single" id="intent">
+              <button type="button" data-value="seek_dorm" aria-pressed="false" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
+              <button type="button" data-value="seek_apt" aria-pressed="false" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
+              <button type="button" data-value="host" aria-pressed="false" data-i18n="account.intent.host">Ищу соседа к себе</button>
+              <button type="button" data-value="join" aria-pressed="false" data-i18n="account.intent.join">Меня пригласили в жильё</button>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend data-i18n="account.gender.label">Пол</legend>
+            <div class="opts" data-choice="single" id="gender">
+              <button type="button" data-value="f" aria-pressed="false" data-i18n="account.gender.f">Женский</button>
+              <button type="button" data-value="m" aria-pressed="false" data-i18n="account.gender.m">Мужской</button>
+            </div>
+            <p class="hint" data-i18n="account.gender.hint">Комнаты в общежитиях раздельные: показываем те, куда тебя могут поселить.</p>
+          </fieldset>
+          <label class="field"><span data-i18n="account.faculty.label">Факультет</span>
+            <select id="faculty"></select>
+            <small data-i18n="account.faculty.hint">От факультета зависит, в каких общежитиях селят.</small>
+          </label>
+          <div>
+            <label class="check"><input type="checkbox" id="is-adult"><span data-i18n="account.adult.label">Мне есть 18</span></label>
+            <p class="hint" data-i18n="account.adult.hint">Дату рождения не спрашиваем. Младше 18 — не покажем вопросы о никотине.</p>
+          </div>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <form class="box pad" id="contacts" novalidate data-private>
+          <h2 data-i18n="account.contacts.title">Как с тобой связаться</h2>
+          <p class="hint" data-i18n="account.contacts.hint">Общение идёт вне сайта. Контакты видят только вошедшие студенты — и только когда сами попросят показать. Если сдаёшь место, нужен хотя бы один основной способ: телефон, Telegram или VK.</p>
+          <p class="note error" id="contacts-err" role="alert" hidden></p>
+          <div id="contact-fields" class="stack"></div>
+          <p class="hint" data-i18n="account.contacts.meta">* Instagram принадлежит компании Meta, которая признана в России экстремистской организацией и запрещена.</p>
+          <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
+        </form>
+
+        <div class="account-side">
+          <section class="box pad" aria-labelledby="quiz-title">
+            <h2 id="quiz-title" data-i18n="account.quiz.title">Анкета</h2>
+            <p class="hint" id="quiz-status"></p>
+            <a class="btn secondary" href="/questionnaire" data-i18n="account.quiz.open">Открыть анкету →</a>
+          </section>
+
+          <section class="box pad" id="language" aria-labelledby="language-title">
+            <h2 id="language-title" data-i18n="account.language.title">Язык</h2>
+            <div id="lang"></div>
+            <p class="hint" data-i18n="account.language.hint">Сохраняется в аккаунте: сайт и письма будут на этом языке на любом устройстве.</p>
+          </section>
+
+          <section class="box pad" aria-labelledby="session-title">
+            <h2 id="session-title" data-i18n="account.session.title">Вход</h2>
+            <p class="hint" data-i18n="account.session.hint">На этом устройстве ты остаёшься в аккаунте около трёх месяцев без повторного входа.</p>
+            <div class="row">
+              <button class="btn secondary" type="button" id="logout" data-i18n="account.logout">Выйти</button>
+              <button class="linkbtn" type="button" id="delete" data-i18n="account.delete">Удалить аккаунт</button>
+            </div>
+          </section>
         </div>
-        <div id="name-error" hidden></div>
-        <div class="actions">
-          <button type="submit" class="btn" disabled data-i18n="common.save">Сохранить</button>
-        </div>
-      </form>
-    </section>
-
-    <section class="card stack" aria-labelledby="language-title">
-      <h2 id="language-title" data-i18n="account.languageTitle">Язык</h2>
-      <form id="language-form" class="stack" novalidate>
-        <div class="field" data-field="language">
-          <label for="language" data-i18n="account.language">Язык интерфейса</label>
-          <select id="language">
-            <option value="ru" lang="ru">Русский</option>
-            <option value="en" lang="en">English</option>
-          </select>
-        </div>
-        <div id="language-error" hidden></div>
-      </form>
-    </section>
-
-    <section class="card stack" aria-labelledby="session-title">
-      <h2 id="session-title" data-i18n="account.sessionTitle">Выход</h2>
-      <div id="logout-error" hidden></div>
-      <div class="actions">
-        <button id="logout" type="button" class="btn btn-secondary" data-i18n="account.logout">Выйти из аккаунта</button>
       </div>
     </section>
 
-    <section class="card card-danger stack" aria-labelledby="delete-title">
-      <h2 id="delete-title" data-i18n="account.deleteTitle">Удаление аккаунта</h2>
-      <p data-i18n="account.deleteText">Аккаунт сразу скроется: вы выйдете со всех устройств, соседи и другие пользователи перестанут вас видеть. Через 14 дней мы сотрём аккаунт и анкету насовсем и уберём вас из жилья (если вы в нём последний, удалится и карточка жилья с фото). Передумали — просто войдите по почте в течение 14 дней, и всё вернётся.</p>
-      <form id="delete-form" class="stack" novalidate>
-        <div class="field" data-field="confirm">
-          <label for="delete-confirm" data-i18n="account.deleteLabel">Чтобы подтвердить, введите DELETE</label>
-          <input id="delete-confirm" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false">
-        </div>
-        <div id="delete-error" hidden></div>
-        <div class="actions">
-          <button type="submit" class="btn btn-danger" disabled data-i18n="account.delete">Удалить аккаунт</button>
-        </div>
-      </form>
-    </section>
+    <dialog class="dialog" id="delete-dialog" aria-labelledby="delete-title">
+      <h2 id="delete-title" data-i18n="account.delete.title">Удалить аккаунт?</h2>
+      <p data-i18n="account.delete.text">Он сразу скроется от всех, а через 14 дней сотрётся насовсем. Если передумаешь — просто войди по почте в эти 14 дней.</p>
+      <div class="row">
+        <button class="btn dark" type="button" id="delete-confirm" data-i18n="account.delete.confirm">Удалить</button>
+        <button class="btn secondary" type="button" id="delete-cancel" data-i18n="account.cancel" autofocus>Отмена</button>
+      </div>
+    </dialog>
   </main>
 
-  <div id="toast" class="toast" role="status" hidden></div>
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <p data-i18n="footer.tagline">nsusosed.ru — подбор соседей для студентов НГУ</p>
-      <p><a href="/privacy" data-i18n="footer.privacy">Политика обработки персональных данных</a></p>
-    </div>
-  </footer>
+  <footer class="site-footer"></footer>
 </body>
 </html>

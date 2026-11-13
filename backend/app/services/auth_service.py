@@ -3,115 +3,122 @@ import logging
 from datetime import datetime, timedelta, timezone
 from fastapi import Request, Response
 from sqlalchemy import delete, select, text
-from app.config import settings
+from app.config import FACULTY_IDS, settings
 from app.models.user import User
-from app.models.profile import Profile
 from app.models.session import Session
 from app.schemas.auth import (
     RequestCodeRequest, RequestCodeResponse,
-    VerifyCodeRequest, AuthResponse, UserBrief,
+    VerifyCodeRequest, AuthResponse,
 )
-from app.config import QUESTIONNAIRE
-from app.schemas.user import UserSelf, UserUpdate, UserHome
+from app.models.user_contact import UserContact
+from app.schemas.user import Contact, ContactsUpdate, UserSelf, UserUpdate
+from app.services.image_service import avatar_url, drop_avatar
+from app.utils.contact import PRIMARY_TYPES, contact_url, normalize_contact
 from app.utils.security import normalize_email, validate_email_domain
 from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
-from app.utils.errors import AppError, validation_error, invalid_code
+from app.utils.errors import AppError, beta_closed, validation_error, invalid_code
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
-from app.services import rate_limit_service as rl
+from app.services import questionnaire_service, rate_limit_service as rl
 
 logger = logging.getLogger("nsusosed")
 
 
+async def _find_user(db, email: str) -> User | None:
+    result = await db.execute(select(User).where(User.email == email))
+    return result.scalar_one_or_none()
+
+
 async def request_code(db, body: RequestCodeRequest, request: Request) -> RequestCodeResponse:
-    """Запросить код подтверждения на email."""
+    """Email a login code. The account itself is created only once the code is verified."""
     email = normalize_email(body.email)
 
-    # 1. Проверка домена
     if not validate_email_domain(email, settings.email_domains):
         reason = "DOMAIN_NOT_ALLOWED" if "@" in email else "INVALID_EMAIL"
         raise validation_error("Недопустимый адрес электронной почты.", {"email": reason})
+    if not settings.beta_allows(email):
+        raise beta_closed()  # no code is made or sent
 
     ip = rl.client_ip(request)
     await rl.check_request_code(db, email, ip)
     await rl.record(db, "code_request", email, ip)
 
-    # 2. Сгенерировать OTP. Пользователь создаётся только после проверки кода.
     code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
 
-    # 3. Отправить email
-    sent = await send_otp_email(email, code)
+    sent = await send_otp_email(email, code, body.language or "ru")
     if not sent:
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
 
-    # Маскируем email для ответа
     local, domain = email.rsplit("@", 1)
     masked = f"{local[0]}***@{domain}" if len(local) > 1 else f"*@{domain}"
 
     return RequestCodeResponse(
-        message="Код отправлен на почту",
         email_masked=masked,
         ttl_seconds=settings.otp_ttl_seconds,
+        # Tells the login page whether to ask for a name. This does reveal whether an
+        # address has an account; accepted for a closed NSU-email audience.
+        is_new=await _find_user(db, email) is None,
     )
 
 
 async def verify_code(
     db, body: VerifyCodeRequest, request: Request, response: Response
 ) -> AuthResponse:
-    """Проверить код и создать сессию."""
+    """Check the code, create the account on first login, open a session."""
     email = normalize_email(body.email)
+    if not settings.beta_allows(email):
+        raise beta_closed()  # a code sent before the address was taken off the list
 
     ip = rl.client_ip(request)
     await rl.check_verify(db, email, ip)
 
+    user = await _find_user(db, email)
+    is_new = user is None
+    # Checked before the code so that a missing name doesn't burn an attempt.
+    if is_new and not (body.first_name and body.last_name):
+        raise validation_error("Укажите имя и фамилию.", {
+            field: "MISSING" for field in ("first_name", "last_name") if not getattr(body, field)})
+
     otp = await verify_otp(db, email, body.code.strip())
     if otp is None:
         await rl.record(db, "verify_fail", email, ip)
-        # Сохраняем счётчик попыток и событие до ошибки: иначе get_db откатит транзакцию.
+        # Keep the attempt counter and the event: get_db rolls the transaction back on error.
         await db.commit()
         raise invalid_code()
 
     await rl.record(db, "verify_ok", email, ip)
 
-    # Находим пользователя или регистрируем нового
-    result = await db.execute(select(User).where(User.email == email))
-    user = result.scalar_one_or_none()
     if user is None:
         user = User(
             email=email,
-            display_name="Пользователь",
+            first_name=body.first_name,
+            last_name=body.last_name,
+            language=body.language or "ru",
             privacy_version=1,
             privacy_accepted_at=otp.privacy_accepted_at or datetime.now(timezone.utc),
         )
         db.add(user)
-        await db.flush()
+    elif body.language is not None:
+        user.language = body.language
 
-    # Вход в срок ожидания отменяет удаление аккаунта.
+    # Logging in during the grace period cancels the deletion.
     account_restored = user.deleted_at is not None
     if account_restored:
         user.deleted_at = None
-        await db.flush()
+    await db.flush()
 
-    # Анкета заполнена (и текущей версии)?
-    prof_result = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    profile = prof_result.scalar_one_or_none()
-    profile_complete = profile is not None and profile.questionnaire_version == QUESTIONNAIRE["version"]
-
-    # Создаём сессию
     token = await create_session(db, user.id, request)
 
-    # Попутно чистим просроченное (индексы по времени есть у всех трёх таблиц)
+    # Housekeeping on the way (all three tables are indexed by time).
     await cleanup_expired_sessions(db)
     await cleanup_expired_otps(db)
     await rl.cleanup_old_events(db)
     await purge_deleted_accounts(db)
     set_session_cookie(response, token)
 
-    return AuthResponse(
-        user=UserBrief(id=user.id, email=user.email, display_name=user.display_name),
-        profile_complete=profile_complete,
-        account_restored=account_restored,
-    )
+    return AuthResponse(user_id=user.id, first_name=user.first_name, is_new=is_new,
+                        questionnaire_complete=await questionnaire_service.is_complete(db, user),
+                        intent=user.intent, account_restored=account_restored)
 
 
 async def logout(db, request: Request, response: Response) -> None:
@@ -123,59 +130,87 @@ async def logout(db, request: Request, response: Response) -> None:
 
 
 async def get_me(db, user: User) -> UserSelf:
-    from app.services.membership_service import get_membership
-    prof = await db.execute(select(Profile).where(Profile.user_id == user.id))
-    profile = prof.scalar_one_or_none()
+    from app.services.home_service import get_membership
     membership = await get_membership(db, user.id)
     return UserSelf(
-        id=user.id, email=user.email, display_name=user.display_name, language=user.language,
-        situation=profile.situation if profile else None,
-        # Анкета старой версии годится для подбора, но новые вопросы ещё не отвечены.
-        profile_complete=profile is not None and profile.questionnaire_version == QUESTIONNAIRE["version"],
-        home=UserHome(id=membership.listing_id, is_admin=membership.is_admin) if membership else None,
+        home_id=membership.home_id if membership else None,
+        id=user.id, email=user.email, first_name=user.first_name, last_name=user.last_name,
+        language=user.language, gender=user.gender, faculty=user.faculty, is_adult=user.is_adult,
+        intent=user.intent, bio=user.bio,
+        avatar_url=avatar_url(user.avatar_file),
+        contacts=[Contact(type=c.type, value=c.value, url=contact_url(c.type, c.value)) for c in user.contacts],
+        questionnaire_complete=await questionnaire_service.is_complete(db, user),
     )
 
 
 async def update_me(db, user: User, body: UserUpdate) -> UserSelf:
-    if body.display_name is not None:
-        user.display_name = body.display_name
-    if body.language is not None:
-        user.language = body.language
+    changes = body.model_dump(exclude_unset=True, exclude_none=True)
+    if "faculty" in changes and changes["faculty"] not in FACULTY_IDS:
+        raise validation_error("Неизвестный факультет.", {"faculty": "UNKNOWN"})
+    for field, value in changes.items():
+        setattr(user, field, value)
+    await db.flush()
+    return await get_me(db, user)
+
+
+async def update_contacts(db, user: User, body: ContactsUpdate) -> UserSelf:
+    """Replace the person's contact list. An empty list is fine (a seeker needs none);
+    a non-empty one must include a phone, Telegram or VK."""
+    errors: dict[str, str] = {}
+    cleaned: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for i, item in enumerate(body.contacts):
+        value, reason = normalize_contact(item.type, item.value)
+        if reason is None and item.type in seen:
+            reason = "DUPLICATE_TYPE"
+        if reason:
+            errors[f"contacts.{i}.{'type' if reason in ('INVALID_CHOICE', 'DUPLICATE_TYPE') else 'value'}"] = reason
+            continue
+        seen.add(item.type)
+        cleaned.append((item.type, value))
+    if not errors and cleaned and not seen & set(PRIMARY_TYPES):
+        errors["contacts"] = "NEED_PRIMARY"
+    if errors:
+        raise validation_error("Проверьте контакты.", errors)
+
+    user.contacts.clear()
+    await db.flush()  # delete before insert: (user, type) is unique
+    user.contacts.extend(UserContact(position=i, type=t, value=v) for i, (t, v) in enumerate(cleaned))
     await db.flush()
     return await get_me(db, user)
 
 
 async def delete_me(db, user: User, response: Response) -> None:
-    """Удаление аккаунта, шаг 1: скрыть сразу, стереть через ACCOUNT_DELETION_GRACE_DAYS.
+    """Account deletion, step 1: hide now, erase after ACCOUNT_DELETION_GRACE_DAYS.
 
-    Сразу: все сессии закрыты, человек не виден соседям и кандидатам, его анкета не
-    участвует в подборе, админство в жилье переходит к активному соседу. Вход по коду
-    в течение срока всё отменяет (verify_code). Насовсем стирает purge_deleted_accounts.
+    All sessions are closed right away. Logging in with a code during the grace period
+    undoes it (verify_code); purge_deleted_accounts erases for good.
     """
-    from app.services.membership_service import ensure_active_admin, get_membership
     await db.execute(text("SELECT id FROM users WHERE id = :uid FOR UPDATE"), {"uid": user.id})
     user.deleted_at = datetime.now(timezone.utc)
     await db.execute(delete(Session).where(Session.user_id == user.id))
     await db.flush()
+    from app.services.home_service import _home, ensure_manager, get_membership
     membership = await get_membership(db, user.id)
     if membership is not None:
-        await ensure_active_admin(db, membership.listing_id)
+        ensure_manager(await _home(db, membership.home_id))
+        await db.flush()
     clear_session_cookie(response)
 
 
 async def purge_deleted_accounts(db) -> int:
-    """Удаление аккаунта, шаг 2: стереть аккаунты, у которых истёк срок ожидания.
-    Анкета и сессии уходят каскадом; жильё — по обычным правилам ухода жильца
-    (последний ушёл — жильё и фото удаляются). Вызывается при каждом входе и при старте."""
-    from app.services.membership_service import get_membership, remove_member
+    """Account deletion, step 2: erase accounts whose grace period has run out.
+    Called on every login and at startup."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.account_deletion_grace_days)
     result = await db.execute(
         select(User).where(User.deleted_at.is_not(None), User.deleted_at < cutoff).with_for_update(skip_locked=True))
     users = list(result.scalars().all())
+    from app.services.home_service import get_membership, remove_member
     for user in users:
         membership = await get_membership(db, user.id)
         if membership is not None:
             await remove_member(db, membership)
+        drop_avatar(db, user)
         await db.delete(user)
     if users:
         await db.flush()

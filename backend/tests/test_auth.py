@@ -5,6 +5,9 @@ from sqlalchemy import text
 EMAIL = "student@g.nsu.ru"
 
 
+NAME = {"first_name": "Аня", "last_name": "Ким"}
+
+
 def wrong(code: str) -> str:
     return "000000" if code != "000000" else "111111"
 
@@ -23,20 +26,57 @@ async def age_auth_events(db, email: str, seconds: int) -> None:
 async def test_user_is_created_only_after_verification(db, make_client, codes):
     c = make_client()
     r = await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
-    assert r.status_code == 200
+    assert r.status_code == 200 and r.json()["is_new"] is True
     assert await count_users(db, EMAIL) == 0
 
-    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]})
+    r = await c.post("/api/auth/verify-code", json={
+        "email": EMAIL, "code": codes[EMAIL], "first_name": "  Аня ", "last_name": "Ким", "language": "zh"})
     assert r.status_code == 200
-    assert r.json()["profile_complete"] is False
+    assert r.json()["is_new"] is True and r.json()["first_name"] == "Аня"
     assert await count_users(db, EMAIL) == 1
-    assert (await c.get("/api/me")).status_code == 200
+    me = (await c.get("/api/me")).json()
+    assert (me["first_name"], me["last_name"], me["language"]) == ("Аня", "Ким", "zh")
+    assert me["questionnaire_complete"] is False and me["intent"] is None
 
 
-async def test_wrong_domain_and_missing_privacy(make_client):
+async def test_first_login_needs_a_name_and_does_not_burn_the_code(db, make_client, codes):
+    c = make_client()
+    await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]})
+    assert r.status_code == 422
+    assert r.json()["error"]["fields"] == {"first_name": "MISSING", "last_name": "MISSING"}
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL], "first_name": "Аня"})
+    assert r.json()["error"]["fields"] == {"last_name": "MISSING"}
+    assert await count_users(db, EMAIL) == 0
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]} | NAME)
+    assert r.status_code == 200
+
+
+async def test_returning_user_skips_the_name_and_keeps_their_language(db, make_client, login):
+    c = make_client()
+    await login(c, EMAIL, language="en")
+    await age_auth_events(db, EMAIL, 61)
+    again = await login(make_client(), EMAIL, first_name="Other")
+    assert again["is_new"] is False and again["first_name"] == "Иван"
+    assert (await c.get("/api/me")).json()["language"] == "en"
+
+    # Picking a language on the login page is saved to the account.
+    await age_auth_events(db, EMAIL, 61)
+    await login(make_client(), EMAIL, language="ru")
+    assert (await c.get("/api/me")).json()["language"] == "ru"
+
+
+async def test_wrong_domain_and_missing_privacy(make_client, codes):
     c = make_client()
     r = await c.post("/api/auth/request-code", json={"email": "x@gmail.com", "privacy_accepted": True})
     assert r.json()["error"]["fields"] == {"email": "DOMAIN_NOT_ALLOWED"}
+    for bad in ("x@nsu.ru.evil.com", "x@notnsu.ru", "x@.nsu.ru", "@nsu.ru"):
+        r = await c.post("/api/auth/request-code", json={"email": bad, "privacy_accepted": True})
+        assert r.status_code == 422 and "email" in r.json()["error"]["fields"], bad
+    # Any address at nsu.ru or below it is fine.
+    for good in ("a@nsu.ru", "b@G.NSU.RU", "c@mail.sub.nsu.ru"):
+        r = await c.post("/api/auth/request-code", json={"email": good, "privacy_accepted": True})
+        assert r.status_code == 200, good
     r = await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": False})
     assert r.json()["error"]["fields"] == {"privacy_accepted": "MUST_ACCEPT"}
 
@@ -55,9 +95,9 @@ async def test_code_dies_after_five_wrong_attempts(make_client, codes):
     c = make_client()
     await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
     for _ in range(5):
-        r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": wrong(codes[EMAIL])})
+        r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": wrong(codes[EMAIL])} | NAME)
         assert r.json()["error"]["code"] == "INVALID_CODE"
-    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]})
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]} | NAME)
     assert r.status_code == 401
 
 
@@ -68,11 +108,11 @@ async def test_failed_verifies_are_capped_across_fresh_codes(db, make_client, co
         if i % 4 == 0:  # новый код до того, как старый сгорит
             await age_auth_events(db, EMAIL, 61)  # мимо кулдауна на повторную отправку
             await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
-        r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": wrong(codes[EMAIL])})
+        r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": wrong(codes[EMAIL])} | NAME)
         statuses.append(r.status_code)
     assert statuses == [401] * 10 + [429]
     # Даже верный код не проходит, пока действует блокировка
-    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]})
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]} | NAME)
     assert r.status_code == 429
 
 

@@ -1,20 +1,29 @@
-// / — short intro. Logged-in users get a link straight to their matches or home.
+// "/" depends on who is asking:
+//   never logged in here      → the landing page;
+//   logged in, session alive  → their own page;
+//   logged in before, expired → straight to /login (no landing).
 
-import { initPage, startPage } from '../layout.js';
-import { h } from '../ui.js';
+import { ApiError, get } from '../api.js';
+import { initPage } from '../layout.js';
+import { mountLangSwitch } from '../lang-switch.js';
+import { homeFor } from '../routes.js';
+import { KEYS, local, session } from '../storage.js';
 
-const { me } = await initPage({ auth: 'optional' });
-
-if (me) {
-  const host = startPage(me) === '/home';
-  document.getElementById('cta').replaceChildren(
-    h('a', { class: 'btn', href: startPage(me), i18n: host ? 'home.toHome' : 'home.toMatches' }));
+async function destination() {
+  if (!local.get(KEYS.seenLogin)) return null;
+  try {
+    return homeFor(await get('/me'));
+  } catch (err) {
+    // Server unreachable: better the landing page than a redirect loop.
+    return err instanceof ApiError && err.status === 401 ? '/login' : null;
+  }
 }
 
-const params = new URLSearchParams(location.search);
-if (params.get('deleted') === '1') {
-  document.getElementById('notice').replaceChildren(
-    h('div', { class: 'alert alert-success', role: 'status' }, h('p', { i18n: 'home.deleted' })),
-  );
-  history.replaceState(null, '', '/');
+const go = await destination();
+if (go) {
+  location.replace(go);
+} else {
+  await initPage({ auth: 'none' });
+  // A guest's pick lasts for this tab; the login page passes it on to the account.
+  mountLangSwitch(document.getElementById('lang'), { onPick: (code) => session.set(KEYS.lang, code) });
 }

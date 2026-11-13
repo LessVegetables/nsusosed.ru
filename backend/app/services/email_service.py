@@ -26,28 +26,55 @@ def _minutes_ru(n: int) -> str:
     return f"{n} {word}"
 
 
-def otp_email(code: str) -> tuple[str, str, str]:
-    """Тема, текст и HTML письма с кодом.
+_TEXTS = {
+    "ru": {
+        "subject": "{code} — ваш код",
+        "intro": "Для подтверждения входа на NSUsosed.ru:",
+        "ttl": "Код действует {ttl}. Никому его не сообщайте.",
+        "ignore": "Если вы не входили на сайт, просто проигнорируйте это письмо.",
+    },
+    "en": {
+        "subject": "{code} is your code",
+        "intro": "To confirm your login to NSUsosed.ru:",
+        "ttl": "The code is valid for {ttl}. Don't share it with anyone.",
+        "ignore": "If you didn't try to log in, just ignore this email.",
+    },
+    "zh": {
+        "subject": "{code} 是你的验证码",
+        "intro": "用于确认登录 NSUsosed.ru：",
+        "ttl": "验证码 {ttl}内有效，请勿告诉任何人。",
+        "ignore": "如果不是你本人在登录，请忽略这封邮件。",
+    },
+}
 
-    Код стоит первым в теме, а первая строка письма продолжает тему
-    («123456 — ваш код» → «Для подтверждения входа на NSUsosed.ru: 123456»):
-    так код виден прямо в списке писем и в уведомлении, не открывая письмо.
 
-    HTML годится для светлой и тёмной темы: ни фона, ни цвета основного текста
-    не задаём (почтовый клиент подставит свои), рамка и второстепенный текст —
-    средне-серые, читаемые на обоих фонах; для клиентов, понимающих
-    prefers-color-scheme, серые чуть подстраиваются.
+def _ttl(lang: str) -> str:
+    n = max(1, settings.otp_ttl_seconds // 60)
+    if lang == "ru":
+        return _minutes_ru(n)
+    if lang == "zh":
+        return f"{n} 分钟"
+    return f"{n} minute{'' if n == 1 else 's'}"
+
+
+def otp_email(code: str, lang: str = "ru") -> tuple[str, str, str]:
+    """Subject, plain text and HTML of the code email, in the page's language.
+
+    The code comes first in the subject and the first line of the body continues it
+    ("123456 — ваш код" → "Для подтверждения входа на NSUsosed.ru: 123456"), so the code
+    shows in the inbox list and in the notification without opening the email.
+
+    The HTML works in light and dark: no background and no main text color are set (the
+    mail client supplies its own); the border and the secondary text are mid-gray, readable
+    on both, and adjust slightly for clients that understand prefers-color-scheme.
     """
-    ttl = _minutes_ru(max(1, settings.otp_ttl_seconds // 60))
-    subject = f"{code} — ваш код"
-    text = (
-        f"Для подтверждения входа на NSUsosed.ru:\n\n"
-        f"{code}\n\n"
-        f"Код действует {ttl}. Никому его не сообщайте.\n"
-        f"Если вы не входили на сайт, просто проигнорируйте это письмо."
-    )
+    tx = _TEXTS.get(lang, _TEXTS["ru"])
+    lang = lang if lang in _TEXTS else "ru"
+    subject = tx["subject"].format(code=code)
+    intro, ttl_line, ignore = tx["intro"], tx["ttl"].format(ttl=_ttl(lang)), tx["ignore"]
+    text = f"{intro}\n\n{code}\n\n{ttl_line}\n{ignore}"
     html = f"""<!doctype html>
-<html lang="ru">
+<html lang="{'zh-CN' if lang == 'zh' else lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -63,20 +90,20 @@ def otp_email(code: str) -> tuple[str, str, str]:
 </style>
 </head>
 <body style="margin:0; padding:24px 16px; font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; font-size:16px; line-height:1.5;">
-  <p style="margin:0 0 16px;">Для подтверждения входа на NSUsosed.ru:</p>
+  <p style="margin:0 0 16px;">{intro}</p>
   <div class="code" style="display:inline-block; margin:0 0 16px; padding:12px 20px; border:1px solid #c4c9d0; border-radius:10px; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:32px; font-weight:700; letter-spacing:6px;">{code}</div>
-  <p class="muted" style="margin:0; font-size:14px; color:#7a828c;">Код действует {ttl}. Никому его не сообщайте.<br>Если вы не входили на сайт, просто проигнорируйте это письмо.</p>
+  <p class="muted" style="margin:0; font-size:14px; color:#7a828c;">{ttl_line}<br>{ignore}</p>
 </body>
 </html>"""
     return subject, text, html
 
 
-async def send_otp_email(to_email: str, code: str) -> bool:
+async def send_otp_email(to_email: str, code: str, lang: str = "ru") -> bool:
     """
     Отправить код подтверждения через Postbox API.
     При EMAIL_MODE=log код пишется в лог (только для разработки).
     """
-    subject, text, html = otp_email(code)
+    subject, text, html = otp_email(code, lang)
 
     # ── Тестовый режим ──────────────────────────────────
     if settings.email_mode == "log":

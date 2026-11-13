@@ -1,71 +1,93 @@
-// Shared page frame: which menu links to show, the account's language, the
-// login check and sending unfinished accounts to
-// onboarding. Every page script starts with
-//   const { me } = await initPage({ auth: 'required' });
+// Shared page frame: language, session, header and footer.
+//
+// Every page calls initPage() once:
+//   auth: 'none'     — public page, never asks the server who you are
+//         'optional' — public page that looks different when logged in
+//         'required' — sends guests to /login
+// It resolves to { user } (null for a guest) after the page is translated and shown.
 
-import { api } from './api.js';
-import { applyI18n, setLang } from './i18n.js';
-import { h, loadFailed, loginUrl } from './ui.js';
+import { ApiError, get } from './api.js';
+import { detectLang, setLang, t, translate } from './i18n.js';
+import { KEYS, local, session } from './storage.js';
+import { el, toast } from './ui.js';
 
-// Seekers look for a place; hosts live in a home (or are about to list one).
-export function roleOf(me) {
-  if (!me) return 'guest';
-  return me.home || me.situation === 'host' ? 'host' : 'seeker';
+function header(user) {
+  const action = user
+    ? el('a', { class: 'btn secondary', href: '/account', i18n: 'nav.account' })
+    : location.pathname.startsWith('/login') ? null : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
+  const here = location.pathname.replace(/\.html$/, '');
+  const current = (href) => (here === href ? 'page' : null);
+  return el('div', { class: 'wrap' },
+    el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
+    user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' },
+      el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
+      el('a', { href: '/home', i18n: 'nav.myHome', 'aria-current': current('/home') }),
+      el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') })),
+    action);
 }
 
-// Where "home" is for this user: the logo and the end of onboarding go there.
-export function startPage(me) {
-  return roleOf(me) === 'host' ? '/home' : '/matches';
+/** Phones: the header has no room for a menu, so the sections live in a bar at the bottom. */
+function tabbar() {
+  const here = location.pathname.replace(/\.html$/, '');
+  const current = (href) => (here === href ? 'page' : null);
+  return el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' },
+    el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
+    el('a', { href: '/home', i18n: 'nav.homeShort', 'aria-current': current('/home') }),
+    el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') }),
+    el('a', { href: '/account', i18n: 'nav.account', 'aria-current': current('/account') }));
 }
 
-// The account still needs onboarding: a language, a role and a questionnaire
-// of the current version.
-export function needsOnboarding(me) {
-  return Boolean(me) && (!me.language || !me.situation || !me.profile_complete);
+function footer(user) {
+  return el('div', { class: 'wrap' },
+    el('span', { i18n: 'footer.tagline' }),
+    el('nav', { class: 'row', 'data-i18n-attr': 'aria-label:footer.label' },
+      // The language lives in the account; the footer only points there.
+      user && el('a', { href: '/account#language', i18n: 'footer.language' }),
+      el('a', { href: '/privacy', i18n: 'footer.privacy' })));
 }
 
-// The header and footer are static markup in every page. Menu items carry
-// data-show="guest | seeker | host | onboarding" (several allowed) and start hidden.
-function showNav(me) {
-  // During onboarding there's no role yet: only Account (to log out).
-  const role = needsOnboarding(me) ? 'onboarding' : roleOf(me);
-  for (const item of document.querySelectorAll('.site-nav [data-show]')) {
-    item.hidden = !item.dataset.show.split(' ').includes(role);
+async function whoAmI(auth) {
+  if (auth === 'none') return null;
+  try {
+    return await get('/me');
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 401) return null;
+    throw err;
   }
-  if (me) document.querySelector('.brand')?.setAttribute('href', startPage(me));
 }
 
-// auth: 'required' → redirect to /login when logged out;
-//       'optional' → load the user if there is one;
-//       'none'     → don't ask the API at all.
-// onboarding: true on pages an unfinished account may use as they are
-// (the questionnaire itself, /join, Account, static pages); everywhere else
-// such an account is sent to the questionnaire first.
-export async function initPage({ auth = 'required', onboarding = false } = {}) {
-  applyI18n();
-
-  let me = null;
-  if (auth !== 'none') {
-    try {
-      me = await api.getMe();
-    } catch (err) {
-      if (err.code === 'AUTH_REQUIRED') {
-        if (auth === 'required') {
-          location.replace(loginUrl());
-          return new Promise(() => {}); // The page is going away.
-        }
-      } else if (auth === 'required') {
-        loadFailed(document.getElementById('main'), err, () => location.reload());
-        return new Promise(() => {});
-      }
+export async function initPage({ auth = 'optional' } = {}) {
+  const langReady = setLang(detectLang());
+  let user = null;
+  try {
+    user = await whoAmI(auth);
+  } catch {
+    // Server unreachable: public pages still render; private ones fall through to /login.
+  }
+  if (!user && auth === 'required') {
+    location.replace('/login');
+    return new Promise(() => {}); // the page is going away
+  }
+  await langReady;
+  if (user) {
+    local.set(KEYS.seenLogin, '1');
+    if (user.language !== local.get(KEYS.lang)) {
+      local.set(KEYS.lang, user.language);
+      await setLang(user.language);
     }
   }
-  if (me?.language) setLang(me.language);
-  if (needsOnboarding(me) && !onboarding) {
-    const next = location.pathname + location.search;
-    location.replace(`/questionnaire?next=${encodeURIComponent(next)}`);
-    return new Promise(() => {});
+
+  document.querySelector('.site-header')?.replaceChildren(header(user));
+  document.querySelector('.site-footer')?.replaceChildren(footer(user));
+  if (user && !document.querySelector('.tabbar')) document.body.append(tabbar());
+  translate();
+  document.documentElement.dataset.ready = '';
+
+  // A message left by the previous page ("flash.restored" → .title / .text).
+  const flash = session.get(KEYS.flash);
+  if (flash) {
+    session.remove(KEYS.flash);
+    toast(t(`${flash}.title`), t(`${flash}.text`));
   }
-  showNav(me);
-  return { me };
+  return { user };
 }

@@ -1,0 +1,153 @@
+/* Page-level layout only. Colors, fonts and sizes come from nsusosed.css tokens
+   (design/README.md, section 15). One file for the whole site: it is small. */
+
+@layer pages {
+  /* Pages are translated by script. Until that's done, keep the Russian defaults out of
+     sight so English and Chinese readers don't see them flash (2s safety net below). */
+  html:not([data-ready]) body { visibility: hidden; animation: reveal 0s 2s forwards; }
+  @keyframes reveal { to { visibility: visible; } }
+
+  /* Footer sits at the bottom even on short pages. */
+  body { min-height: 100dvh; display: flex; flex-direction: column; }
+  main { flex: 1; }
+  .site-footer { margin-top: 0; }
+  .site-footer a { font-weight: var(--w-bold); }
+
+  /* Landing */
+  .hero { display: grid; gap: var(--gap); align-content: start; }
+  .hero .lead { margin: 0; }
+  .hero-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
+
+  /* Login: one narrow column; the three steps replace each other. */
+  .login { max-width: 520px; display: grid; gap: var(--gap); }
+  .login form { display: grid; gap: 16px; justify-items: start; }
+  .login form > * { margin: 0; }
+  .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  .hint { font-size: var(--fs-small); font-weight: var(--w-semibold); }
+
+  /* Landing: the "not a student?" box */
+  .about { display: grid; gap: 14px; justify-items: start; }
+  .about > * { margin: 0; }
+  .about p { max-width: 46em; }
+
+  /* Account: boxes in one column on phones, two on wide screens (not one stretched column). */
+  .account { display: grid; gap: var(--gap); }
+  .account .title { margin-top: 10px; }
+  .account-grid { display: grid; gap: var(--gap); align-items: start; }
+  .account-side { display: grid; gap: var(--gap); }
+  @media (min-width: 961px) { .account-grid { grid-template-columns: 1fr 1fr; } }
+  .account-grid .box { display: grid; gap: 16px; justify-items: start; }
+  .account-grid .box > * { margin: 0; }
+  .account-grid .box > :is(.field, .note, fieldset, #contact-fields) { justify-self: stretch; }
+  .account-grid fieldset { border: 0; padding: 0; min-width: 0; display: grid; gap: 10px; }
+  .account-grid legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .account-grid .opts button { padding: 14px; font-size: var(--fs-body); }
+  .account-grid .field .tag { margin-left: 8px; padding: 3px 7px; }
+  .account-grid .field textarea { resize: vertical; }
+
+  /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
+     fieldsets inside them. The save bar sticks to the bottom so it is always under the thumb. */
+  .qpage { max-width: 760px; }
+  .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
+  .qintro { display: grid; gap: 12px; justify-items: start; }
+  .qintro > * { margin: 0; }
+  .qblock { display: grid; gap: 28px; }
+  .qblock > * { margin: 0; }
+  .qblock > h2 { font-size: var(--fs-panel); }
+  .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+  .qblock fieldset > * { margin: 0; }
+  .qblock legend { padding: 0; margin-bottom: 12px; font-size: var(--fs-card); font-weight: var(--w-black); line-height: 1.15; letter-spacing: var(--track-tight); }
+  .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
+  .qblock .opts { grid-template-columns: 1fr; gap: 10px; }
+  .qblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
+  #about .opts { grid-template-columns: 1fr 1fr; }
+  .qbar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
+  .qbar-progress { flex: 1; min-width: 0; display: grid; gap: 6px; }
+  .qbar .prog i { height: 10px; min-width: 0; }
+  .qbar .btn { white-space: nowrap; }
+  .qbar .prog { max-width: none; }
+  .solo-panel { display: grid; gap: 16px; justify-items: start; }
+  .solo-panel > * { margin: 0; }
+  .solo-panel .opts { justify-self: stretch; }
+  @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
+
+  /* My home: same single column as the questionnaire. */
+  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
+  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
+  .hpage #status { gap: 10px; }
+  .hpage #status:empty { display: none; }
+  .hblock { display: grid; gap: 18px; }
+  .hblock > * { margin: 0; }
+  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
+  .hblock fieldset > * { margin: 0; }
+  .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .hblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .hblock .opts.results { grid-template-columns: 1fr; }
+  .hblock .field textarea { resize: vertical; }
+  .hblock .note[data-error] { margin-top: 8px; }
+  .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
+  .row.spread { justify-content: space-between; }
+  .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .resident { display: grid; gap: 10px; padding: 14px; border: var(--border-thin); border-radius: var(--r-sm); }
+  .resident > * { margin: 0; }
+  .resident .tag { margin-left: 8px; padding: 3px 7px; }
+  .rights { display: grid; gap: 8px; }
+  .invite-fresh { display: grid; gap: 10px; }
+  .invite-fresh > * { margin: 0; }
+  .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
+
+  /* Above the phone tab bar. */
+  @media (max-width: 640px) { body:has(.tabbar) .qbar { bottom: calc(68px + env(safe-area-inset-bottom)); } }
+
+  /* Feed */
+  .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+  .feed-more:empty { display: none; }
+  .card .top { overflow: hidden; }
+  .card .cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .card .top > :not(.cover) { position: relative; }
+  .card .emoji { font-size: var(--fs-card); }
+  .card .body > * { margin: 0; }
+  .empty { display: grid; gap: 10px; }
+  .empty > * { margin: 0; }
+
+  /* Room page */
+  .rpage { display: grid; gap: var(--gap); }
+  .rpage > * { margin: 0; min-width: 0; }
+  .listing.single { grid-template-columns: minmax(0, 640px); }
+  .info { display: grid; gap: 14px; justify-items: start; }
+  .info > * { margin: 0; }
+  .info > :is(.facts, .contact-box, .note, .stack) { justify-self: stretch; }
+  .info .title { font-size: var(--fs-panel); }
+  .info .facts b { font-size: var(--fs-body); }
+  .rpage .breakdown { margin-top: 0; }
+  .rblock { display: grid; gap: 12px; }
+  .rblock > * { margin: 0; }
+  .rblock > h2:not(.title) { font-size: var(--fs-panel); }
+  .prewrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .resident-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+  .resident-card { display: grid; gap: 12px; align-content: start; }
+  .resident-card > * { margin: 0; }
+  .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
+  .resident-card .meta { margin: 0; }
+  .compare { display: grid; gap: 12px; }
+  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding-top: 12px; border-top: var(--border-thin); }
+  .compare-row > * { margin: 0; font-size: var(--fs-small); }
+  .compare-q { grid-column: 1 / -1; font-weight: var(--w-heavy); }
+  .compare-row small { display: block; font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .contact-box > div + div { margin-top: 10px; }
+
+  /* Privacy and other documents */
+  .doc { max-width: 760px; }
+  .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }
+  .doc li { margin-bottom: 8px; }
+
+  /* 404 and other one-box pages */
+  .solo { max-width: 560px; margin: 0 auto; }
+  .solo .box { display: grid; gap: 16px; justify-items: start; }
+  .solo h1 { margin: 0; }
+  .solo p { margin: 0; }
+}

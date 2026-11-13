@@ -2,42 +2,53 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.join">Приглашение — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
   <script type="module" src="/js/pages/join.js"></script>
   <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true"></script>
   <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
 </head>
 <body>
-  <a class="skip-link" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
-  <header class="site-header">
-    <div class="header-inner">
-      <a class="brand" href="/">nsusosed</a>
-      <nav class="site-nav" aria-label="Основное меню" data-i18n-attr="aria-label:nav.label">
-        <ul>
-          <li data-show="seeker" hidden><a href="/matches" data-i18n="nav.matches">Подборка</a></li>
-          <li data-show="host" hidden><a href="/home" data-i18n="nav.home">Моё жильё</a></li>
-          <li data-show="seeker host" hidden><a href="/questionnaire" data-i18n="nav.questionnaire">Анкета</a></li>
-          <li data-show="seeker host onboarding" hidden><a href="/account" data-i18n="nav.account">Аккаунт</a></li>
-          <li data-show="guest" hidden><a href="/login" data-i18n="nav.login">Войти</a></li>
-        </ul>
-      </nav>
-    </div>
-  </header>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
 
-  <main id="main" class="container narrow" tabindex="-1">
-    <h1 data-i18n="join.title">Приглашение в жильё</h1>
-    <div id="content"></div>
+  <main id="main" tabindex="-1">
+    <div class="wrap section login">
+      <!-- Step 1: the code or the whole link -->
+      <form class="box pad" id="code-form" novalidate>
+        <h1 class="title" data-i18n="join.title">У тебя есть приглашение?</h1>
+        <p data-i18n="join.text">Вставь ссылку или код, которые прислал сосед.</p>
+        <label class="field"><span data-i18n="join.label">Ссылка или код</span>
+          <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QM2XWP" aria-describedby="code-err">
+          <span class="error" id="code-err" hidden></span>
+        </label>
+        <div><button class="btn" type="submit" data-i18n="join.find">Найти жильё →</button></div>
+        <p class="hint"><span data-i18n="join.noInvite">Нет приглашения, а жильё твоё?</span> <a href="/home" data-i18n="join.listOwn">Добавь его сам</a></p>
+      </form>
+
+      <!-- Step 2: is this the place? -->
+      <section class="box pad fill-green solo-panel" id="confirm" hidden data-private>
+        <span class="tag" data-i18n="join.confirm.eyebrow">Это оно?</span>
+        <h1 class="title" id="confirm-title"></h1>
+        <p><span class="emoji" id="confirm-emoji"></span></p>
+        <p id="confirm-hosts"></p>
+        <p class="note error" id="confirm-err" hidden></p>
+        <div class="row">
+          <button class="btn dark" type="button" id="join" data-i18n="join.confirm.yes">Да, я здесь живу →</button>
+          <button class="btn secondary" type="button" id="back" data-i18n="join.confirm.no">Нет, не то</button>
+        </div>
+      </section>
+    </div>
   </main>
 
-  <footer class="site-footer">
-    <div class="footer-inner">
-      <p data-i18n="footer.tagline">nsusosed.ru — подбор соседей для студентов НГУ</p>
-      <p><a href="/privacy" data-i18n="footer.privacy">Политика обработки персональных данных</a></p>
-    </div>
-  </footer>
+  <footer class="site-footer"></footer>
 </body>
 </html>

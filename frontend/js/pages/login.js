@@ -1,168 +1,208 @@
-// /login — email → one-time code → session cookie.
+// Login without a password, in three steps:
+//   1. email  →  2. name, while the code is on its way (first login only)  →  3. code.
 
-import { api } from '../api.js';
-import { EMAIL_DOMAIN, RESEND_COOLDOWN_SECONDS } from '../config.js';
-import { bindText } from '../i18n.js';
-import { initPage, startPage } from '../layout.js';
-import { busy, clearError, clearFieldErrors, mmss, safeNext, showError, showFieldErrors } from '../ui.js';
+import { ApiError, get, post } from '../api.js';
+import { currentLang, t } from '../i18n.js';
+import { mountLangSwitch } from '../lang-switch.js';
+import { initPage } from '../layout.js';
+import { homeFor } from '../routes.js';
+import { KEYS, local, session } from '../storage.js';
+import { errorText, setBusy } from '../ui.js';
 
-const params = new URLSearchParams(location.search);
-// Without ?next the user lands on their start page: matches or their home.
-const next = params.has('next') ? safeNext(params.get('next')) : null;
+const RESEND_COOLDOWN = 60; // seconds; the server enforces the same pause
+const $ = (id) => document.getElementById(id);
 
-const { me } = await initPage({ auth: 'optional', onboarding: true });
-if (me) location.replace(next || startPage(me));
+const { user } = await initPage({ auth: 'optional' });
+if (user) location.replace(homeFor(user));
 
-const stepEmail = document.getElementById('step-email');
-const stepCode = document.getElementById('step-code');
-const emailForm = document.getElementById('email-form');
-const codeForm = document.getElementById('code-form');
-const emailInput = document.getElementById('email');
-const privacyInput = document.getElementById('privacy');
-const codeInput = document.getElementById('code');
-const emailError = document.getElementById('email-error');
-const codeError = document.getElementById('code-error');
-const codeSent = document.getElementById('code-sent');
-const codeTimer = document.getElementById('code-timer');
-const resendButton = document.getElementById('resend');
+// A pick here lasts for this tab and is saved to the account on login.
+mountLangSwitch($('lang'), { onPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); } });
 
-let email = '';
-let codeExpiresAt = 0;
-let resendAt = 0;
-let timer = null;
-let verifying = false;
+const steps = { email: $('step-email'), name: $('step-name'), code: $('step-code') };
+const cells = [...$('code').querySelectorAll('input')];
+const state = { email: '', isNew: false, firstName: '', lastName: '', expiresAt: 0, resendAt: 0 };
 
-const secondsLeft = (until) => (until - Date.now()) / 1000;
+function show(step) {
+  for (const [name, form] of Object.entries(steps)) form.hidden = name !== step;
+  const focus = { email: $('email'), name: $('first-name'), code: cells[0] }[step];
+  focus.focus();
+}
+
+/** Show or clear the red chip under a field. */
+function fieldError(input, errorEl, message) {
+  input.setAttribute('aria-invalid', String(Boolean(message)));
+  errorEl.textContent = message || '';
+  errorEl.hidden = !message;
+}
+
+const reason = (code) => {
+  const key = `error.field.${code}`;
+  const text = t(key);
+  return text === key ? t('error.field.invalid') : text;
+};
+
+// ── Step 1: email ───────────────────────────────────────
+
+async function requestCode(button) {
+  setBusy(button, true);
+  try {
+    const res = await post('/auth/request-code', {
+      email: state.email, privacy_accepted: true, language: currentLang(),
+    });
+    state.isNew = res.is_new;
+    state.expiresAt = Date.now() + res.ttl_seconds * 1000;
+    state.resendAt = Date.now() + RESEND_COOLDOWN * 1000;
+    return true;
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    if (err.fields.email) {
+      fieldError($('email'), $('email-err'), reason(err.fields.email));
+      show('email');
+    } else {
+      // Too many requests, mail service down, no network.
+      const note = steps.email.hidden ? $('code-err') : $('email-note');
+      note.textContent = `⚠ ${errorText(err)}`;
+      note.hidden = false;
+    }
+    return false;
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+steps.email.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  $('email-note').hidden = true;
+  state.email = $('email').value.trim().toLowerCase();
+  const emailProblem = !state.email ? 'REQUIRED' : !state.email.includes('@') ? 'INVALID_EMAIL' : null;
+  fieldError($('email'), $('email-err'), emailProblem && reason(emailProblem));
+  const accepted = $('privacy').checked;
+  fieldError($('privacy'), $('privacy-err'), accepted ? '' : reason('MUST_ACCEPT'));
+  if (emailProblem) { $('email').focus(); return; }
+  if (!accepted) { $('privacy').focus(); return; }
+
+  if (!await requestCode(e.submitter)) return;
+  clearCode();
+  renderCodeStep();
+  show(state.isNew ? 'name' : 'code');
+});
+
+// ── Step 2: name ────────────────────────────────────────
+
+steps.name.addEventListener('submit', (e) => {
+  e.preventDefault();
+  state.firstName = $('first-name').value.trim().replace(/\s+/g, ' ');
+  state.lastName = $('last-name').value.trim().replace(/\s+/g, ' ');
+  fieldError($('first-name'), $('first-name-err'), state.firstName ? '' : reason('REQUIRED'));
+  fieldError($('last-name'), $('last-name-err'), state.lastName ? '' : reason('REQUIRED'));
+  if (!state.firstName) { $('first-name').focus(); return; }
+  if (!state.lastName) { $('last-name').focus(); return; }
+  renderCodeStep();
+  show('code');
+});
+
+// ── Step 3: code ────────────────────────────────────────
+
+function renderCodeStep() {
+  $('code-title').textContent = state.isNew
+    ? t('login.code.titleNew', { name: state.firstName })
+    : t('login.code.titleBack');
+  $('code-text').textContent = t('login.code.text', { email: state.email });
+  tick();
+}
+
+const code = () => cells.map((c) => c.value).join('');
+
+function clearCode() {
+  cells.forEach((c) => { c.value = ''; });
+  codeError('');
+}
+
+function codeError(message) {
+  $('code').setAttribute('aria-invalid', String(Boolean(message)));
+  $('code-err').textContent = message ? `✕ ${message}` : '';
+  $('code-err').hidden = !message;
+}
+
+/** Put digits into the boxes starting at `from`; used for typing, pasting and SMS-style autofill. */
+function spread(digits, from) {
+  digits.slice(0, cells.length - from).forEach((d, j) => { cells[from + j].value = d; });
+  const next = Math.min(from + digits.length, cells.length - 1);
+  cells[next].focus();
+  if (code().length === cells.length) steps.code.requestSubmit();
+}
+
+cells.forEach((cell, i) => {
+  cell.setAttribute('aria-label', String(i + 1));
+  cell.addEventListener('input', () => {
+    const digits = cell.value.replace(/\D/g, '').split('');
+    cell.value = '';
+    if (digits.length) spread(digits.length > 1 ? digits : digits.slice(-1), i);
+  });
+  cell.addEventListener('keydown', (e) => {
+    if (e.key === 'Backspace' && !cell.value && cells[i - 1]) { cells[i - 1].value = ''; cells[i - 1].focus(); }
+    if (e.key === 'ArrowLeft' && cells[i - 1]) cells[i - 1].focus();
+    if (e.key === 'ArrowRight' && cells[i + 1]) cells[i + 1].focus();
+  });
+  cell.addEventListener('focus', () => cell.select());
+  cell.addEventListener('paste', (e) => {
+    const digits = (e.clipboardData.getData('text').match(/\d/g) || []);
+    if (!digits.length) return;
+    e.preventDefault();
+    clearCode();
+    spread(digits, 0);
+  });
+});
+
+steps.code.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (code().length < cells.length) { codeError(t('login.code.incomplete')); cells[code().length].focus(); return; }
+  const button = steps.code.querySelector('button[type=submit]');
+  if (button.disabled) return;
+  setBusy(button, true);
+  try {
+    const body = { email: state.email, code: code() };
+    if (state.isNew) Object.assign(body, { first_name: state.firstName, last_name: state.lastName });
+    // The account keeps its own language unless one was picked on the landing or here.
+    if (state.isNew || session.get(KEYS.lang)) body.language = currentLang();
+    const res = await post('/auth/verify-code', body);
+    local.set(KEYS.seenLogin, '1');
+    session.remove(KEYS.lang);
+    if (res.account_restored) session.set(KEYS.flash, 'flash.restored');
+    location.replace(homeFor(await get('/me')));
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    setBusy(button, false);
+    if (err.fields.first_name || err.fields.last_name) { show('name'); return; }
+    clearCode();
+    codeError(err.code === 'INVALID_CODE' ? t('login.code.wrong') : errorText(err));
+    cells[0].focus();
+  }
+});
+
+$('resend').addEventListener('click', async () => {
+  codeError('');
+  if (await requestCode($('resend'))) { clearCode(); renderCodeStep(); cells[0].focus(); }
+});
+
+$('change-email').addEventListener('click', () => { clearCode(); show('email'); });
+
+// Countdowns: how long the code lives, and when another one can be sent.
+const mmss = (ms) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+};
 
 function tick() {
-  const codeLeft = secondsLeft(codeExpiresAt);
-  if (codeLeft > 0) bindText(codeTimer, 'login.codeValid', { time: mmss(codeLeft) });
-  else bindText(codeTimer, 'login.codeExpired');
-
-  const resendLeft = secondsLeft(resendAt);
-  resendButton.disabled = resendLeft > 0;
-  if (resendLeft > 0) bindText(resendButton, 'login.resendIn', { time: mmss(resendLeft) });
-  else bindText(resendButton, 'login.resend');
+  if (steps.code.hidden && steps.name.hidden) return;
+  const left = state.expiresAt - Date.now();
+  $('timer').hidden = left <= 0;
+  $('timer-left').textContent = mmss(left);
+  if (left <= 0 && !steps.code.hidden && $('code-err').hidden) codeError(t('login.code.expired'));
+  const wait = state.resendAt - Date.now();
+  $('resend').hidden = wait > 0;
+  $('resend-wait').textContent = wait > 0 ? t('login.code.resendIn', { time: mmss(wait) }) : '';
 }
+setInterval(tick, 1000);
 
-function startTimers(ttlSeconds, cooldownSeconds) {
-  codeExpiresAt = Date.now() + ttlSeconds * 1000;
-  resendAt = Date.now() + cooldownSeconds * 1000;
-  clearInterval(timer);
-  timer = setInterval(tick, 1000);
-  tick();
-}
-
-// Let the user resend once the server says it's allowed again.
-function holdResend(seconds) {
-  resendAt = Date.now() + seconds * 1000;
-  tick();
-}
-
-function isUniversityEmail(value) {
-  return new RegExp(`^[^\\s@]+@${EMAIL_DOMAIN.replace(/\./g, '\\.')}$`, 'i').test(value);
-}
-
-async function sendCode(errorTarget, form) {
-  const result = await api.requestCode(email, true);
-  bindText(codeSent, 'login.codeSent', { email: result.email_masked });
-  startTimers(result.ttl_seconds, RESEND_COOLDOWN_SECONDS);
-  clearError(errorTarget);
-  if (form) clearFieldErrors(form);
-}
-
-emailForm.addEventListener('submit', async (event) => {
-  event.preventDefault();
-  clearError(emailError);
-  email = emailInput.value.trim();
-
-  if (!email) return showFieldErrors(emailForm, { email: 'REQUIRED' });
-  if (!isUniversityEmail(email)) {
-    return showFieldErrors(emailForm, { email: email.includes('@') ? 'DOMAIN_NOT_ALLOWED' : 'INVALID_EMAIL' });
-  }
-  if (!privacyInput.checked) return showFieldErrors(emailForm, { privacy_accepted: 'MUST_ACCEPT' });
-  clearFieldErrors(emailForm);
-
-  const done = busy(emailForm.querySelector('[type="submit"]'));
-  try {
-    await sendCode(emailError, emailForm);
-    stepEmail.hidden = true;
-    stepCode.hidden = false;
-    codeInput.value = '';
-    codeInput.focus();
-  } catch (err) {
-    if (err.code === 'VALIDATION_ERROR') showFieldErrors(emailForm, err.fields);
-    showError(emailError, err);
-  } finally {
-    done();
-  }
-});
-
-resendButton.addEventListener('click', async () => {
-  clearError(codeError);
-  const done = busy(resendButton);
-  try {
-    await sendCode(codeError);
-    codeInput.value = '';
-    codeInput.focus();
-  } catch (err) {
-    if (err.code === 'RATE_LIMITED' && err.retryAfter) holdResend(err.retryAfter);
-    showError(codeError, err);
-  } finally {
-    done();
-    tick();
-  }
-});
-
-document.getElementById('change-email').addEventListener('click', () => {
-  clearInterval(timer);
-  clearError(codeError);
-  clearFieldErrors(codeForm);
-  stepCode.hidden = true;
-  stepEmail.hidden = false;
-  emailInput.focus();
-});
-
-async function verify() {
-  if (verifying) return;
-  const code = codeInput.value.replace(/\D/g, '');
-  clearError(codeError);
-  if (code.length !== 6) {
-    showFieldErrors(codeForm, { code: 'CODE_FORMAT' });
-    return;
-  }
-  clearFieldErrors(codeForm);
-
-  verifying = true;
-  const done = busy(codeForm.querySelector('[type="submit"]'));
-  try {
-    const result = await api.verifyCode(email, code);
-    clearInterval(timer);
-    if (!result.profile_complete && !next?.startsWith('/questionnaire')) {
-      location.assign(next ? `/questionnaire?next=${encodeURIComponent(next)}` : '/questionnaire');
-    } else {
-      location.assign(next || startPage(await api.getMe()));
-    }
-  } catch (err) {
-    showError(codeError, err);
-    codeInput.select();
-    done();
-    verifying = false;
-  }
-}
-
-codeForm.addEventListener('submit', (event) => {
-  event.preventDefault();
-  verify();
-});
-
-// Submit as soon as all 6 digits are in (typed or pasted).
-codeInput.addEventListener('input', () => {
-  const digits = codeInput.value.replace(/\D/g, '').slice(0, 6);
-  if (digits !== codeInput.value) codeInput.value = digits;
-  if (digits.length === 6) verify();
-});
-
-// The buttons start disabled in the HTML so the form can't be submitted
-// natively (which would put the email in the URL) before this script runs.
-for (const button of document.querySelectorAll('form [type="submit"]')) button.disabled = false;
+show('email');

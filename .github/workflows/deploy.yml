@@ -34,7 +34,8 @@ jobs:
         run: |
           test -f frontend/index.html || { echo "::error::frontend/ is missing on this branch"; exit 1; }
           test -f backend/Dockerfile || { echo "::error::backend/ is missing on this branch"; exit 1; }
-          if [ -f frontend/tools/check_i18n.py ]; then python3 frontend/tools/check_i18n.py; fi
+          python3 frontend/tools/check_i18n.py
+          for f in frontend/js/*.js frontend/js/pages/*.js frontend/js/i18n/*.js; do node --input-type=module --check < "$f" || { echo "::error::syntax error in $f"; exit 1; }; done
 
       # Catch a broken Dockerfile or requirements.txt before touching the server.
       - name: Test-build the API image
@@ -96,7 +97,9 @@ jobs:
             --exclude=/tests/ \
             --exclude=/pytest.ini \
             --exclude=/requirements-dev.txt \
-            --exclude=/app/seed.py \
+            --exclude=/.venv/ \
+            --exclude=/media/ \
+            --exclude=/.pytest_cache/ \
             --exclude=.env \
             --exclude=.DS_Store \
             backend/ vps:/opt/nsusosed/app/

@@ -2,75 +2,65 @@
 
 Find roommates at NSU who live the way you do.
 
-A closed website for NSU students. You fill in a short questionnaire about your daily habits. The site then shows dorm rooms and apartments with free places, ranked by how well your habits match the people who already live there.
+A closed website for NSU students. You answer a short questionnaire about your everyday habits. The site then shows dorm rooms and apartments with free places, ranked by how well your habits match the people who already live there.
 
 [Русская версия](README_RU.md)
+
+**Status: pilot.** The MVP proved the tech; this version is being prepared for its first real users. Nothing from the MVP was migrated.
 
 ## The problem
 
 - **Dorms.** At check-in, the dorm manager lists free rooms by number ("122, 512, 412 or 302?"). You pick without knowing who lives there, and you find out how they live only after moving in.
-- **Apartments.** When flatmates move out, whoever is left pays for the empty rooms. Chats, flyers and rental sites (CIAN, Avito) don't help you find another student from your own university.
+- **Apartments.** When flatmates move out, whoever is left pays for the empty rooms. Chats, flyers and rental sites don't help you find another student from your own university.
 
-## Who it's for
+## Principles
 
-1. **First-years moving into a dorm.** They choose a room based on the people already in it.
-2. **Residents with a free place in their room.** They want someone with a similar routine to move in.
-3. **Students renting an apartment with a free room.** They want to fill it with an NSU student.
+- **It connects people; it does not collect data about them.** All communication happens off the site, in the messengers people already use.
+- **No addresses, ever.** A dorm listing knows its building; its room number is stored only so the same room can't be listed twice and is never shown. An apartment is stored as a district and a circle a few hundred meters wide that the host's own browser moved off the real spot; the address never reaches the database.
+- **Hidden answers stay hidden.** Some questionnaire answers are visible in a profile, some are for the algorithm only. Scores are shown as a percent rounded to 5 and five coarse badges, so a hidden answer can't be worked out from them.
+- **Hosts and seekers.** A *host* lives somewhere with a free place; a *seeker* is looking for one. One person can be both.
 
 ## How it works
 
-1. **Sign up or log in** with an `@g.nsu.ru` email. There are no passwords: every time, we email a one-time code that's valid for 10 minutes. On sign-up you also agree to the personal-data policy.
-2. **Onboarding**, one step per screen. First you pick the interface language (changeable later in Account) and say what you're after: **looking for a place**, or **have a place and need a roommate**. The rest depends on that answer.
-3. **The questionnaire** (10 questions). For each habit you give:
-   - your own answer;
-   - how important it is to you (1–10);
-   - optionally, a **hard condition**: the answers you won't accept from a roommate (for example, "no smoking in the room").
+1. **Log in** with an NSU email (`@nsu.ru` or any subdomain, such as `@g.nsu.ru`). There are no passwords: we email a one-time code. First-timers give their name while the code is on its way. The session lasts about three months.
+2. **The questionnaire** (version 1: 20 questions, 16 required): sleep, tidiness, noise, guests, nicotine and smells, evenings, sharing, how you bring up problems. Before it, three facts: gender, faculty and whether you are 18 (we never ask a birth date). Under-18s are not asked about nicotine.
+3. **What are you here for?** Looking for a dorm place, looking for a room in an apartment, offering a place, or joining a place by invite. That decides the page you land on from then on.
+4. **Seekers** get a feed with two tabs, dorm and apartments, best match first. Dorm rooms are limited to the buildings of their faculty and every list to rooms they could move into, until they ask to see the whole campus or all rooms. A room's page has photos, a map (the dorm building exactly; an apartment as an approximate area), the people who live there with their bios, compatibility with each of them, and a button that reveals the hosts' contacts.
+5. **Hosts** list a dorm room or an apartment with one or more rooms, each with its own rent. Every room gets three emojis in place of a number, unique across the site. Hosts invite the roommates they already live with by link; each host has their own rights (edit the listing, photos, invites, manage residents).
+6. **Contacts** belong to people, not listings: phone, Telegram or VK as the main ones, plus Max, Instagram, Snapchat and WeChat as extras. A listing becomes visible once a host has a main contact.
 
-   Seekers then give a monthly budget (needed for apartments). Hosts describe their home: room or apartment details, as many contacts as they like, photos, and whether roommates already live there (if so, they get an invite link to send them).
-4. **Homes have admins, not an owner.** Whoever adds a home is its admin. Admins edit it, invite roommates and can make any resident who has filled in the questionnaire an admin too. If the last admin leaves, the longest-standing resident becomes admin; when the last resident leaves, the home is deleted. Each person lives in at most one home, and someone living in a home isn't looking for one. An admin confirms the listing every 30 days, otherwise it's hidden.
-5. **Browse matches.** Seekers see homes with free places, sorted by compatibility %, with a short explanation (e.g. "sleep matches, cleaning differs"). "Show places I don't match with" also lists the ones that fail a hard condition or the budget, with the reasons.
-6. **Contact the residents.** A home lists all its contacts: Telegram, WhatsApp, Max, phone numbers, anything else. Moving in is arranged outside the site.
+## Compatibility
 
-## The 3 core features
+Described for users at `/compatibility` and in full in `questionnaire/` (kept next to this repo). In short: a few combinations are never shown at all (for example a cigarette smoker and someone smells make unwell); one person's habit is compared with the other's tolerance in both directions and the worse direction counts; five topics (sleep, tidiness, quiet and guests, air and smells, living together) are combined as 0.7 × the weighted mean + 0.3 × the worst topic. A room's score blends the average over its residents with the worst one.
 
-| # | Feature | Done when |
-|---|---|---|
-| F1 | **Questionnaire.** Passwordless login with an email code; onboarding by role; the 10-question questionnaire, which you can edit later | A user can log in with a code, save their answers and change them |
-| F2 | **Home listing.** Dorm: building, room, floor, capacity, occupied places, corner room, windows, view, layout. Apartment: district, monthly cost per person. Plus a description, photos and any number of contacts. Residents join through an invite link; admins manage the home | A home exists, with its residents and admins attached |
-| F3 | **Matches + contact.** Filtered and sorted list with an explanation of each score, optionally with the places that don't fit; the contacts are shown on the home | A user sees the homes that suit them and can reach the residents |
+The questionnaire is versioned: each version has its own questions, scoring values and scorer in `backend/app/questionnaires/vN/`. Values the spec does not give are marked `PROVISIONAL` in `v1/scoring.json`.
 
-Also in the MVP: login/logout, editing and pausing a listing, deleting your account (hidden at once, erased after 14 days; logging in within that time restores it), Russian + English interface, layout that works on phones and computers.
+## Not in the pilot
 
-## Matching rules
-
-- **Questions:** bedtime, wake-up time, night noise, cleaning, guests, smoking in the room, alcohol in the room, studying in the room, airing, temperature.
-- **Hard conditions filter first, in both directions.** If even one resident breaks your hard condition, or you break theirs, the home is hidden, however high its average. "Show places I don't match with" shows it anyway, after the matches, with the reason.
-- **Apartments:** hidden (or, with that option, marked) if the price per person is above your budget.
-- **Older questionnaires** keep matching: a question one side hasn't answered yet is left out of the score.
-- **Room profile:** the average of the residents who filled in the questionnaire. If only some have, the card says "2 of 3 residents answered".
-- **Score (0–100%):** answer similarity on each question, weighted by how important it is to both sides. It's a similarity index, not a guarantee that you won't have conflicts.
-- Rooms with no free places, no answered residents, or a listing older than 30 days aren't shown.
-
-## Not in the MVP
-
-- Forming a group *before* anyone has an apartment (we only list existing apartments with free rooms)
-- Built-in chat, booking, or official room allocation (the dorm manager still decides)
-- Payments, including paid apartment listings
+- Stale listings and stale accounts (no expiry rules yet)
+- A bot check before contacts are shown
+- Built-in chat, booking, payments, official room allocation
 - Universities other than NSU; mobile apps
 
-## Stack
+See [BACKLOG.md](BACKLOG.md) for the full list of things put off.
 
-FastAPI + PostgreSQL, plain HTML/CSS/JS (no framework), Nginx, one VPS at Selectel. Confirmation emails go through Yandex Cloud Postbox. No AI models; the score is a simple formula.
+## Stack and layout
 
-## Open questions
+FastAPI + PostgreSQL, plain HTML/CSS/JS with no framework and no build step, nginx, one VPS. Login emails go through Yandex Cloud Postbox. Maps are Leaflet with OpenStreetMap tiles; address search goes through OpenStreetMap's Nominatim. No AI models; the score is arithmetic.
 
-- [ ] Final wording of the 10 questions and their answer scales
-- [ ] Disputes between a home's residents (for example, admins removing each other): who on the team handles them, and how users reach them
+| Folder | What |
+|---|---|
+| [`backend/`](backend/README.md) | The API, migrations, tests |
+| [`frontend/`](frontend/README.md) | The site |
+| [`design/`](design/README.md) | The design system ("D · Neo-brutalism") and its specimen page |
+| [`deploy/`](deploy/README.md) | Server setup and the release flow (`main` → PR → `deploy`) |
+
+Interface languages: Russian, English, Chinese. Light and dark themes.
 
 ## Team
 
 | | Role |
 |---|---|
-| Daniel Gehrman | Business hypothesis, Development and Deployment |
+| Daniel Gehrman | Business hypothesis, development and deployment |
 | Nikita Bezborodov | Architecture, technical spec |
-| Anton Bykov | Development and Development, MVP demo |
+| Anton Bykov | Development, MVP demo |

@@ -1,130 +1,82 @@
-// Interface language: Russian (default) and English.
+// Translations: one flat dictionary per language in js/i18n/<lang>.js.
 //
-// Texts live in js/i18n/ru.js and js/i18n/en.js. Static HTML marks text with
-// data-i18n="key" (and data-i18n-attr="placeholder:key" for attributes); JS
-// uses bindText()/bindLocalized() so the text can be re-translated in place
-// when the user switches language, without re-rendering forms.
+// Markup:  <p data-i18n="key">Русский текст по умолчанию</p>
+//          <input data-i18n-attr="placeholder:key; aria-label:other.key">
+// Strings: "Привет, {name}" takes parameters; "[[так же,]]" becomes the yellow headline
+//          highlight (the only markup a translation can carry; it is built as DOM, never as HTML).
+// Write every string in sentence case; uppercase comes from CSS.
 
-import ru from './i18n/ru.js';
-import en from './i18n/en.js';
-import { local } from './storage.js';
+import { KEYS, local, session } from './storage.js';
 
-const DICTS = { ru, en };
-export const LANGS = ['ru', 'en'];
-const STORAGE_KEY = 'nsusosed.lang';
+export const LANGS = ['ru', 'en', 'zh'];
+export const LANG_NAMES = { ru: 'RU', en: 'EN', zh: '中文' };
+const HTML_LANG = { ru: 'ru', en: 'en', zh: 'zh-CN' };
 
-// The language saved on this device, else the browser's. After login the
-// account's language wins (layout.js); it is chosen once during onboarding and
-// changed on the Account page.
-function initialLang() {
-  const saved = local.get(STORAGE_KEY);
+let lang = 'ru';
+let dict = {};
+let fallback = {};
+
+/** Account language (cached) → a guest's pick for this tab → the browser's → Russian. */
+export function detectLang() {
+  const saved = local.get(KEYS.lang) || session.get(KEYS.lang);
   if (LANGS.includes(saved)) return saved;
-  const browser = (navigator.languages?.[0] || navigator.language || '').toLowerCase();
-  return browser && !browser.startsWith('ru') ? 'en' : 'ru';
-}
-
-let lang = initialLang();
-document.documentElement.lang = lang;
-
-export function getLang() {
-  return lang;
-}
-
-export function locale() {
-  return lang === 'ru' ? 'ru-RU' : 'en-GB';
-}
-
-export function setLang(next) {
-  if (!LANGS.includes(next) || next === lang) return;
-  lang = next;
-  local.set(STORAGE_KEY, next);
-  document.documentElement.lang = next;
-  applyI18n();
-  window.dispatchEvent(new CustomEvent('langchange', { detail: { lang } }));
-}
-
-// Pick the current language from a {ru, en} object (question labels from the
-// API, error messages from errors.js).
-export function pick(obj) {
-  if (obj == null) return '';
-  if (typeof obj === 'string') return obj;
-  return obj[lang] || obj.ru || '';
-}
-
-// Argument values can be plain values, or objects resolved at render time so
-// they follow the language too:
-//   {t: 'key', args}  another translation key
-//   {ru, en}          a localized pair
-//   {date: iso}       a date, formatted for the current language
-//   {num: n}          a number with locale grouping (15 000 / 15,000)
-//   [ ... ]           a list of the above, joined with ", "
-function resolveArg(value) {
-  if (Array.isArray(value)) return value.map(resolveArg).join(', ');
-  if (value && typeof value === 'object') {
-    if ('t' in value) return t(value.t, value.args);
-    if ('date' in value) return formatDate(value.date);
-    if ('num' in value) return Number(value.num).toLocaleString(locale());
-    return pick(value);
+  for (const tag of navigator.languages ?? [navigator.language ?? '']) {
+    const short = tag.toLowerCase().slice(0, 2);
+    if (LANGS.includes(short)) return short;
   }
-  return value;
+  return 'ru';
 }
 
-export function t(key, args = {}) {
-  let text = DICTS[lang][key] ?? DICTS.ru[key];
-  if (text === undefined) {
-    console.warn(`[i18n] missing key: ${key}`);
-    return key;
-  }
-  // Plural forms: {one, few, many, other}, chosen by args.count.
-  if (typeof text === 'object') {
-    const form = new Intl.PluralRules(locale()).select(Number(args.count ?? 0));
-    text = text[form] ?? text.other;
-  }
-  return text.replace(/\{(\w+)\}/g, (match, name) =>
-    name in args ? String(resolveArg(args[name])) : match,
-  );
+export const currentLang = () => lang;
+
+export function t(key, params) {
+  let s = dict[key] ?? fallback[key] ?? key;
+  if (params) s = s.replace(/\{(\w+)\}/g, (m, name) => (name in params ? String(params[name]) : m));
+  return s;
 }
 
-export function formatDate(iso, options = { day: 'numeric', month: 'long', year: 'numeric' }) {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleDateString(locale(), options);
-}
+/** Plain text of a translation (highlight markers removed), for attributes and titles. */
+const plain = (s) => s.replace(/\[\[|\]\]/g, '');
 
-// Set an element's text from a key and remember the key for language changes.
-export function bindText(el, key, args) {
-  el.dataset.i18n = key;
-  if (args) el.dataset.i18nArgs = JSON.stringify(args);
-  else delete el.dataset.i18nArgs;
-  delete el.dataset.i18nRu;
-  delete el.dataset.i18nEn;
-  el.textContent = t(key, args);
-  return el;
-}
-
-// Same for a {ru, en} pair that comes from data rather than the dictionaries.
-export function bindLocalized(el, obj) {
-  delete el.dataset.i18n;
-  delete el.dataset.i18nArgs;
-  el.dataset.i18nRu = obj?.ru ?? '';
-  el.dataset.i18nEn = obj?.en ?? '';
-  el.textContent = pick(obj);
-  return el;
-}
-
-export function applyI18n(root = document) {
-  for (const el of root.querySelectorAll('[data-i18n]')) {
-    const args = el.dataset.i18nArgs ? JSON.parse(el.dataset.i18nArgs) : undefined;
-    el.textContent = t(el.dataset.i18n, args);
-  }
-  for (const el of root.querySelectorAll('[data-i18n-ru]')) {
-    el.textContent = lang === 'en' && el.dataset.i18nEn ? el.dataset.i18nEn : el.dataset.i18nRu;
-  }
-  // data-i18n-attr="placeholder:key; aria-label:other.key"
-  for (const el of root.querySelectorAll('[data-i18n-attr]')) {
-    for (const pair of el.dataset.i18nAttr.split(';')) {
-      const [attr, key] = pair.split(':').map((s) => s.trim());
-      if (attr && key) el.setAttribute(attr, t(key));
+function fill(el, text) {
+  if (!text.includes('[[')) { el.textContent = text; return; }
+  el.textContent = '';
+  for (const part of text.split(/(\[\[.*?\]\])/)) {
+    if (part.startsWith('[[')) {
+      const mark = document.createElement('mark');
+      mark.className = 'highlight';
+      mark.textContent = part.slice(2, -2);
+      el.append(mark);
+    } else if (part) {
+      el.append(part);
     }
   }
+}
+
+/** Translate everything under `root` (the whole page by default). */
+export function translate(root = document) {
+  for (const el of root.querySelectorAll('[data-i18n]')) {
+    const text = t(el.dataset.i18n);
+    if (el.tagName === 'TITLE') document.title = plain(text); else fill(el, text);
+  }
+  for (const el of root.querySelectorAll('[data-i18n-attr]')) {
+    for (const pair of el.dataset.i18nAttr.split(';')) {
+      const [attr, key] = pair.split(':').map((x) => x.trim());
+      if (attr && key) el.setAttribute(attr, plain(t(key)));
+    }
+  }
+}
+
+async function load(code) {
+  return (await import(`./i18n/${code}.js`)).default;
+}
+
+/** Load a language and translate the page. Russian is the fallback for a missing key. */
+export async function setLang(code) {
+  lang = LANGS.includes(code) ? code : 'ru';
+  [dict, fallback] = await Promise.all([load(lang), lang === 'ru' ? {} : load('ru')]);
+  document.documentElement.lang = HTML_LANG[lang];
+  translate();
+  document.dispatchEvent(new CustomEvent('langchange', { detail: lang }));
+  return lang;
 }

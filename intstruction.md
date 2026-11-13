@@ -1,3 +1,5 @@
+> **This document describes the MVP (autumn 2026), not the pilot.** The pilot's interface, questionnaire and flows are different; see `README.md`. The screenshots in `screenshots/` are of the MVP too.
+
 # NSUSOSED.RU | ОТЧЁТ И РУКОВОДСТВО
 
 Отчёт о созданной версии и руководство пользователя

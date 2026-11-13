@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 from pathlib import Path
 from typing import List, Literal
 from pydantic import model_validator
@@ -11,17 +12,25 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+asyncpg://nsusosed:nsusosed@localhost:5432/nsusosed"
     public_origin: str = "http://localhost:8000"
-    allowed_email_domains: str = "g.nsu.ru"
-    session_ttl_seconds: int = 604_800
+    # Each domain also allows all of its subdomains (nsu.ru → g.nsu.ru, …).
+    allowed_email_domains: str = "nsu.ru"
+    # Closed beta: only these addresses may log in (comma- or space-separated). Empty = open to
+    # every allowed domain. Checked on every request, so removing someone logs them out.
+    beta_emails: str = ""
+    # 90 days, sliding: every visit in the second half of the term renews it.
+    session_ttl_seconds: int = 7_776_000
     max_sessions_per_user: int = 5
-    listing_ttl_days: int = 30
-    invite_ttl_days: int = 7
     # Удалённый аккаунт сначала только скрыт: вход в течение этого срока его восстанавливает.
     account_deletion_grace_days: int = 14
+    invite_ttl_days: int = 7
     # Фото жилья: файлы на диске, nginx отдаёт их как /media/...
     media_dir: str = "/data/media"
     media_url: str = "/media"
     cookie_name: str = "__Host-nsusosed"
+    # Secure cookies need https. Chrome makes an exception for http://localhost, Safari and
+    # some in-app browsers do not, so local development over http drops the flag (and the
+    # __Host- prefix, which browsers only accept on Secure cookies). Derived from PUBLIC_ORIGIN.
+    cookie_secure: bool = True
 
     # ── Yandex Cloud Postbox ────────────────────────────
     # postbox — отправлять письма; log — писать коды в лог (только для разработки)
@@ -57,15 +66,31 @@ class Settings(BaseSettings):
             )
         return self
 
+    @model_validator(mode="after")
+    def relax_cookie_for_http(self) -> "Settings":
+        if self.public_origin.startswith("http://"):
+            self.cookie_secure = False
+            self.cookie_name = self.cookie_name.removeprefix("__Host-")
+        return self
+
     @property
     def email_domains(self) -> List[str]:
         return [d.strip().lower() for d in self.allowed_email_domains.split(",") if d.strip()]
+
+    @property
+    def beta_allowlist(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in re.split(r"[,\s]+", self.beta_emails) if e.strip())
+
+    def beta_allows(self, email: str) -> bool:
+        """Closed beta: is this (normalized) address let in? Always true when the list is empty."""
+        return not self.beta_allowlist or email in self.beta_allowlist
 
 
 settings = Settings()
 
 _CONFIG_DIR = Path(__file__).resolve().parent / "config"
-with open(_CONFIG_DIR / "questionnaire_v2.json", encoding="utf-8") as _f:
-    QUESTIONNAIRE: dict = json.load(_f)
-with open(_CONFIG_DIR / "matching.json", encoding="utf-8") as _f:
-    MATCHING_CONFIG: dict = json.load(_f)
+with open(_CONFIG_DIR / "faculties.json", encoding="utf-8") as _f:
+    FACULTIES: list[dict] = json.load(_f)["faculties"]
+with open(_CONFIG_DIR / "dorms.json", encoding="utf-8") as _f:
+    DORMS: list[dict] = json.load(_f)["dorms"]
+FACULTY_IDS = {f["id"] for f in FACULTIES}

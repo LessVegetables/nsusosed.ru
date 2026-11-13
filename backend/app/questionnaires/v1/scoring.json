@@ -1,0 +1,314 @@
+{
+ "_note": "Scoring for questionnaire v1. Structure and the values marked SPEC come from 'nsusosed: как считается совместимость'. Everything marked PROVISIONAL was filled in to make the spec computable and is waiting for Daniel's review, then for calibration against real check-ins.",
+ "hard_blocks": {
+  "_": "SPEC. A pair matching any of these is not shown at all.",
+  "sensitive_e3": 0,
+  "cigarettes": 2,
+  "vape_or_sticks": [
+   1,
+   3
+  ],
+  "decline": 6,
+  "dependent_e2": [
+   0,
+   1
+  ],
+  "late_a2_from": 2
+ },
+ "sleep": {
+  "a1_hours": [
+   22.5,
+   23.5,
+   24.5,
+   25.5,
+   26.5
+  ],
+  "a2_hours": [
+   23.5,
+   24.5,
+   25.5,
+   26.5,
+   27.5
+  ],
+  "_hours": "SPEC: bin midpoints. PROVISIONAL: the open-ended first and last bins are treated as one hour wide.",
+  "allowance_by_a3": [
+   2,
+   1.5,
+   1,
+   0.5
+  ],
+  "gap_divisor": 3,
+  "weekday_weight": 0.6,
+  "free_day_weight": 0.4,
+  "_additions": "PROVISIONAL. F1 and A4 'add friction in proportion to the partner's sensitivity': friction += weight × rate × sensitivity.",
+  "sensitivity_by_a3": [
+   0,
+   0.3,
+   0.7,
+   1
+  ],
+  "f1_rate": [
+   0,
+   0.25,
+   0.6,
+   1
+  ],
+  "f1_weight": 0.25,
+  "a4_rate": [
+   0,
+   0.5,
+   1
+  ],
+  "a4_weight": 0.15
+ },
+ "order": {
+  "b3_vs_b2": [
+   [
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0.4,
+    0,
+    0,
+    0
+   ],
+   [
+    0.9,
+    0.5,
+    0,
+    0
+   ],
+   [
+    1,
+    0.8,
+    0.4,
+    0
+   ]
+  ],
+  "_b3_vs_b2": "SPEC.",
+  "b1_vs_b2": [
+   [
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0.2,
+    0,
+    0,
+    0
+   ],
+   [
+    0.7,
+    0.3,
+    0,
+    0
+   ],
+   [
+    1,
+    0.7,
+    0.3,
+    0
+   ],
+   [
+    0,
+    0,
+    0,
+    0
+   ]
+  ],
+  "_b1_vs_b2": "PROVISIONAL. Last row: 'hardly ever eat in the room' = no dishes to argue about.",
+  "weights": {
+   "B3": 0.6,
+   "B1": 0.4
+  },
+  "_weights": "PROVISIONAL."
+ },
+ "quiet": {
+  "c2_vs_a3": [
+   [
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0.1,
+    0.3,
+    0.5
+   ],
+   [
+    0.1,
+    0.3,
+    0.6,
+    0.9
+   ],
+   [
+    0.3,
+    0.5,
+    0.8,
+    1
+   ]
+  ],
+  "c3_vs_a3": [
+   [
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0,
+    0.1,
+    0.3,
+    0.5
+   ],
+   [
+    0.1,
+    0.3,
+    0.6,
+    0.9
+   ],
+   [
+    0.2,
+    0.5,
+    0.9,
+    1
+   ]
+  ],
+  "d1_vs_d2": [
+   [
+    0,
+    0,
+    0,
+    0
+   ],
+   [
+    0.1,
+    0,
+    0,
+    0
+   ],
+   [
+    0.4,
+    0.2,
+    0.1,
+    0
+   ],
+   [
+    1,
+    0.6,
+    0.3,
+    0
+   ]
+  ],
+  "_tables": "PROVISIONAL, all three.",
+  "weights": {
+   "C2": 0.35,
+   "C3": 0.2,
+   "D1": 0.45
+  },
+  "_weights": "PROVISIONAL.",
+  "exposure_by_c1": [
+   0.4,
+   0.7,
+   1.0
+  ],
+  "_exposure": "SPEC: min of the two C1 answers."
+ },
+ "air": {
+  "_": "PROVISIONAL numbers on the SPEC shape: risk = product × dependence × night, graded against the partner's E3.",
+  "product_risk": {
+   "1": 1.0,
+   "2": 0.7,
+   "3": 0.85,
+   "4": 0.05,
+   "5": 0.1
+  },
+  "cigarette_smell_floor": 0.5,
+  "decline_risk": 0.6,
+  "dependence_by_e2": [
+   1.0,
+   0.85,
+   0.55,
+   0.35,
+   0.15
+  ],
+  "night_awake": 1.0,
+  "night_asleep": 0.7,
+  "sensitivity_by_e3": [
+   1.0,
+   0.7,
+   0.3,
+   0.1
+  ],
+  "shared_product_factor": 0.3,
+  "weights": {
+   "nicotine": 0.7,
+   "G1": 0.3
+  }
+ },
+ "living": {
+  "h1_pairs": [
+   [
+    0,
+    0.1,
+    0.3,
+    1
+   ],
+   [
+    0.1,
+    0,
+    0.2,
+    0.7
+   ],
+   [
+    0.3,
+    0.2,
+    0.2,
+    0.6
+   ],
+   [
+    1,
+    0.7,
+    0.6,
+    0.9
+   ]
+  ],
+  "_h1_pairs": "PROVISIONAL. SPEC only names the two worst pairs: silent × same-day, and silent × silent.",
+  "weights": {
+   "G2": 0.4,
+   "G3": 0.3,
+   "H1": 0.3
+  },
+  "_weights": "PROVISIONAL."
+ },
+ "overall": {
+  "weights": {
+   "sleep": 0.28,
+   "order": 0.26,
+   "quiet": 0.24,
+   "air": 0.12,
+   "living": 0.1
+  },
+  "mean_share": 0.7,
+  "min_share": 0.3,
+  "_": "SPEC.",
+  "round_to": 5,
+  "badges": {
+   "match": 85,
+   "ok": 70
+  },
+  "_badges": "PROVISIONAL cut-offs: ≥85 совпадаете, ≥70 нормально, below стоит обсудить."
+ },
+ "room": {
+  "mean_share": 0.7,
+  "min_share": 0.3,
+  "_": "PROVISIONAL: a room's score from the candidate's pair scores with each resident."
+ }
+}

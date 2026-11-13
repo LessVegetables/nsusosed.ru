@@ -199,6 +199,30 @@ sudo nano /etc/nsusosed.env                # fill in from nsusosed.env.example
 
 You don't create the database by hand. The Postgres container creates the user and the database from `POSTGRES_*` the first time it starts with an empty volume, and the api container creates the tables (`alembic upgrade head`) every time it starts.
 
+### Pilot release: one-time database reset
+
+The pilot starts from a fresh schema: its migrations begin again at `001` and know nothing
+about the MVP's tables. A server that ran the MVP therefore needs its database emptied once,
+**before** the first pilot deploy (there is no data to keep). On the server:
+
+```bash
+cd /opt/nsusosed
+sudo docker compose --env-file /etc/nsusosed.env stop api
+sudo docker compose --env-file /etc/nsusosed.env exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"'
+sudo rm -rf /srv/nsusosed/media/listings
+```
+
+Then install the new nginx config from the repo (the CSP now allows map tiles, and the photo
+upload route changed) and reload nginx:
+
+```bash
+sudo cp nginx/nsusosed.ru.conf /etc/nginx/sites-available/nsusosed.ru
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+After that, merge `main` into `deploy` as usual: the api container creates the new tables
+on start.
+
 ### 6. Compose file, redeploy script, sudo rule
 
 ```bash

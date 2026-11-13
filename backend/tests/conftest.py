@@ -2,7 +2,7 @@
 
 Тесты с базой нужны настоящий Postgres: TEST_DATABASE_URL=postgresql+asyncpg://...
 (отдельная БД — её таблицы очищаются перед каждым тестом). Без переменной такие
-тесты пропускаются, чистые юнит-тесты (test_matching.py) работают всегда.
+тесты пропускаются, чистые юнит-тесты работают всегда.
 """
 
 from __future__ import annotations
@@ -15,6 +15,9 @@ from pathlib import Path
 
 # До импорта app: настройки читаются при импорте.
 os.environ.setdefault("EMAIL_MODE", "log")
+# The tests assert the production limits, whatever a developer's .env relaxes them to.
+os.environ.update(OTP_MAX_REQUESTS_PER_HOUR="5", OTP_RESEND_COOLDOWN_SECONDS="60",
+                  OTP_MAX_FAILED_VERIFIES_PER_HOUR="10", AUTH_IP_MAX_REQUESTS="20", AUTH_IP_WINDOW_SECONDS="600")
 os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
 os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="nsusosed-media-"))
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
@@ -26,17 +29,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-QUESTION_KEYS = ["sleep", "wake", "noise", "cleanliness", "guests", "smoking", "alcohol", "study", "airing", "temperature"]
-TABLES = ["auth_events", "otp_codes", "sessions", "memberships", "listing_contacts", "listing_photos", "listings", "profiles", "users"]
-
-
-def answers(**overrides) -> dict:
-    """Анкета: все ответы 2 (курение 0), важность 5, без жёстких условий."""
-    base = {k: {"value": 0 if k == "smoking" else 2, "importance": 5, "hard": False, "allowed": []}
-            for k in QUESTION_KEYS}
-    for key, item in overrides.items():
-        base[key] = {**base[key], **item}
-    return base
+TABLES = ["auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "home_photos", "memberships", "rooms", "homes", "users"]
 
 
 @pytest.fixture(scope="session")
@@ -62,8 +55,9 @@ def codes(monkeypatch) -> dict:
     """Перехватывает письма с кодами: {email: code}."""
     sent: dict = {}
 
-    async def fake_send(email: str, code: str) -> bool:
+    async def fake_send(email: str, code: str, lang: str = "ru") -> bool:
         sent[email] = code
+        sent["lang:" + email] = lang
         return True
 
     monkeypatch.setattr("app.services.auth_service.send_otp_email", fake_send)
@@ -94,16 +88,17 @@ async def make_client(db):
 
 @pytest.fixture
 def login(codes):
-    """Войти по коду и (по умолчанию) заполнить анкету."""
-    async def _login(client: httpx.AsyncClient, email: str, *, profile: dict | None = None,
-                     budget: int | None = 30000, situation: str = "seeker", fill_profile: bool = True):
+    """Log in with an emailed code; a first login also gives the name."""
+    async def _login(client: httpx.AsyncClient, email: str, *, first_name: str = "Иван",
+                     last_name: str = "Петров", language: str | None = None) -> dict:
         r = await client.post("/api/auth/request-code", json={"email": email, "privacy_accepted": True})
         assert r.status_code == 200, r.text
-        r = await client.post("/api/auth/verify-code", json={"email": email, "code": codes[email]})
+        body = {"email": email, "code": codes[email]}
+        if r.json()["is_new"]:
+            body |= {"first_name": first_name, "last_name": last_name}
+        if language:
+            body["language"] = language
+        r = await client.post("/api/auth/verify-code", json=body)
         assert r.status_code == 200, r.text
-        if fill_profile:
-            r = await client.put("/api/profile", json={
-                "expected_version": 0, "situation": situation, "budget_max_rub": budget,
-                "answers": profile or answers()})
-            assert r.status_code == 200, r.text
+        return r.json()
     return _login

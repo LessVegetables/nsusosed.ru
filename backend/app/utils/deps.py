@@ -16,7 +16,8 @@ async def require_user(request: Request, response: Response, db: AsyncSession = 
         raise auth_required()
     result = await db.execute(select(User).where(User.id == session.user_id))
     user = result.scalar_one_or_none()
-    if user is None or user.deleted_at is not None:
+    # Not on BETA_EMAILS (any more): treated as logged out, and the login page explains why.
+    if user is None or user.deleted_at is not None or not settings.beta_allows(user.email):
         raise auth_required()
 
     # Скользящая сессия: пока человек заходит, он не вылетает. Когда прошла половина

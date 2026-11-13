@@ -1,0 +1,46 @@
+/* Layout for design/specimen.html only: swatch grid, labels, sample rows. Not part of the system. */
+
+.spec-bar { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; padding-top: 14px; padding-bottom: 14px; }
+.spec-bar .group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.spec-bar .group > span { font: 700 12px var(--mono); text-transform: uppercase; letter-spacing: .06em; margin-right: 4px; }
+.spec-h { font-size: 28px; margin: 0 0 6px; }
+.spec-p { max-width: 46em; margin: 0 0 22px; }
+.spec-label { display: block; font: 700 11px var(--mono); text-transform: uppercase; letter-spacing: .06em; margin: 22px 0 10px; }
+.row.top { align-items: flex-start; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start; }
+.narrow { max-width: 420px; }
+.auth .stack { margin-top: 16px; }
+
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.swatch { overflow: hidden; }
+.swatch .chip-color { height: 64px; border-bottom: var(--border); }
+.swatch .txt { padding: 10px 12px; font-size: 14px; }
+.swatch .txt b { display: block; }
+.swatch .txt code { font: 700 12px var(--mono); }
+.sw-page { background: var(--page); }
+.sw-surface { background: var(--surface); }
+.sw-text { background: var(--text); }
+.sw-edge { background: var(--edge); }
+.sw-soft { background: var(--soft); }
+.sw-black { background: var(--black); }
+
+.typeset > * { margin: 0 0 14px; }
+.typeset .body-sample { max-width: 38em; }
+.typeset .card-title-sample { font-size: 22px; letter-spacing: -.02em; line-height: 1.1; }
+
+.shape { width: 120px; height: 80px; display: grid; place-items: center; font: 700 12px var(--mono); text-align: center; background: var(--surface); color: var(--text); }
+.shape.line { border: var(--border); }
+.shape.thin { border: var(--border-thin); }
+.shape.r-xs { border: var(--border); border-radius: var(--r-xs); }
+.shape.r-sm { border: var(--border); border-radius: var(--r-sm); }
+.shape.r { border: var(--border); border-radius: var(--r); }
+.shape.sh-sm { border: var(--border); border-radius: var(--r); box-shadow: var(--sh-sm); }
+.shape.sh { border: var(--border); border-radius: var(--r); box-shadow: var(--sh); }
+.shape.sh-lg { border: var(--border); border-radius: var(--r); box-shadow: var(--sh-lg); }
+
+.spec-card-max { max-width: 360px; }
+
+@media (max-width: 760px) {
+  .two { grid-template-columns: 1fr; }
+}
+.dialog[open] { position: static; margin: 0; } /* shown in the page flow here, not as a modal */

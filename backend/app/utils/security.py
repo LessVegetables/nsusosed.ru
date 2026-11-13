@@ -27,6 +27,9 @@ def validate_email_domain(email: str, allowed_domains: list[str]) -> bool:
     normalized = normalize_email(email)
     if "@" not in normalized:
         return False
-    domain = normalized.rsplit("@", 1)[1]
-    return domain in allowed_domains
+    local, domain = normalized.rsplit("@", 1)
+    if not local or ".." in domain or domain.startswith("."):
+        return False
+    # An allowed domain covers its subdomains at any depth: nsu.ru → g.nsu.ru, a.b.nsu.ru.
+    return any(domain == d or domain.endswith("." + d) for d in allowed_domains)
 

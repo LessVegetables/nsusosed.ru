@@ -1,53 +1,103 @@
 #!/usr/bin/env python3
-"""Check the translation files: ru.js and en.js have the same keys, and every
-key used in the HTML and JS exists. Run from anywhere:
+"""Checks that can't wait for a browser: run before every commit and in CI.
+
+  1. ru, en and zh dictionaries have exactly the same keys and the same {parameters};
+  2. every key used in HTML (data-i18n, data-i18n-attr) or in JS (t('…'), i18n: '…') exists;
+  3. no dictionary key is unused (keys built at run time are listed in DYNAMIC_PREFIXES);
+  4. frontend/css/nsusosed.css is an exact copy of design/nsusosed.css;
+  5. no inline styles or scripts in HTML (the CSP would block them).
 
     python3 frontend/tools/check_i18n.py
-
-Exits with status 1 if something is missing.
 """
 
+from __future__ import annotations
+import json
 import re
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-KEY_RE = re.compile(r"^\s*'([a-zA-Z0-9_.]+)':", re.MULTILINE)
-LITERAL_RE = re.compile(r"'([a-zA-Z][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)+)'")
-DATA_I18N_RE = re.compile(r'data-i18n="([^"]+)"')
-ATTR_RE = re.compile(r'(?:data-i18n-attr="|\'data-i18n-attr\': \')([^"\']+)')
-# Plural forms are nested objects: skip their inner keys (one/few/many/other).
-PLURAL_FORMS = {"one", "few", "many", "other"}
+FRONTEND = Path(__file__).resolve().parent.parent
+LANGS = ("ru", "en", "zh")
+# Keys assembled in code, e.g. t(`error.${code}`).
+DYNAMIC_PREFIXES = ("error.", "flash.", "contact.")  # contact.<type> is built in account.js and room.js  # contact.<type> is built in account.js and room.js
+
+ENTRY = re.compile(r'^\s*("(?:[^"\\]|\\.)+"):\s*("(?:[^"\\]|\\.)*"),\s*$')
 
 
-def dict_keys(path):
-    return {k for k in KEY_RE.findall(path.read_text(encoding="utf-8")) if k not in PLURAL_FORMS}
+def load(lang: str) -> dict[str, str]:
+    entries: dict[str, str] = {}
+    for n, line in enumerate((FRONTEND / "js" / "i18n" / f"{lang}.js").read_text(encoding="utf-8").splitlines(), 1):
+        m = ENTRY.match(line)
+        if m:
+            key = json.loads(m.group(1))
+            if key in entries:
+                sys.exit(f"{lang}.js:{n}: duplicate key {key}")
+            entries[key] = json.loads(m.group(2))
+        elif line.strip() and not line.strip().startswith(("//", "export default {", "};")):
+            sys.exit(f"{lang}.js:{n}: not a `\"key\": \"text\",` line: {line.strip()[:60]}")
+    return entries
 
 
-def used_keys(namespaces):
-    used = set()
-    for path in list(ROOT.glob("*.html")) + list((ROOT / "js").rglob("*.js")):
-        if path.parent.name == "i18n" or path.name == "i18n.js":
+def used_keys() -> dict[str, str]:
+    used: dict[str, str] = {}
+    for path in sorted(FRONTEND.rglob("*.html")):
+        text = path.read_text(encoding="utf-8")
+        for key in re.findall(r'data-i18n="([^"]+)"', text):
+            used.setdefault(key, path.name)
+        for attr in re.findall(r'data-i18n-attr="([^"]+)"', text):
+            for pair in attr.split(";"):
+                if ":" in pair:
+                    used.setdefault(pair.split(":", 1)[1].strip(), path.name)
+    for path in sorted((FRONTEND / "js").rglob("*.js")):
+        if path.parent.name == "i18n":
             continue
         text = path.read_text(encoding="utf-8")
-        used.update(DATA_I18N_RE.findall(text))
-        for attr in ATTR_RE.findall(text):
-            used.update(pair.split(":", 1)[1].strip() for pair in attr.split(";") if ":" in pair)
-        used.update(k for k in LITERAL_RE.findall(text) if k.split(".")[0] in namespaces)
+        for key in re.findall(r"""\bt\(\s*['"]([\w.]+)['"]""", text) + re.findall(r"""\bi18n:\s*['"]([\w.]+)['"]""", text):
+            used.setdefault(key, path.name)
+        for attr in re.findall(r"""['"]data-i18n-attr['"]:\s*['"]([^'"]+)['"]""", text):
+            for pair in attr.split(";"):
+                if ":" in pair:
+                    used.setdefault(pair.split(":", 1)[1].strip(), path.name)
     return used
 
 
-def main():
-    ru = dict_keys(ROOT / "js/i18n/ru.js")
-    en = dict_keys(ROOT / "js/i18n/en.js")
-    problems = []
-    problems += [f"only in ru.js: {k}" for k in sorted(ru - en)]
-    problems += [f"only in en.js: {k}" for k in sorted(en - ru)]
-    namespaces = {k.split(".")[0] for k in ru | en}
-    problems += [f"used but missing: {k}" for k in sorted(used_keys(namespaces) - (ru & en))]
+def main() -> int:
+    problems: list[str] = []
+    dicts = {lang: load(lang) for lang in LANGS}
+    ru = dicts["ru"]
+
+    for lang in LANGS[1:]:
+        for key in ru.keys() - dicts[lang].keys():
+            problems.append(f"{lang}.js: missing {key}")
+        for key in dicts[lang].keys() - ru.keys():
+            problems.append(f"{lang}.js: extra {key}")
+        for key in ru.keys() & dicts[lang].keys():
+            if set(re.findall(r"\{(\w+)\}", ru[key])) != set(re.findall(r"\{(\w+)\}", dicts[lang][key])):
+                problems.append(f"{lang}.js: {key} has different {{parameters}} than ru")
+
+    used = used_keys()
+    for key, where in used.items():
+        if key not in ru:
+            problems.append(f"{where}: key {key} is not in the dictionaries")
+    for key in ru:
+        if key not in used and not key.startswith(DYNAMIC_PREFIXES):
+            problems.append(f"ru.js: {key} is never used")
+
+    design = FRONTEND.parent / "design" / "nsusosed.css"
+    if design.is_file() and design.read_bytes() != (FRONTEND / "css" / "nsusosed.css").read_bytes():
+        problems.append("css/nsusosed.css differs from design/nsusosed.css (edit design/, then copy)")
+
+    for path in sorted(FRONTEND.rglob("*.html")):
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"<style\b|\sstyle=|\son\w+=\"", text):
+            problems.append(f"{path.name}: inline style or event handler (blocked by the CSP)")
+        for m in re.finditer(r"<script\b([^>]*)>", text):
+            if "src=" not in m.group(1):
+                problems.append(f"{path.name}: inline <script> (blocked by the CSP)")
+
     for p in problems:
-        print(p)
-    print(f"{len(ru)} keys, {len(problems)} problems")
+        print("✕", p)
+    print(f"{'FAILED' if problems else 'ok'}: {len(ru)} keys × {len(LANGS)} languages, {len(used)} used")
     return 1 if problems else 0
 
 
