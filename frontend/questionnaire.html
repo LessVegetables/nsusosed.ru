@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.questionnaire">Анкета — nsusosed</title>
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -22,7 +24,7 @@
     <div class="wrap section qpage">
 
       <!-- The questionnaire itself -->
-      <form id="quiz" novalidate>
+      <form id="quiz" novalidate data-private>
         <header class="qintro">
           <span class="tag" data-i18n="quiz.eyebrow">Анкета</span>
           <h1 class="title" data-i18n="quiz.title">Как ты живёшь</h1>
@@ -77,7 +79,7 @@
         </div>
       </section>
 
-      <form id="extra" novalidate hidden>
+      <form id="extra" novalidate hidden data-private>
         <header class="qintro">
           <span class="tag" data-i18n="quiz.extra.eyebrow">Необязательно</span>
           <h1 class="title" data-i18n="quiz.extra.title">Ещё 4 вопроса</h1>

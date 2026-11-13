@@ -53,7 +53,7 @@ function gallery() {
 function contactPanel() {
   if (room.is_mine) return el('p', { class: 'note' }, `✓ ${t('room.mine')} `, el('a', { href: '/home' }, t('room.mineLink')));
   if (contacts) {
-    return el('div', { class: 'contact-box', role: 'status' }, ...contacts.hosts.map((host) => el('div', {},
+    return el('div', { class: 'contact-box', role: 'status', 'data-private': true }, ...contacts.hosts.map((host) => el('div', {},
       el('p', {}, el('b', {}, host.first_name)),
       ...host.contacts.map((c) => el('p', {}, `${t(`contact.${c.type}`)}: `,
         c.url ? el('a', { href: c.url, target: c.type === 'phone' ? null : '_blank', rel: 'noopener' }, c.value) : c.value)))),
@@ -111,7 +111,7 @@ function compare(person) {
 }
 
 function resident(person) {
-  return el('li', { class: 'box pad resident-card' },
+  return el('li', { class: 'box pad resident-card', 'data-private': true },
     el('div', { class: 'row' },
       person.avatar_url ? el('img', { class: 'avatar', src: person.avatar_url, alt: '' }) : el('span', { class: 'avatar', 'aria-hidden': 'true' }, person.first_name.slice(0, 1)),
       el('div', {},
@@ -136,7 +136,8 @@ function render() {
   }
   document.title = `${room.emoji} ${title()} — nsusosed`;
   const hasPlace = room.lat != null && room.lon != null;
-  root.replaceChildren(
+  // replaceChildren() would print a `false`/`null` from the `cond && el(...)` items as text.
+  root.replaceChildren(...[
     el('p', {}, el('a', { class: 'linkbtn', href: `/feed?kind=${room.kind}` }, `← ${t('room.back')}`)),
     el('div', { class: gallery() ? 'listing' : 'listing single' }, gallery(), info()),
     room.compatibility && el('section', {},
@@ -155,7 +156,8 @@ function render() {
       el('h2', {}, t('room.other.title')),
       el('ul', { class: 'other-rooms' }, ...room.other_rooms.map((r) => el('li', {},
         el('a', { href: `/room?id=${r.room_id}` }, `${r.emoji} ${r.room_name || t('home.room.title')}`),
-        ` · ${rub(r.rent_rub)} · ${r.free_places ? t('room.other.free', { n: r.free_places }) : t('room.other.full')}`)))));
+        ` · ${rub(r.rent_rub)} · ${r.free_places ? t('room.other.free', { n: r.free_places }) : t('room.other.full')}`)))),
+  ].filter(Boolean));
 
   const host = document.getElementById('room-map');
   if (host) {

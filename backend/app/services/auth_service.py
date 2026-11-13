@@ -16,7 +16,7 @@ from app.services.image_service import avatar_url, drop_avatar
 from app.utils.contact import PRIMARY_TYPES, contact_url, normalize_contact
 from app.utils.security import normalize_email, validate_email_domain
 from app.utils.session import create_session, set_session_cookie, clear_session_cookie, get_current_session, cleanup_expired_sessions
-from app.utils.errors import AppError, validation_error, invalid_code
+from app.utils.errors import AppError, beta_closed, validation_error, invalid_code
 from app.services.email_service import send_otp_email
 from app.services.otp_service import create_otp, verify_otp, cleanup_expired as cleanup_expired_otps
 from app.services import questionnaire_service, rate_limit_service as rl
@@ -36,6 +36,8 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
     if not validate_email_domain(email, settings.email_domains):
         reason = "DOMAIN_NOT_ALLOWED" if "@" in email else "INVALID_EMAIL"
         raise validation_error("Недопустимый адрес электронной почты.", {"email": reason})
+    if not settings.beta_allows(email):
+        raise beta_closed()  # no code is made or sent
 
     ip = rl.client_ip(request)
     await rl.check_request_code(db, email, ip)
@@ -64,6 +66,8 @@ async def verify_code(
 ) -> AuthResponse:
     """Check the code, create the account on first login, open a session."""
     email = normalize_email(body.email)
+    if not settings.beta_allows(email):
+        raise beta_closed()  # a code sent before the address was taken off the list
 
     ip = rl.client_ip(request)
     await rl.check_verify(db, email, ip)

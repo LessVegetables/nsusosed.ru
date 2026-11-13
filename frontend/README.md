@@ -41,6 +41,12 @@ Read `design/README.md` first, especially section 15. In short:
 - Build from the design system's classes and tokens. A new component goes into `design/nsusosed.css`,
   `design/specimen.html` and the table in `design/README.md`.
 - **No inline styles or scripts**: the CSP blocks them. State lives in ARIA attributes.
+- **Mark personal data `data-private`.** The analytics session recorder (Umami, `recorder.js`) masks
+  what is typed into fields but records rendered text and button states. Its `blockSelector` is
+  `[data-private]`: such an element shows up in recordings as an empty box. Put it on anything
+  that shows an email, a name, a photo of a person, a contact, an address or map pin, an invite
+  code, or questionnaire answers (answers are buttons, so input masking doesn't cover them).
+  The privacy policy promises this.
 - Every string is in the three dictionaries, in sentence case. `tools/check_i18n.py` fails on a
   missing, extra or unused key.
 - Check a 375px-wide screen and a desktop, light and dark, in Russian, English and Chinese.

@@ -9,16 +9,21 @@ import { KEYS, session } from '../storage.js';
 import { errorText, setBusy } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
-const fromHash = () => new URLSearchParams(location.hash.slice(1)).get('code') ?? '';
+const fromHash = new URLSearchParams(location.hash.slice(1)).get('code') ?? '';
 
-// Keep the code across the login detour (the hash isn't sent to the server or kept by redirects).
-if (fromHash()) session.set(KEYS.invite, fromHash());
+// Keep the code across the login detour (the hash isn't sent to the server or kept by redirects),
+// and take it out of the address straight away: the analytics recorder keeps page addresses, and
+// an invite code lets anyone into someone's home.
+if (fromHash) {
+  session.set(KEYS.invite, fromHash);
+  history.replaceState(null, '', '/join');
+}
 const { user } = await initPage({ auth: 'required' });
 if (!user.questionnaire_complete) {
   location.replace('/questionnaire'); // the invite waits in this tab and is picked up afterwards
   await new Promise(() => {});
 }
-const pending = fromHash() || session.get(KEYS.invite) || '';
+const pending = fromHash || session.get(KEYS.invite) || '';
 session.remove(KEYS.invite);
 
 if (user.home_id) {
@@ -84,6 +89,5 @@ $('join').addEventListener('click', async () => {
 
 if (pending) {
   $('code').value = pending;
-  history.replaceState(null, '', '/join');
   preview(null);
 }

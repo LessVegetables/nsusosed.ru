@@ -2,6 +2,16 @@
 
 Things we decided to do later. Not ordered. Remove an item when it's done.
 
+## When the closed beta ends
+
+- **Let search engines in, and work on SEO.** Every page has `<meta name="robots" content="noindex,
+  nofollow">` for the beta (grep `name="robots"` in `frontend/*.html`). Remove it at launch, then do SEO
+  properly: titles and descriptions per page and language, Open Graph tags for link previews in
+  messengers, `hreflang` for RU/EN/ZH, a `robots.txt` and a sitemap of the public pages (`/`,
+  `/compatibility`, `/privacy`). Everything else is behind the login.
+- **Open the login.** Empty `BETA_EMAILS` in `/etc/nsusosed.env` and redeploy. The code can stay: an empty
+  list means open.
+
 ## Content to verify
 
 - **"How to open your DMs" instructions** (account page, `contact.*.howto` in `frontend/js/i18n/*.js`).

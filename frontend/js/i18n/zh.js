@@ -55,6 +55,8 @@ export default {
   "error.field.REQUIRED": "请填写此项。",
   "error.field.INVALID_EMAIL": "这不像是邮箱地址。",
   "error.field.DOMAIN_NOT_ALLOWED": "需要 NSU 邮箱：以 nsu.ru 结尾的地址。",
+  "error.field.BETA_CLOSED": "网站目前处于封闭测试阶段，只有受邀用户可以登录。想参加？请联系 support@nsusosed.ru 或 Telegram 上的 @nsusosed_bot。",
+  "error.BETA_CLOSED": "网站目前处于封闭测试阶段，只有受邀用户可以登录。想参加？请联系 support@nsusosed.ru 或 Telegram 上的 @nsusosed_bot。",
   "error.field.MUST_ACCEPT": "需要同意后才能登录。",
   "title.account": "账户 — nsusosed",
   "title.privacy": "个人信息 — nsusosed",

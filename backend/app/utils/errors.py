@@ -20,6 +20,12 @@ def make_error_response(status_code: int, code: str, message: str,
     return JSONResponse(status_code=status_code, content=envelope.model_dump(), headers=headers)
 
 
+def beta_closed() -> "AppError":
+    """Closed beta and this address isn't on BETA_EMAILS. Shown under the email field."""
+    return AppError(403, "BETA_CLOSED", "Сайт в закрытом тесте: войти могут только приглашённые.",
+                    {"email": "BETA_CLOSED"})
+
+
 class FieldErrors(ValueError):
     """Ошибка валидации с привязкой к полям. Бросается из model_validator,
     обработчик RequestValidationError раскладывает её по полям ответа."""

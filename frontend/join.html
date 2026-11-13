@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.join">Приглашение — nsusosed</title>
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -33,7 +35,7 @@
       </form>
 
       <!-- Step 2: is this the place? -->
-      <section class="box pad fill-green solo-panel" id="confirm" hidden>
+      <section class="box pad fill-green solo-panel" id="confirm" hidden data-private>
         <span class="tag" data-i18n="join.confirm.eyebrow">Это оно?</span>
         <h1 class="title" id="confirm-title"></h1>
         <p><span class="emoji" id="confirm-emoji"></span></p>

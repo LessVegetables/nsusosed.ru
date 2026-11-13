@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import re
 from pathlib import Path
 from typing import List, Literal
 from pydantic import model_validator
@@ -13,6 +14,9 @@ class Settings(BaseSettings):
     public_origin: str = "http://localhost:8000"
     # Each domain also allows all of its subdomains (nsu.ru → g.nsu.ru, …).
     allowed_email_domains: str = "nsu.ru"
+    # Closed beta: only these addresses may log in (comma- or space-separated). Empty = open to
+    # every allowed domain. Checked on every request, so removing someone logs them out.
+    beta_emails: str = ""
     # 90 days, sliding: every visit in the second half of the term renews it.
     session_ttl_seconds: int = 7_776_000
     max_sessions_per_user: int = 5
@@ -72,6 +76,14 @@ class Settings(BaseSettings):
     @property
     def email_domains(self) -> List[str]:
         return [d.strip().lower() for d in self.allowed_email_domains.split(",") if d.strip()]
+
+    @property
+    def beta_allowlist(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in re.split(r"[,\s]+", self.beta_emails) if e.strip())
+
+    def beta_allows(self, email: str) -> bool:
+        """Closed beta: is this (normalized) address let in? Always true when the list is empty."""
+        return not self.beta_allowlist or email in self.beta_allowlist
 
 
 settings = Settings()

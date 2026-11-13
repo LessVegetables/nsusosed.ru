@@ -55,6 +55,8 @@ export default {
   "error.field.REQUIRED": "Заполни это поле.",
   "error.field.INVALID_EMAIL": "Это не похоже на адрес почты.",
   "error.field.DOMAIN_NOT_ALLOWED": "Нужна почта НГУ: адрес, который заканчивается на nsu.ru.",
+  "error.field.BETA_CLOSED": "Сайт пока в закрытом тесте: войти могут только приглашённые. Хочешь попасть — напиши нам: support@nsusosed.ru или @nsusosed_bot в Telegram.",
+  "error.BETA_CLOSED": "Сайт пока в закрытом тесте: войти могут только приглашённые. Хочешь попасть — напиши нам: support@nsusosed.ru или @nsusosed_bot в Telegram.",
   "error.field.MUST_ACCEPT": "Без согласия войти не получится.",
   "title.account": "Аккаунт — nsusosed",
   "title.privacy": "Персональные данные — nsusosed",

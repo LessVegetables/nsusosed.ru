@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.account">Аккаунт — nsusosed</title>
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -21,7 +23,7 @@
   <main id="main" tabindex="-1">
     <section class="wrap section account">
       <div>
-        <span class="tag mono" id="email"></span>
+        <span class="tag mono" id="email" data-private></span>
         <h1 class="title" data-i18n="account.title">Аккаунт</h1>
       </div>
 
@@ -30,7 +32,7 @@
           <h2 data-i18n="account.profile.title">Профиль</h2>
           <p class="hint" data-i18n="account.profile.hint">Имя, фото и пара слов о себе: их видят те, с кем ты подбираешься в соседи.</p>
           <div class="row">
-            <span id="avatar"></span>
+            <span id="avatar" data-private></span>
             <div class="stack">
               <label class="btn secondary"><input class="sr-only" type="file" id="avatar-file" accept="image/jpeg,image/png,image/webp"><span data-i18n="account.avatar.upload">Загрузить фото</span></label>
               <div><button class="linkbtn" type="button" id="avatar-remove" data-i18n="account.avatar.remove" hidden>Убрать фото</button></div>
@@ -51,7 +53,7 @@
           <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
         </form>
 
-        <form class="box pad" id="about" novalidate>
+        <form class="box pad" id="about" novalidate data-private>
           <h2 data-i18n="account.about.title">Что ищешь</h2>
           <fieldset>
             <legend data-i18n="account.intent.label">Зачем ты здесь</legend>
@@ -81,7 +83,7 @@
           <div><button class="btn" type="submit" data-i18n="account.save">Сохранить</button></div>
         </form>
 
-        <form class="box pad" id="contacts" novalidate>
+        <form class="box pad" id="contacts" novalidate data-private>
           <h2 data-i18n="account.contacts.title">Как с тобой связаться</h2>
           <p class="hint" data-i18n="account.contacts.hint">Общение идёт вне сайта. Контакты видят только вошедшие студенты — и только когда сами попросят показать. Если сдаёшь место, нужен хотя бы один основной способ: телефон, Telegram или VK.</p>
           <p class="note error" id="contacts-err" role="alert" hidden></p>

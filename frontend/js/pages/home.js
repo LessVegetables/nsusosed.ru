@@ -172,7 +172,8 @@ function placeSection() {
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; place.results = null; render(); } }, t('home.place.again'))));
   }
 
-  return el('section', { class: 'box pad hblock' },
+  // data-private: the address search results and the exact pin are the real address.
+  return el('section', { class: 'box pad hblock', 'data-private': true },
     el('h2', {}, t('home.place.title')),
     ...body,
     problem('location'),
@@ -505,7 +506,8 @@ function render() {
     form.replaceChildren(kindPicker());
   } else {
     const apartment = state.kind === 'apartment';
-    form.replaceChildren(
+    // replaceChildren() would print a `false` from the `cond && el(...)` items as text.
+    form.replaceChildren(...[
       apartment ? placeSection() : dormSection(),
       ...state.rooms.map(roomSection),
       apartment && canEdit && state.rooms.length < MAX_ROOMS && el('div', {},
@@ -518,7 +520,8 @@ function render() {
       aboutSection(),
       canEdit && el('div', { class: 'qbar box' },
         !home ? el('button', { class: 'linkbtn', type: 'button', onclick: () => { state = stateFrom(null); errors = {}; takenRoomId = null; render(); } }, t('home.changeKind')) : el('span', {}),
-        el('button', { class: 'btn', type: 'submit' }, home ? t('home.save') : t('home.publish'))));
+        el('button', { class: 'btn', type: 'submit' }, home ? t('home.save') : t('home.publish'))),
+    ].filter(Boolean));
   }
   mountMap();
   renderPhotos();

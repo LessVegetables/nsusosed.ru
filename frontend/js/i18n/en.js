@@ -55,6 +55,8 @@ export default {
   "error.field.REQUIRED": "Fill in this field.",
   "error.field.INVALID_EMAIL": "This doesn't look like an email address.",
   "error.field.DOMAIN_NOT_ALLOWED": "You need an NSU email: an address that ends in nsu.ru.",
+  "error.field.BETA_CLOSED": "The site is in a closed beta: only invited testers can log in. Want in? Write to support@nsusosed.ru or @nsusosed_bot on Telegram.",
+  "error.BETA_CLOSED": "The site is in a closed beta: only invited testers can log in. Want in? Write to support@nsusosed.ru or @nsusosed_bot on Telegram.",
   "error.field.MUST_ACCEPT": "You need to agree to log in.",
   "title.account": "Account — nsusosed",
   "title.privacy": "Personal data — nsusosed",

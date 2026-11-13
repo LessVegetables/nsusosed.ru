@@ -3,6 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.login">Вход — nsusosed</title>
   <meta name="color-scheme" content="light dark">
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
@@ -55,8 +57,8 @@
 
       <!-- Step 3: code -->
       <form class="box pad stack fill-blue" id="step-code" novalidate hidden>
-        <h1 class="title" id="code-title"></h1>
-        <p id="code-text"></p>
+        <h1 class="title" id="code-title" data-private></h1>
+        <p id="code-text" data-private></p>
         <div class="code" id="code" role="group" data-i18n-attr="aria-label:login.code.label" aria-describedby="code-err">
           <input inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*"><input inputmode="numeric" pattern="[0-9]*">
         </div>
