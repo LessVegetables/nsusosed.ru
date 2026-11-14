@@ -34,7 +34,7 @@ function header(user, onLangPick) {
     el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.myHome' }),
       link('/questionnaire', { i18n: 'nav.questionnaire' }), link('/account', { i18n: 'nav.account' })),
     el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.homeShort' }),
-      link('/questionnaire', { i18n: 'nav.questionnaireShort' }), link('/account', { i18n: 'nav.account' })));
+      link('/questionnaire', { i18n: 'nav.questionnaire' }), link('/account', { i18n: 'nav.account' })));
 }
 
 function footer(user) {

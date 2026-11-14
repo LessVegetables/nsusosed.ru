@@ -90,6 +90,7 @@ All pass WCAG AAA (7:1) with black text. Components use the meanings, not the ra
 | `--black` / `--on-black` | `#000` / yellow | Always-black badges: ticker, % badge, timer, slider readout, selected tab |
 | `--soft` | `#fff4c2` | Warning notes |
 | `--unfit` / `--unfit-2` | `#eee` / `#ddd` | Cards that don't fit (striped top) |
+| `--hover-fill` | = `--unfit` | Header nav item under the cursor (the current page stays yellow) |
 | `--field-focus` / `--error-soft` | `#fffbe0` / `#ffe3e3` | Focused / invalid text field |
 
 Splitting "text" from "edge" (and "page text" from "text on surfaces") is what lets a dark theme keep black outlines with cream text, or dark text on light cards over a dark page.

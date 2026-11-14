@@ -170,7 +170,6 @@ export default {
   "title.compatibility": "How compatibility is calculated — nsusosed",
   "nav.label": "Sections",
   "nav.questionnaire": "Lifestyle",
-  "nav.questionnaireShort": "Habits",
   "quiz.eyebrow": "Questionnaire",
   "quiz.title": "How you live",
   "quiz.intro": "20 questions about everyday life — about 3 minutes. There are no right answers: we're looking for someone you'll be comfortable living with. Some answers are shown in your profile, some only to the algorithm (these are marked 🔒).",

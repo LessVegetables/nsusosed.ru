@@ -59,6 +59,7 @@
     --soft:        #fff4c2;               /* warning notes */
     --unfit:       #eeeeee;               /* cards that don't fit */
     --unfit-2:     #dddddd;               /* stripes on those cards */
+    --hover-fill:  var(--unfit);          /* header nav item under the cursor (gray; yellow = current page) */
     --field-focus: #fffbe0;               /* focused text field */
     --error-soft:  #ffe3e3;               /* invalid text field */
     --inset-shade: rgba(0, 0, 0, .08);    /* inner shadow in text fields */
@@ -289,7 +290,8 @@
   .logo span { display: inline-block; padding: 0 8px; background: var(--accent); color: var(--on-fill); border: var(--border); border-radius: var(--r-sm); transform: rotate(var(--tilt-logo)); }
   .site-nav { display: flex; gap: 6px; flex-wrap: wrap; }
   .site-nav a { text-decoration: none; font-weight: var(--w-bold); padding: 8px 12px; border: var(--line-w-thin) solid transparent; border-radius: var(--r-sm); }
-  .site-nav a:hover, .site-nav a[aria-current="page"] { border-color: var(--edge); background: var(--primary); color: var(--on-fill); }
+  .site-nav a:hover { border-color: var(--edge); background: var(--hover-fill); color: var(--text); }
+  .site-nav a[aria-current="page"] { border-color: var(--edge); background: var(--primary); color: var(--on-fill); }
 
   /* --- Ticker: the black marquee under the header. Repeat its items once for a seamless loop. --- */
   .ticker { overflow: hidden; white-space: nowrap; background: var(--black); color: var(--on-black); border-bottom: var(--border); font: var(--w-bold) var(--fs-small) / 1 var(--mono); text-transform: uppercase; letter-spacing: .08em; }
@@ -555,7 +557,7 @@
      icon followed by the sections as tabs; the current section is yellow. --- */
   .tabbar { display: none; }
   @media (max-width: 640px) {
-    .site-header:has(.tabbar) .wrap { display: flex; gap: 0; padding: 0; }
+    .site-header:has(.tabbar) .wrap { display: flex; gap: 0; padding: 0; border-top: var(--border); } /* closes the tabs off from the notch area */
     .site-header:has(.tabbar) .logo { display: none; }
     .site-header .logo-icon { display: grid; place-items: center; flex: none; padding: 0 var(--gutter); }
     .logo-icon img { display: block; width: 36px; height: 36px; }
