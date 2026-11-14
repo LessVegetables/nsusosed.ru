@@ -73,7 +73,7 @@ function contactPanel() {
     }
     render();
   } }, t('room.getContacts'));
-  return el('div', { class: 'stack' }, el('div', {}, button), contactsError && el('p', { class: 'note error' }, `✕ ${contactsError}`));
+  return el('div', { class: 'stack' }, button, contactsError && el('p', { class: 'note error' }, `✕ ${contactsError}`));
 }
 
 function info() {
@@ -99,16 +99,55 @@ function info() {
     contactPanel());
 }
 
-/** Visible answers side by side: what I answered and what they answered. */
+/** How far apart two answers to one question are: 'far', 'near' or 'same'. Every visible question
+ *  is a scale (its options run from one end to the other), so the distance is the step count. */
+function gap(q, mine, theirs) {
+  const steps = Math.abs(mine - theirs);
+  const share = steps / Math.max(1, q.options.length - 1);
+  return { share, level: steps === 0 ? 'same' : steps >= 2 && share >= 0.4 ? 'far' : 'near' };
+}
+
+/** One question where the answers differ: the scale with both marks on it, then both answers. */
+function diffRow(person, q, level) {
+  const mine = room.my_answers[q.id];
+  const theirs = person.answers[q.id];
+  const who = (i) => (i === mine ? 'me' : i === theirs ? 'them' : null);
+  return el('li', { class: 'cmp-row' },
+    el('p', { class: 'cmp-q' }, tr(q.text)),
+    el('div', { class: 'cmp-track', 'aria-hidden': 'true' }, ...q.options.map((_, i) => el('i', { 'data-who': who(i) }))),
+    el('p', { class: 'cmp-a' }, el('span', { class: 'cmp-who', 'data-who': 'them' }, person.first_name), tr(q.options[theirs])),
+    el('p', { class: 'cmp-a' }, el('span', { class: 'cmp-who', 'data-who': 'me' }, t('room.you')), tr(q.options[mine])),
+    level === 'near' && el('span', { class: 'sr-only' }, t('room.cmp.near')));
+}
+
+/** Visible answers compared with mine. The big differences sit open on the card, worst first;
+ *  small ones and identical answers are folded away, the identical ones as one line each. */
 function compare(person) {
-  const rows = quiz.questions
+  const items = quiz.questions
     .filter((q) => !q.hidden && person.answers[q.id] != null && room.my_answers[q.id] != null)
-    .map((q) => el('div', { class: 'compare-row' },
-      el('p', { class: 'compare-q' }, tr(q.text)),
-      el('p', {}, el('small', {}, person.first_name), tr(q.options[person.answers[q.id]])),
-      el('p', {}, el('small', {}, t('room.you')), tr(q.options[room.my_answers[q.id]]))));
-  if (!rows.length) return null;
-  return el('details', { class: 'more' }, el('summary', {}, t('room.compare')), el('div', { class: 'compare' }, ...rows));
+    .map((q) => ({ q, ...gap(q, room.my_answers[q.id], person.answers[q.id]) }))
+    .sort((a, b) => b.share - a.share);
+  if (!items.length) return null;
+  const of = (level) => items.filter((item) => item.level === level);
+  const [far, near, same] = [of('far'), of('near'), of('same')];
+  const group = (cls, label, list, row) => list.length > 0 && el('div', { class: 'cmp-group' },
+    el('p', { class: 'cmp-head' }, el('span', { class: `chip ${cls}` }, label), el('span', { class: 'meta' }, String(list.length))),
+    el('ul', { class: 'cmp' }, ...list.map(row)));
+  // At most three big differences sit open; any further ones lead the folded part.
+  const open = far.slice(0, 3);
+  const folded = far.slice(3);
+  const rest = folded.length + near.length + same.length;
+  return el('div', { class: 'cmp-wrap' },
+    open.length
+      ? group('mismatch', t('room.cmp.far'), open, ({ q }) => diffRow(person, q, 'far'))
+      : el('p', { class: 'note success' }, `✓ ${t('room.cmp.noFar')}`),
+    rest > 0 && el('details', { class: 'more' },
+      el('summary', {}, t('room.compare', { n: rest })),
+      group('mismatch', t('room.cmp.far'), folded, ({ q }) => diffRow(person, q, 'far')),
+      group('partial', t('room.cmp.near'), near, ({ q }) => diffRow(person, q, 'near')),
+      group('match', t('room.cmp.same'), same, ({ q }) => el('li', { class: 'cmp-row' },
+        el('p', { class: 'cmp-q' }, tr(q.text)),
+        el('p', { class: 'cmp-a' }, tr(q.options[person.answers[q.id]]))))));
 }
 
 function resident(person) {

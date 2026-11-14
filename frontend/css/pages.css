@@ -24,6 +24,9 @@
      nothing slides. A screen still too short simply scrolls. Not on join.html, which shares
      the .login layout but has no #step-email. */
   .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--page-y)); }
+  /* Step headings one size down from a page title, so "С возвращением!" stays on one line in
+     the narrow column (down to a 320px screen). */
+  .login:has(#step-email) .title { font-size: var(--fs-question); }
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
@@ -228,11 +231,26 @@
   .resident-card > * { margin: 0; }
   .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
   .resident-card .meta { margin: 0; }
-  .compare { display: grid; gap: 12px; }
-  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding-top: 12px; border-top: var(--border-thin); }
-  .compare-row > * { margin: 0; font-size: var(--fs-small); }
-  .compare-q { grid-column: 1 / -1; font-weight: var(--w-heavy); }
-  .compare-row small { display: block; font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  /* Answers compared with the viewer's own (js/pages/room.js, compare()). A row is the question,
+     a strip with one cell per answer option (theirs blue, mine yellow, so the distance between
+     the two is visible at a glance), then both answers with a tag in the same color. */
+  .cmp-wrap, .cmp-group { display: grid; gap: 10px; }
+  .cmp-wrap > *, .cmp-group > * { margin: 0; }
+  .more[open] > .cmp-group { margin-top: 12px; }
+  .cmp-head { display: flex; align-items: center; gap: 8px; }
+  .cmp { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .cmp-row { display: grid; gap: 6px; padding-top: 12px; border-top: var(--border-thin); }
+  .cmp-row > * { margin: 0; font-size: var(--fs-small); }
+  .cmp-q { font-weight: var(--w-heavy); }
+  .cmp-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: var(--border-thin); border-radius: var(--r-xs); overflow: hidden; }
+  .cmp-track i { height: 12px; background: var(--surface); }
+  .cmp-track i + i { border-left: var(--border-thin); }
+  .cmp-a { display: flex; gap: 8px; align-items: baseline; }
+  .cmp-who { flex: none; padding: 2px 6px; border: var(--border-thin); border-radius: var(--r-xs); color: var(--on-fill); font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  .cmp [data-who="them"] { background: var(--info); }
+  .cmp [data-who="me"] { background: var(--primary); }
+  /* The button that reveals the contacts fills the panel's width. */
+  .info .stack > .btn { display: flex; width: 100%; }
   .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
   .contact-box > div + div { margin-top: 10px; }
 
