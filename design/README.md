@@ -135,7 +135,7 @@ Answers are regular weight on purpose: they are most of the text on the question
 | Token | Value | Use |
 |---|---|---|
 | `--line-w` | 3px | Box, button, input, tab, card outlines |
-| `--line-w-thin` | 2px | Tags, chips, notes (dashed), facts dividers, toggle chips |
+| `--line-w-thin` | 2px | Tags, chips, notes (dashed), facts dividers, toggle chips, answer options |
 | `--r-xs` / `--r-sm` / `--r` / `--r-lg` / `--r-pill` | 6 / 8 / 10 / 12 / 999px | Chips & checkboxes / notes, photos, logo / boxes, buttons, inputs / headline highlight / tags |
 | `--sh-sm` / `--sh` / `--sh-lg` | 1 / 2 / 3px down-right (`--depth-sm` / `--depth` / `--depth-lg`; were 3 / 5 / 8px) | Tabs, pager, toggles / boxes, buttons, options / hovered cards, toast |
 
@@ -198,7 +198,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Contacts | `.contact-box` | Green; shown after "Показать контакты" |
 | Breakdown | `.breakdown > div.match / .partial / .mismatch > small` | One tile per topic, with words |
 | Questionnaire | `.box.quiz > .quiz-top + .question + .opts + .sub + .hard + .qnav` | Purple panel; progress `.prog > i.done / i.now / i` |
-| Options | `.opts[data-choice=single] > button[aria-pressed]` | Chosen: yellow, pressed in, black dot |
+| Options | `.opts[data-choice=single] > button[aria-pressed]` | 2px outline, 1px shadow (lighter than the panel around them). Chosen: yellow, pressed in, black dot |
 | Toggle chips | `.tog > button[aria-pressed]` | Multi-select; on = pink |
 | Slider | `.range > input[type=range] + output` | Script sets `--fill` on input |
 | Hard condition | `.box.hard > .check` | Red panel |
