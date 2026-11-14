@@ -45,7 +45,6 @@ export default {
   "login.code.submit": "Войти",
   "login.code.resend": "Отправить код ещё раз",
   "login.code.resendIn": "Отправить ещё раз можно через {time}",
-  "login.code.changeEmail": "Изменить почту",
   "login.code.incomplete": "Введи все 6 цифр.",
   "login.code.wrong": "Код не подошёл. Проверь письмо и попробуй ещё раз.",
   "login.code.expired": "Код истёк. Отправь новый.",

@@ -198,7 +198,6 @@ $('resend').addEventListener('click', async () => {
 
 $('name-back').addEventListener('click', () => show('email'));
 $('code-back').addEventListener('click', () => { clearCode(); show(state.isNew ? 'name' : 'email'); });
-$('change-email').addEventListener('click', () => { clearCode(); show('email'); });
 
 // Countdowns: how long the code lives, and when another one can be sent.
 const mmss = (ms) => {

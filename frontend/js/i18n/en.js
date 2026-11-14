@@ -45,7 +45,6 @@ export default {
   "login.code.submit": "Log in",
   "login.code.resend": "Send the code again",
   "login.code.resendIn": "You can resend in {time}",
-  "login.code.changeEmail": "Change email",
   "login.code.incomplete": "Enter all 6 digits.",
   "login.code.wrong": "That code didn't work. Check the email and try again.",
   "login.code.expired": "The code has expired. Send a new one.",

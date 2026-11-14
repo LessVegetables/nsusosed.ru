@@ -45,7 +45,6 @@ export default {
   "login.code.submit": "登录",
   "login.code.resend": "重新发送验证码",
   "login.code.resendIn": "{time} 后可重新发送",
-  "login.code.changeEmail": "更换邮箱",
   "login.code.incomplete": "请输入全部 6 位数字。",
   "login.code.wrong": "验证码不正确，请核对邮件后重试。",
   "login.code.expired": "验证码已过期，请重新发送。",
