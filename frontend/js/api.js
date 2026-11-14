@@ -2,9 +2,12 @@
 // Every failure becomes an ApiError with the server's stable `code` and per-field
 // reason codes, which the pages translate themselves (see i18n keys "error.*").
 
+import { report, routeOf } from './errors.js';
+
 export class ApiError extends Error {
   constructor(status, { code = 'NETWORK', fields = {}, retry_after: retryAfter = null, data = {} } = {}) {
     super(code);
+    this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.fields = fields;
@@ -30,8 +33,25 @@ export async function api(method, path, body) {
   if (res.status === 204) return null;
   let data = null;
   try { data = await res.json(); } catch { /* not JSON: handled below */ }
-  if (!res.ok) throw new ApiError(res.status, data?.error ?? { code: 'HTTP_ERROR' });
+  if (!res.ok) {
+    const err = new ApiError(res.status, data?.error ?? { code: 'HTTP_ERROR' });
+    if (res.status >= 500 || !data?.error) reportServerError(method, path, err);
+    throw err;
+  }
   return data;
+}
+
+// The pages show a friendly message for every failure, so a broken endpoint would go unnoticed.
+// 4xx answers with an error code are the API working as designed and aren't reported; network
+// failures (status 0) are the visitor's connection and aren't either.
+function reportServerError(method, path, err) {
+  const route = routeOf(path);
+  const error = new Error(`${method} ${route} → ${err.status} ${err.code}`);
+  error.name = 'ApiServerError';
+  report(error, {
+    tags: { route: `${method} ${route}`, status: String(err.status), code: err.code },
+    fingerprint: ['api', method, route, String(err.status)],
+  });
 }
 
 export const get = (path) => api('GET', path);

@@ -156,7 +156,7 @@ export default {
   "privacy.what4": "Your home's listing and its photos (with location data removed). For a dorm: the building and the room number; the number is only used so a room can't be listed twice and is never shown on the site. For an apartment: only the district and an approximate area on the map; we do not store the address or the apartment number at all.",
   "privacy.what5": "The contacts you chose to add: phone, Telegram, VK and other messengers.",
   "privacy.what6": "Technical login data: the times codes were requested and the IP address, to protect the site from code guessing.",
-  "privacy.what7": "Anonymized visit statistics and recordings of actions on pages (without your email, contacts or anything you type into fields), to find and fix problems with the site.",
+  "privacy.what7": "Anonymized visit statistics, recordings of actions on pages and reports of errors in the browser (without your email, contacts or anything you type into fields), to find and fix problems with the site.",
   "privacy.whyTitle": "Why",
   "privacy.why": "To match roommates: to calculate compatibility and show homes and the people living in them to other NSU students. The data is stored on a server in Russia; we do not sell it or pass it on outside the site. There are two exceptions, both technical. To deliver the login code email, Yandex Cloud Postbox receives only your email address and the email itself. To find a building on the map when you add an apartment, the address you type is sent once to the OpenStreetMap mapping service, with no link to your account, and we do not keep it.",
   "privacy.whoTitle": "Who sees your data",

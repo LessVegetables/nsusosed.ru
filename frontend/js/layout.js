@@ -7,6 +7,7 @@
 // It resolves to { user } (null for a guest) after the page is translated and shown.
 
 import { ApiError, get } from './api.js';
+import { reportBug } from './errors.js';
 import { detectLang, setLang, t, translate } from './i18n.js';
 import { KEYS, local, session } from './storage.js';
 import { el, toast } from './ui.js';
@@ -61,8 +62,9 @@ export async function initPage({ auth = 'optional' } = {}) {
   let user = null;
   try {
     user = await whoAmI(auth);
-  } catch {
+  } catch (err) {
     // Server unreachable: public pages still render; private ones fall through to /login.
+    reportBug(err, { where: 'initPage' });
   }
   if (!user && auth === 'required') {
     location.replace('/login');

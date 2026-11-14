@@ -8,6 +8,7 @@
 // new questionnaire version needs no change here.
 
 import { ApiError, get, put } from '../api.js';
+import { reportBug } from '../errors.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
@@ -191,7 +192,7 @@ function show(id) {
 async function finish() {
   // Someone who came by invite link doesn't need to be asked what they are here for.
   if (!user.intent && session.get(KEYS.invite)) {
-    try { user = await put('/me', { intent: 'join' }); } catch { /* the join page works without it */ }
+    try { user = await put('/me', { intent: 'join' }); } catch (err) { reportBug(err, { where: 'intent' }); /* the join page works without it */ }
   }
   if (!user.intent) { show('intent'); return; }
   location.assign(homeFor({ ...user, questionnaire_complete: true }));

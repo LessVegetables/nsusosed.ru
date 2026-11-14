@@ -25,6 +25,8 @@ on the same Wi-Fi open it.
 | `css/pages.css` | Page layout only, inside `@layer pages`. No colors, fonts or sizes |
 | `css/fonts.css`, `fonts/` | Self-hosted Rubik and JetBrains Mono (Latin + Cyrillic). Chinese uses the device font |
 | `js/api.js` | `fetch` wrapper; every failure is an `ApiError` with the server's `code`, `fields`, `data` |
+| `js/errors.js` | `report()` / `reportBug()`: send caught errors to Umami's error tracking |
+| `js/analytics.js` | Umami's `data-before-send` hook (classic script): redacts invite codes in error reports |
 | `js/i18n.js`, `js/i18n/{ru,en,zh}.js` | Translations: one flat dictionary per language |
 | `js/layout.js` | `initPage()`: language, session, header, footer, phone tab bar |
 | `js/routes.js` | `homeFor(user)`: where a logged-in person belongs right now |
@@ -47,6 +49,13 @@ Read `design/README.md` first, especially section 15. In short:
   that shows an email, a name, a photo of a person, a contact, an address or map pin, an invite
   code, or questionnaire answers (answers are buttons, so input masking doesn't cover them).
   The privacy policy promises this.
+- **Errors go to Umami** (`data-errors` on the tracker, Errors tab at stat.gehrman.me). Uncaught
+  exceptions and unhandled rejections are captured on their own, so a catch that can't handle
+  something should rethrow it (`if (!(err instanceof ApiError)) throw err;`). A catch that recovers
+  on purpose calls `reportBug(err, { where: '…' })` from `js/errors.js`. `api.js` reports 5xx and
+  non-JSON answers itself. `js/analytics.js` is the `data-before-send` hook: it redacts invite
+  codes and drops errors from browser extensions. Pages carry `data-release="dev"
+  data-environment="development"`; the deploy workflow stamps the commit and `production`.
 - Every string is in the three dictionaries, in sentence case. `tools/check_i18n.py` fails on a
   missing, extra or unused key.
 - Check a 375px-wide screen and a desktop, light and dark, in Russian, English and Chinese.

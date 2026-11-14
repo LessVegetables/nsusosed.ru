@@ -10,6 +10,7 @@
 //     by an obfuscated circle here, in the browser, and only the circle is sent.
 
 import { ApiError, del, get, post, put } from '../api.js';
+import { reportBug } from '../errors.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { AKADEMGORODOK, addArea, addPin, createMap, obfuscate } from '../map.js';
@@ -50,7 +51,8 @@ const canEdit = !home || home.permissions.can_edit;
 async function rollEmoji(count = 1) {
   try {
     return (await post('/emoji/roll', { count })).emojis;
-  } catch {
+  } catch (err) {
+    reportBug(err, { where: 'rollEmoji' });
     return [];
   }
 }
@@ -405,7 +407,7 @@ let freshInvite = null; // the one just created: its link is shown once
 async function loadInvites() {
   invites = null;
   if (home?.permissions.can_invites) {
-    try { invites = await get(`/homes/${home.id}/invites`); } catch { invites = []; }
+    try { invites = await get(`/homes/${home.id}/invites`); } catch (err) { reportBug(err, { where: 'invites' }); invites = []; }
   }
 }
 
