@@ -280,7 +280,7 @@ function costsSection() {
       textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500' }),
       { path: 'utilities_rub', hint: t('home.costs.utilitiesHint') }),
     choice(t('home.costs.internet'), state, 'internet_mode',
-      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'three' }));
+      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'three slim' }));
 }
 
 function roomSection(room, index) {
@@ -288,10 +288,12 @@ function roomSection(room, index) {
   const genders = [['f', t('home.room.f')], ['m', t('home.room.m')], ...(apartment ? [['any', t('home.room.any')]] : [])];
   const places = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
   const emojiInput = textInput(room, 'emoji', { maxlength: 40, autocomplete: 'off', class: 'emoji-input', 'aria-describedby': `emoji-hint-${index}` });
+  let rolling = false;
   const roll = el('button', { class: 'btn secondary', type: 'button', disabled: !canEdit, onclick: async () => {
-    setBusy(roll, true);
+    if (rolling) return; // no spinner or dimming: the answer comes at once
+    rolling = true;
     const [emoji] = await rollEmoji();
-    setBusy(roll, false);
+    rolling = false;
     if (emoji) { room.emoji = emoji; emojiInput.value = emoji; changed(true); }
   } }, t('home.room.roll'));
 
@@ -303,7 +305,7 @@ function roomSection(room, index) {
     problem(`rooms.${index}`),
     home && !room.id && el('p', { class: 'note' }, `⚠ ${t('home.room.unsaved')}`),
     apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') })),
-    choice(t('home.room.gender'), room, 'gender', genders, { path: `rooms.${index}.gender`, hint: t('home.room.genderHint') }),
+    choice(t('home.room.gender'), room, 'gender', genders, { path: `rooms.${index}.gender`, hint: t('home.room.genderHint'), cls: apartment ? 'three' : '' }),
     el('div', { class: 'two-fields' },
       field(t('home.room.capacity'), select(room, 'capacity', places(1, 6), { numeric: true, onchange: () => {
         if (room.free_places > room.capacity) room.free_places = room.capacity;
@@ -329,7 +331,7 @@ function aboutSection() {
     el('h2', {}, t('home.about.title')),
     field(t('home.about.label'), area),
     choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
-      { path: 'sunlight', cls: 'three' }));
+      { path: 'sunlight', cls: 'three slim' }));
 }
 
 const SUNLIGHT = ['sunny', 'partial', 'shady'];

@@ -171,10 +171,10 @@
   }
   .room-field .room-letter:focus-visible { background: var(--field-focus); }
   .room-field .room-letter:disabled { cursor: default; box-shadow: none; }
-  /* Three emojis: a field just wide enough for them, the dice button on its right. */
-  .emoji-field { display: flex; gap: 10px; margin-top: 8px; }
-  .field .emoji-field input { flex: 0 1 auto; width: calc(3.3em + 28px + 2 * var(--line-w)); min-width: 0; margin-top: 0; }
-  .emoji-field .btn { flex: none; padding-inline: 14px; white-space: nowrap; }
+  /* Three emojis: the field and the dice button share the row equally. */
+  .emoji-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+  .field .emoji-field input { margin-top: 0; }
+  .emoji-field .btn { padding-inline: 14px; white-space: nowrap; }
   .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
   .row.spread { justify-content: space-between; }
   .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
@@ -186,11 +186,11 @@
   .invite-fresh > * { margin: 0; }
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   .hblock .opts.three { grid-template-columns: repeat(3, 1fr); }  /* a scale reads in one row */
-  /* Phones: one answer per row; a three-step scale becomes three slim rows. */
+  /* Phones: one answer per row; a .slim scale becomes three slim rows. */
   @media (max-width: 640px) {
     .hblock .opts, .hblock .opts.three { grid-template-columns: 1fr; }
-    .hblock .opts.three { gap: 8px; }
-    .hblock .opts.three button { padding: 9px 14px; }
+    .hblock .opts.slim { gap: 8px; }
+    .hblock .opts.slim button { padding: 9px 14px; }
   }
 
   /* Feed */
