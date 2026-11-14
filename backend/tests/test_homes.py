@@ -53,7 +53,7 @@ async def test_dorm_room_is_created_and_its_number_never_comes_back(db, make_cli
     assert home["permissions"] == {"can_edit": True, "can_photos": True, "can_invites": True, "can_residents": True}
     # Stored normalized for the duplicate check, and absent from everything the API returns.
     async with db.connect() as conn:
-        assert (await conn.execute(text("SELECT room_label FROM homes"))).scalar() == "100б"
+        assert (await conn.execute(text("SELECT room_label FROM homes"))).scalar() == "100b"
     assert "room_label" not in r.text and "100" not in r.text
     assert "100" not in (await c.get("/api/homes/mine")).text
     assert (await c.get("/api/me")).json()["home_id"] == home["id"]
@@ -83,7 +83,8 @@ async def test_dorm_validation(make_client, login):
     c = await host(make_client, login)
     room = dorm()["rooms"][0]
     assert await fields(await c.post("/api/homes", json=dorm(building="99"), headers=ORIGIN)) == {"building": "UNKNOWN_DORM"}
-    assert await fields(await c.post("/api/homes", json=dorm(room_label="к. 100!"), headers=ORIGIN)) == {"room_label": "INVALID_ROOM"}
+    for bad in ("к. 100!", "99", "1000", "099", "100а", "б100", "100бм"):
+        assert await fields(await c.post("/api/homes", json=dorm(room_label=bad), headers=ORIGIN)) == {"room_label": "INVALID_ROOM"}, bad
     assert await fields(await c.post("/api/homes", json=dorm(room_label=None), headers=ORIGIN)) == {"room_label": "REQUIRED"}
     assert await fields(await c.post("/api/homes", json=dorm(rooms=[room | {"gender": "any"}]), headers=ORIGIN)) == \
         {"rooms.0.gender": "DORM_ROOM_NEEDS_GENDER"}
@@ -178,7 +179,7 @@ async def test_dorm_edit_keeps_the_room_number_unless_a_new_one_is_given(db, mak
     r = await c.put(f"/api/homes/{home['id']}", json=body, headers=ORIGIN)
     assert r.status_code == 200 and r.json()["rooms"][0]["capacity"] == 3 and r.json()["description"] == "Новое описание"
     async with db.connect() as conn:
-        assert (await conn.execute(text("SELECT room_label FROM homes"))).scalar() == "100б"
+        assert (await conn.execute(text("SELECT room_label FROM homes"))).scalar() == "100b"
 
 
 # ── Visibility ──────────────────────────────────────────

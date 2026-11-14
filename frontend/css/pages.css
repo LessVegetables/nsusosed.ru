@@ -161,6 +161,16 @@
   .hblock .opts.results { grid-template-columns: 1fr; }
   .hblock .field textarea { resize: vertical; }
   .hblock .note[data-error] { margin-top: 8px; }
+  /* Dorm room: the letter button (?, Б, М, blank) left of the number. */
+  .room-field { display: flex; gap: 10px; margin-top: 8px; }
+  .field .room-field input { flex: 1; min-width: 0; margin-top: 0; }
+  .room-field .room-letter {
+    flex: 0 0 3.2em; padding: 0; cursor: pointer;
+    border: var(--border); border-radius: var(--r); background: var(--surface); color: var(--text);
+    font: var(--w-bold) 18px var(--mono); box-shadow: var(--sh);
+  }
+  .room-field .room-letter:focus-visible { background: var(--field-focus); }
+  .room-field .room-letter:disabled { cursor: default; box-shadow: none; }
   .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
   .row.spread { justify-content: space-between; }
   .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }

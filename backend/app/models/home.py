@@ -31,8 +31,8 @@ class Home(Base):
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    # Dorm: building id from config/dorms.json (shown) and the room as residents say it,
-    # "200", "100б", "100м" (hidden; only for the duplicate check).
+    # Dorm: building id from config/dorms.json (shown) and the room: "200", "100b" (Б), "100m" (М)
+    # (hidden; only for the duplicate check).
     building: Mapped[str | None] = mapped_column(String(20), nullable=True)
     room_label: Mapped[str | None] = mapped_column(String(10), nullable=True)
 

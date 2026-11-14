@@ -36,11 +36,11 @@ const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2
 
 function stateFrom(h) {
   if (!h) {
-    return { kind: null, description: '', building: '', room_label: '', district: '', area: null,
+    return { kind: null, description: '', building: '', room_number: '', room_letter: null, district: '', area: null,
       utilities_mode: '', utilities_rub: '', internet_mode: '', rooms: [blankRoom()] };
   }
   return {
-    kind: h.kind, description: h.description, building: h.building ?? '', room_label: '',
+    kind: h.kind, description: h.description, building: h.building ?? '', room_number: '', room_letter: null,
     district: h.district ?? '', area: h.kind === 'apartment' ? { lat: h.lat, lon: h.lon, radius_m: h.radius_m } : null,
     utilities_mode: h.utilities_mode ?? '', utilities_rub: h.utilities_rub ?? '', internet_mode: h.internet_mode ?? '',
     rooms: h.rooms.map((r) => ({ ...r, rent_rub: r.rent_rub ?? '' })),
@@ -138,11 +138,57 @@ function dormSection() {
   return el('section', { class: 'box pad hblock' },
     el('h2', {}, t('home.dorm.title')),
     field(t('home.dorm.building'), select(state, 'building', [['', t('home.choose')], ...buildings]), { path: 'building' }),
-    field(t('home.dorm.room'), textInput(state, 'room_label', {
-      maxlength: 10, autocapitalize: 'none', autocomplete: 'off', inputmode: 'text',
-      placeholder: home ? t('home.dorm.roomSaved') : '100б',
-    }), { path: 'room_label', hint: home ? t('home.dorm.roomHintEdit') : t('home.dorm.roomHint') }),
+    roomField(),
     taken);
+}
+
+// A dorm room is a number from 100 to 999 plus the block letter: Б, М or none. The letter
+// button starts at "?" (not chosen yet); each click moves it on to the next letter.
+const ROOM_LETTERS = ['b', 'm', ''];
+const LETTER_TEXT = { b: 'Б', m: 'М', '': '' };
+const ROOM_NUMBER = /^[1-9][0-9]{2}$/;
+
+/** "100b", "100m", "100", or null while the number or the letter is missing. */
+const roomLabel = () => (ROOM_NUMBER.test(state.room_number) && state.room_letter != null ? state.room_number + state.room_letter : null);
+const roomTouched = () => state.room_number !== '' || state.room_letter != null;
+
+function roomField() {
+  const letterName = () => (state.room_letter == null ? t('home.dorm.letterUnset')
+    : state.room_letter === '' ? t('home.dorm.letterNone') : LETTER_TEXT[state.room_letter]);
+  const letter = el('button', { type: 'button', class: 'room-letter', disabled: !canEdit });
+  const showLetter = () => {
+    letter.textContent = state.room_letter == null ? '?' : LETTER_TEXT[state.room_letter];
+    letter.setAttribute('aria-label', t('home.dorm.letter', { letter: letterName() }));
+    letter.title = letter.getAttribute('aria-label');
+  };
+  letter.addEventListener('click', () => {
+    state.room_letter = ROOM_LETTERS[(ROOM_LETTERS.indexOf(state.room_letter) + 1) % ROOM_LETTERS.length];
+    showLetter();
+    changed(true);
+  });
+  showLetter();
+
+  const number = el('input', {
+    id: 'room-number', maxlength: 3, inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off',
+    placeholder: home ? t('home.dorm.roomSaved') : '100', disabled: !canEdit,
+  });
+  number.value = state.room_number;
+  number.addEventListener('input', () => {
+    const digits = number.value.replace(/\D/g, '').slice(0, 3);
+    if (digits !== number.value) number.value = digits;
+    state.room_number = digits;
+    changed();
+  });
+  number.addEventListener('change', () => changed(true));
+  if (errors.room_label) number.setAttribute('aria-invalid', 'true');
+
+  // Not a <label> around everything: a click on the label text would press the letter button.
+  return el('div', {},
+    el('div', { class: 'field' },
+      el('label', { for: 'room-number' }, t('home.dorm.room')),
+      el('div', { class: 'room-field' }, letter, number),
+      el('small', {}, home ? t('home.dorm.roomHintEdit') : t('home.dorm.roomHint'))),
+    problem('room_label'));
 }
 
 let mapHandle = null; // { map, layer } of the map currently on the page
@@ -550,7 +596,7 @@ function payload() {
     kind: state.kind,
     description: state.description,
     building: apartment ? null : state.building || null,
-    room_label: apartment ? null : state.room_label.trim() || null,
+    room_label: apartment ? null : roomLabel(),
     district: apartment ? state.district : null,
     lat: state.area?.lat ?? null, lon: state.area?.lon ?? null, radius_m: state.area?.radius_m ?? null,
     utilities_mode: apartment ? state.utilities_mode || null : null,
@@ -569,7 +615,12 @@ function missing() {
   const need = (path, ok) => { if (!ok) out[path] = 'REQUIRED'; };
   if (state.kind === 'dorm') {
     need('building', state.building);
-    need('room_label', home || state.room_label.trim());
+    // Editing: the stored room stays unless a new one is typed in, and then it must be whole.
+    if (!home || roomTouched()) {
+      if (!state.room_number) out.room_label = 'REQUIRED';
+      else if (!ROOM_NUMBER.test(state.room_number)) out.room_label = 'INVALID_ROOM';
+      else if (state.room_letter == null) out.room_label = 'ROOM_LETTER';
+    }
   } else {
     need('location', state.area);
     need('district', state.district.trim());
@@ -645,7 +696,9 @@ function setErrors(next, taken = null) {
 
 async function saveHome() {
   const body = payload();
-  if (JSON.stringify(body) === savedKey) { setErrors({}); return; } // e.g. a cleared field typed back
+  // e.g. a cleared field typed back. A half-typed room number also leaves the payload as it was,
+  // so it goes on to missing() to say what is still needed.
+  if (JSON.stringify(body) === savedKey && !(state.kind === 'dorm' && roomTouched())) { setErrors({}); return; }
   const gaps = missing();
   if (Object.keys(gaps).length) {
     // Nothing is sent until the form is whole. A room that was just added says so itself
@@ -671,7 +724,7 @@ async function saveHome() {
   state.rooms.forEach((room, i) => { if (i < body.rooms.length) room.id = home.rooms[i]?.id ?? room.id; });
   // The dorm room number is sent once and not shown again.
   const sentLabel = body.room_label;
-  if (sentLabel && state.room_label.trim() === sentLabel) state.room_label = '';
+  if (sentLabel && roomLabel() === sentLabel) { state.room_number = ''; state.room_letter = null; }
   savedKey = JSON.stringify({ ...body, room_label: null, rooms: body.rooms.map((room, i) => ({ ...room, id: home.rooms[i]?.id })) });
   if (added || sentLabel || Object.keys(errors).length || takenRoomId) {
     errors = {};

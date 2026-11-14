@@ -15,12 +15,14 @@ MAX_ROOMS = 6
 # the server only checks the result is plausible and inside the Novosibirsk area.
 RADIUS_MIN_M, RADIUS_MAX_M = 300, 500
 LAT_RANGE, LON_RANGE = (54.5, 55.4), (82.3, 83.9)
-_ROOM_LABEL = re.compile(r"^[0-9a-zа-яё/\-]{1,10}$")
+# A dorm room: a number from 100 to 999, then the block letter Б or М, if any. Stored with a
+# Latin b/m ("100", "100b", "100m"); those are the only forms there are.
+_ROOM_LABEL = re.compile(r"^[1-9][0-9]{2}[bm]?$")
 
 
 def normalize_room_label(value: str) -> str:
-    """ "100 Б" → "100б": one spelling per room, so the duplicate check works."""
-    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", value)).lower()
+    """ "100 Б" → "100b": one spelling per room, so the duplicate check works."""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", value)).lower().translate(str.maketrans("бм", "bm"))
 
 
 class RoomIn(BaseModel):
