@@ -22,6 +22,12 @@ const [quiz, meta] = await Promise.all([get('/questionnaire'), get('/meta')]);
 
 const firstVisit = !quiz.complete;
 const answers = { ...quiz.answers };
+// A retired option is never shown or accepted again; drop it from old answers so a save goes through.
+for (const q of quiz.questions) {
+  if (!Array.isArray(answers[q.id])) continue;
+  answers[q.id] = answers[q.id].filter((i) => !q.options[i]?.retired);
+  if (!answers[q.id].length) delete answers[q.id];
+}
 const about = {
   gender: user.gender,
   adult: user.is_adult == null ? null : user.is_adult ? 'yes' : 'no',
@@ -32,8 +38,10 @@ const tr = (texts) => texts[currentLang()] ?? texts.ru;
 
 // ── Which questions are asked right now ─────────────────
 
-/** An 18+ question for someone who said they're under 18: shown grayed out, never asked. */
+/** An 18+ question for someone who said they're under 18: never asked. */
 const underage = (q) => q.adult_only && about.adult === 'no';
+/** Of those, the ones that would be on the page anyway stay there grayed out; follow-ups stay hidden. */
+const grayed = (q) => underage(q) && !q.show_if;
 
 function applies(q) {
   if (underage(q)) return false;
@@ -66,7 +74,7 @@ function pick(q, index) {
 }
 
 function questionNode(q) {
-  const options = q.options.map((option, index) => el('button', {
+  const options = q.options.map((option, index) => !option.retired && el('button', {
     type: 'button', 'data-index': index, 'aria-pressed': 'false', onclick: () => pick(q, index),
   }, tr(option)));
   return el('fieldset', { id: `q-${q.id}`, 'data-question': q.id },
@@ -75,7 +83,7 @@ function questionNode(q) {
       !q.required && firstVisit === false && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
     el('div', { class: 'opts', 'data-choice': q.type }, ...options),
-    q.adult_only && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
+    q.adult_only && !q.show_if && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
     el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
 }
 
@@ -105,15 +113,15 @@ function render() {
 function refresh() {
   for (const node of document.querySelectorAll('[data-question]')) {
     const q = byId[node.dataset.question];
-    node.hidden = !applies(q) && !underage(q);
-    node.disabled = underage(q);
+    node.hidden = !applies(q) && !grayed(q);
+    node.disabled = grayed(q);
     const chosen = [answers[q.id]].flat();
     for (const button of node.querySelectorAll('.opts button')) {
       button.setAttribute('aria-pressed', String(chosen.includes(Number(button.dataset.index))));
     }
     const notice = node.querySelector('[data-underage]');
-    if (notice) notice.hidden = !underage(q);
-    if (answered(q) || underage(q)) node.querySelector('.note.error').hidden = true;
+    if (notice) notice.hidden = !grayed(q);
+    if (answered(q) || grayed(q)) node.querySelector('.note.error').hidden = true;
   }
   for (const [group, value] of [['gender', about.gender], ['adult', about.adult]]) {
     for (const button of $(group).querySelectorAll('button')) {
@@ -137,7 +145,7 @@ function stripCells() {
   return [...$('blocks').querySelectorAll('[data-question]')].filter((node) => !node.hidden).map((node) => {
     const q = byId[node.dataset.question];
     let state = '';
-    if (underage(q)) state = 'off';
+    if (grayed(q)) state = 'off';
     else if (answered(q)) state = 'done';
     else if (triedToSave && q.required) state = 'missing';
     return { node, label: tr(q.text), state };

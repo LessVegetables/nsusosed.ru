@@ -447,7 +447,7 @@
   .qstrip.flush button { padding: 0; }
   .qstrip.flush button + button { border-left: var(--border-thin); }
   .qstrip.flush button::before { height: 14px; border: 0; border-radius: 0; }
-  @media (hover: hover) { .qstrip.flush button:hover::before { opacity: .7; } }
+  @media (hover: hover) { .qstrip.flush button:hover::before { box-shadow: inset 0 0 0 var(--line-w) var(--edge); } }
   .question {
     margin: 0 0 20px; padding: 14px 18px; background: var(--surface); color: var(--text); border: var(--border); border-radius: var(--r);
     font-size: var(--fs-question); font-weight: var(--w-black); line-height: 1.05;

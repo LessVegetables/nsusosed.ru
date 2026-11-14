@@ -1,6 +1,6 @@
 {
  "version": 1,
- "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead.",
+ "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead. An option that must go mid-version is marked \"retired\": it keeps its index (old answers still score), but it is never shown and new answers can't pick it.",
  "blocks": [
   {
    "id": "A",
@@ -42,9 +42,9 @@
     "zh": "尼古丁与气味"
    },
    "note": {
-    "ru": "Этот ответ нужен только для подбора по запахам. Его не видят ни другие студенты, ни университет 🔒. Многие используют вейп или снюс — нам важно, чтобы рядом не оказался человек, которому от запаха плохо.",
-    "en": "This answer is only used to match people by smells. Neither other students nor the university can see it 🔒. Many people vape or use snus — what matters to us is that nobody ends up next to someone the smell makes unwell.",
-    "zh": "这个回答只用于按气味进行匹配，其他学生和学校都看不到 🔒。很多人用电子烟或唇烟——我们只想避免把对气味感到不适的人安排在旁边。"
+    "ru": "Этот ответ нужен только для подбора по запахам. Его не видят ни другие студенты, ни университет 🔒. Многие курят или пользуются вейпом — нам важно, чтобы рядом не оказался человек, которому от запаха плохо.",
+    "en": "This answer is only used to match people by smells. Neither other students nor the university can see it 🔒. Many people smoke or vape — what matters to us is that nobody ends up next to someone the smell makes unwell.",
+    "zh": "这个回答只用于按气味进行匹配，其他学生和学校都看不到 🔒。很多人吸烟或用电子烟——我们只想避免把对气味感到不适的人安排在旁边。"
    }
   },
   {
@@ -519,9 +519,10 @@
      "zh": "加热烟草（烟弹）"
     },
     {
-     "ru": "Снюс или никотиновые паучи",
-     "en": "Snus or nicotine pouches",
-     "zh": "唇烟或尼古丁袋"
+     "ru": "Вариант убран",
+     "en": "Option removed",
+     "zh": "已删除的选项",
+     "retired": true
     },
     {
      "ru": "Кальян — только в кальянной или в гостях",
@@ -552,9 +553,9 @@
    "required": true,
    "hidden": true,
    "text": {
-    "ru": "Через сколько времени после пробуждения тебе обычно хочется первой затяжки или пакетика?",
-    "en": "How soon after waking up do you usually want your first puff or pouch?",
-    "zh": "醒来后多久，你通常会想吸第一口或用第一袋？"
+    "ru": "Через сколько времени после пробуждения тебе обычно хочется первой затяжки?",
+    "en": "How soon after waking up do you usually want your first puff?",
+    "zh": "醒来后多久，你通常会想吸第一口？"
    },
    "options": [
     {

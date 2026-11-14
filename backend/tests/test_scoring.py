@@ -48,7 +48,7 @@ def test_under_18_is_never_asked_about_nicotine_and_stored_answers_are_ignored()
 @pytest.mark.parametrize("bad, reason", [
     ({"A1": 5}, "INVALID_CHOICE"), ({"A1": "1"}, "INVALID_CHOICE"), ({"A1": True}, "INVALID_CHOICE"),
     ({"E1": 1}, "INVALID_CHOICE"), ({"E1": []}, "INVALID_CHOICE"), ({"E1": [1, 1]}, "INVALID_CHOICE"),
-    ({"E1": [0, 1]}, "EXCLUSIVE_OPTION"), ({"E1": [6, 2]}, "EXCLUSIVE_OPTION"), ({"Z9": 0}, "UNKNOWN_QUESTION"),
+    ({"E1": [0, 1]}, "EXCLUSIVE_OPTION"), ({"E1": [6, 2]}, "EXCLUSIVE_OPTION"), ({"E1": [4]}, "INVALID_CHOICE"), ({"Z9": 0}, "UNKNOWN_QUESTION"),
 ])
 def test_invalid_answers(bad, reason):
     assert clean(bad, True)[1] == {next(iter(bad)): reason}

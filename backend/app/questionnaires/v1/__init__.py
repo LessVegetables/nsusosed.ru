@@ -52,14 +52,16 @@ def clean(answers: Answers, is_adult: bool) -> tuple[Answers, dict[str, str]]:
             errors[qid] = "UNKNOWN_QUESTION"
             continue
         n = len(q["options"])
+        retired = {i for i, o in enumerate(q["options"]) if o.get("retired")}
         if q["type"] == "multi":
             ok = (isinstance(value, list) and value and len(set(value)) == len(value)
-                  and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v < n for v in value))
+                  and all(isinstance(v, int) and not isinstance(v, bool) and 0 <= v < n and v not in retired
+                          for v in value))
             if ok and len(value) > 1 and any(v in q.get("exclusive", []) for v in value):
                 errors[qid] = "EXCLUSIVE_OPTION"
             elif not ok:
                 errors[qid] = "INVALID_CHOICE"
-        elif not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value < n):
+        elif not (isinstance(value, int) and not isinstance(value, bool) and 0 <= value < n and value not in retired):
             errors[qid] = "INVALID_CHOICE"
     if errors:
         return {}, errors
