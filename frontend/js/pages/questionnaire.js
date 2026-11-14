@@ -68,6 +68,12 @@ function pick(q, index) {
   refresh();
 }
 
+/** Answers short in every language ("0–1", "2–3", "4 or more") fit side by side in one row.
+    Checked across languages so the layout doesn't jump when the language changes. */
+function shortOptions(q) {
+  return q.options.every((option) => ['ru', 'en', 'zh'].every((lang) => (option[lang] ?? '').length <= 12));
+}
+
 function questionNode(q) {
   const options = q.options.map((option, index) => el('button', {
     type: 'button', 'data-index': index, 'aria-pressed': 'false', onclick: () => pick(q, index),
@@ -77,7 +83,7 @@ function questionNode(q) {
       q.hidden && el('span', { class: 'tag', title: t('quiz.hidden.title') }, `🔒 ${t('quiz.hidden')}`),
       !q.required && firstVisit === false && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
-    el('div', { class: 'opts', 'data-choice': q.type }, ...options),
+    el('div', { class: 'opts', 'data-choice': q.type, 'data-row': shortOptions(q) || null }, ...options),
     q.adult_only && !q.show_if && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
     el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
 }
