@@ -78,7 +78,7 @@
   .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }
   @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
   @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
-  .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
+  .qpage :is(fieldset, .qgroup, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
   .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
   .qpage form, .qpage #blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }

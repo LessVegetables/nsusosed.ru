@@ -77,6 +77,32 @@ function pick(q, index) {
   for (const other of quiz.questions) if (!applies(other)) delete answers[other.id];
   refresh();
   saveDraft.now();
+  // Several answers can be ticked: stay, unless the one picked rules out the rest ("none").
+  if (q.type !== 'multi' || answers[q.id].length === 1 && (q.exclusive ?? []).includes(index)) advance($(`q-${q.id}`));
+}
+
+// ── Moving on ───────────────────────────────────────────
+// An answer given brings the next question up, after a beat so the choice is seen first.
+
+/** Everything still to be answered on the page, in order: the facts, then the questions. */
+function steps() {
+  return [$('f-gender'), $('f-adult'), $('f-faculty'), ...$('blocks').querySelectorAll('[data-question]')]
+    .filter((node) => !node.hidden && !node.disabled);
+}
+
+let advancing;
+function advance(from) {
+  clearTimeout(advancing);
+  advancing = setTimeout(() => {
+    const list = steps();
+    const next = list[list.indexOf(from) + 1];
+    const group = next?.closest('.qgroup');
+    // The next row of the same group is right below already.
+    if (group && group === from.closest('.qgroup')) return;
+    // A group comes up with its heading; after the last question, the "Done" button.
+    if (next) (group ?? next).scrollIntoView({ block: 'start' });
+    else if (!$('qbar').hidden) $('qbar').scrollIntoView({ block: 'center' });
+  }, 250);
 }
 
 /** Answers short in every language ("0–1", "2–3", "4 or more") fit side by side in one row.
@@ -228,6 +254,7 @@ for (const [group, key] of [['gender', 'gender'], ['adult', 'adult']]) {
       for (const q of quiz.questions) if (!applies(q)) delete answers[q.id];
       refresh();
       saveDraft.now();
+      advance($(`f-${group}`));
     });
   }
 }
@@ -235,6 +262,7 @@ $('faculty').addEventListener('change', () => {
   about.faculty = $('faculty').value;
   $('f-faculty').querySelector('.note')?.remove();
   saveDraft.now();
+  advance($('f-faculty'));
 });
 
 render();
