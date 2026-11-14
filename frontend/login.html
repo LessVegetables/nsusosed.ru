@@ -47,7 +47,8 @@
 
       <!-- Step 2: name (first login only) -->
       <form class="box pad stack fill-purple" id="step-name" novalidate hidden>
-        <h1 class="title" data-i18n="login.name.title">Пока код летит на почту — как тебя зовут?</h1>
+        <h1 class="title" data-i18n="login.name.title">Раз уж есть минутка…</h1>
+        <p data-i18n="login.name.text">Пока код летит на почту, как тебя зовут?</p>
         <label class="field"><span data-i18n="login.name.first">Имя</span>
           <input id="first-name" name="given-name" autocomplete="given-name" maxlength="40" aria-describedby="first-name-err" required>
           <span class="error" id="first-name-err" hidden></span>
@@ -56,7 +57,10 @@
           <input id="last-name" name="family-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
           <span class="error" id="last-name-err" hidden></span>
         </label>
-        <div><button class="btn dark" type="submit" data-i18n="login.name.submit">Дальше →</button></div>
+        <div class="row">
+          <button class="btn secondary" type="button" id="name-back" data-i18n="login.back">← Назад</button>
+          <button class="btn dark" type="submit" data-i18n="login.name.submit">Дальше →</button>
+        </div>
       </form>
 
       <!-- Step 3: code -->
@@ -68,7 +72,10 @@
         </div>
         <p class="note error" id="code-err" hidden></p>
         <div class="timer" id="timer" hidden><span data-i18n="login.code.validFor">Код действует ещё</span> <b id="timer-left"></b></div>
-        <div><button class="btn dark" type="submit" data-i18n="login.code.submit">Войти →</button></div>
+        <div class="row">
+          <button class="btn secondary" type="button" id="code-back" data-i18n="login.back">← Назад</button>
+          <button class="btn dark" type="submit" data-i18n="login.code.submit">Войти →</button>
+        </div>
         <p class="hint">
           <span id="resend-wait"></span>
           <button class="linkbtn" type="button" id="resend" data-i18n="login.code.resend" hidden>Отправить код ещё раз</button>

@@ -81,6 +81,7 @@ async function requestCode(button) {
 steps.email.addEventListener('submit', async (e) => {
   e.preventDefault();
   $('email-note').hidden = true;
+  const previous = state.email;
   state.email = fullEmail($('email').value.trim().toLowerCase());
   const emailProblem = !state.email ? 'REQUIRED' : !state.email.includes('@') ? 'INVALID_EMAIL' : null;
   fieldError($('email'), $('email-err'), emailProblem && reason(emailProblem));
@@ -89,7 +90,9 @@ steps.email.addEventListener('submit', async (e) => {
   if (emailProblem) { $('email').focus(); return; }
   if (!accepted) { $('privacy').focus(); return; }
 
-  if (!await requestCode(e.submitter)) return;
+  // Came back with "← Back" and kept the same address: the code already sent still works.
+  const codeStillValid = state.email === previous && Date.now() < state.expiresAt;
+  if (!codeStillValid && !await requestCode(e.submitter)) return;
   clearCode();
   renderCodeStep();
   show(state.isNew ? 'name' : 'code');
@@ -193,6 +196,8 @@ $('resend').addEventListener('click', async () => {
   if (await requestCode($('resend'))) { clearCode(); renderCodeStep(); cells[0].focus(); }
 });
 
+$('name-back').addEventListener('click', () => show('email'));
+$('code-back').addEventListener('click', () => { clearCode(); show(state.isNew ? 'name' : 'email'); });
 $('change-email').addEventListener('click', () => { clearCode(); show('email'); });
 
 // Countdowns: how long the code lives, and when another one can be sent.
