@@ -156,12 +156,12 @@ def blocked(a: Answers, b: Answers) -> bool:
 def _sleep(a: Answers, b: Answers) -> float:
     c = S["sleep"]
 
-    def timing(q: str, hours: list[float]) -> float:
-        ha, hb = hours[a[q]], hours[b[q]]
+    def timing(q: str) -> float:  # A1 and A2 share one set of bins
+        ha, hb = c["bedtime_hours"][a[q]], c["bedtime_hours"][b[q]]
         earlier = a if ha <= hb else b
         return _clamp((abs(ha - hb) - c["allowance_by_a3"][earlier["A3"]]) / c["gap_divisor"])
 
-    friction = c["weekday_weight"] * timing("A1", c["a1_hours"]) + c["free_day_weight"] * timing("A2", c["a2_hours"])
+    friction = c["weekday_weight"] * timing("A1") + c["free_day_weight"] * timing("A2")
     # Late returns and repeated alarms disturb in proportion to how lightly the other one sleeps.
     for q, rate, weight in (("F1", c["f1_rate"], c["f1_weight"]), ("A4", c["a4_rate"], c["a4_weight"])):
         worst = max((rate[x[q]] * c["sensitivity_by_a3"][y["A3"]] for x, y in ((a, b), (b, a)) if q in x), default=0.0)

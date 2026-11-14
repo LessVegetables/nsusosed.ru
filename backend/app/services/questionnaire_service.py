@@ -25,7 +25,8 @@ def _out(answers: dict, user: User) -> QuestionnaireOut:
     q = questionnaires.current()
     adult = bool(user.is_adult)
     return QuestionnaireOut(
-        version=q.VERSION, blocks=q.QUESTIONNAIRE["blocks"], questions=q.QUESTIONNAIRE["questions"],
+        version=q.VERSION, blocks=q.QUESTIONNAIRE["blocks"],
+        groups=q.QUESTIONNAIRE.get("groups", []), questions=q.QUESTIONNAIRE["questions"],
         answers=answers, complete=q.is_complete(answers, user.is_adult),
         missing=q.missing_required(answers, adult) if user.is_adult is not None else [],
     )

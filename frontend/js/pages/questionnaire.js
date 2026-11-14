@@ -28,6 +28,7 @@ const about = {
   faculty: user.faculty ?? '',
 };
 const byId = Object.fromEntries(quiz.questions.map((q) => [q.id, q]));
+const groups = Object.fromEntries((quiz.groups ?? []).map((g) => [g.id, g]));
 const tr = (texts) => texts[currentLang()] ?? texts.ru;
 
 // ── Which questions are asked right now ─────────────────
@@ -81,11 +82,41 @@ function questionNode(q) {
     el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
 }
 
+/** One row of a group (the two bedtime questions): its label and a scale of short cells.
+    Same hooks as a question (id, data-question, option buttons with data-index). */
+function rowNode(q, group) {
+  const options = q.options.map((option, index) => el('button', {
+    type: 'button', 'data-index': index, 'aria-pressed': 'false', 'aria-label': tr(option), title: tr(option),
+    onclick: () => pick(q, index),
+  }, tr(option.short)));
+  return el('div', { class: 'qrow', id: `q-${q.id}`, 'data-question': q.id, role: 'group', 'aria-labelledby': `group-${group.id} label-${q.id}` },
+    el('span', { class: 'qrow-label', id: `label-${q.id}` }, tr(q.label)),
+    el('div', { class: 'scale' }, ...options),
+    el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
+}
+
+/** Questions that share a group sit under one heading, one row each, on scales that line up. */
+function groupNode(group, questions) {
+  return el('div', { class: 'qgroup' },
+    el('p', { class: 'qgroup-title', id: `group-${group.id}` }, tr(group.text)),
+    ...questions.map((q) => rowNode(q, group)));
+}
+
 function blockNode(block, questions) {
+  const nodes = [];
+  const drawn = new Set();
+  for (const q of questions) {
+    const group = q.group && groups[q.group];
+    if (!group) nodes.push(questionNode(q));
+    else if (!drawn.has(group.id)) {
+      drawn.add(group.id);
+      nodes.push(groupNode(group, questions.filter((other) => other.group === group.id)));
+    }
+  }
   return el('section', { class: 'box pad qblock', 'aria-labelledby': `block-${block.id}` },
     el('h2', { id: `block-${block.id}` }, tr(block.title)),
     block.note && questions.some((q) => q.id === 'E1') && el('p', { class: 'note' }, tr(block.note)),
-    ...questions.map(questionNode));
+    ...nodes);
 }
 
 function render() {
@@ -110,7 +141,7 @@ function refresh() {
     node.hidden = !applies(q) && !grayed(q);
     node.disabled = grayed(q);
     const chosen = [answers[q.id]].flat();
-    for (const button of node.querySelectorAll('.opts button')) {
+    for (const button of node.querySelectorAll('button[data-index]')) {
       button.setAttribute('aria-pressed', String(chosen.includes(Number(button.dataset.index))));
     }
     const notice = node.querySelector('[data-underage]');

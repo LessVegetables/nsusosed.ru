@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field
 class QuestionnaireOut(BaseModel):
     version: int
     blocks: list[dict]
+    # Questions drawn together under one heading (the two bedtime questions).
+    groups: list[dict]
     questions: list[dict]
     # The person's own answers for this version ({} if none yet), hidden ones included.
     answers: dict[str, Any]

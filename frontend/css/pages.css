@@ -78,7 +78,7 @@
   .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }
   @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
   @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
-  .qpage :is(fieldset, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
+  .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
   .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
   .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
@@ -88,12 +88,25 @@
   .qblock > h2 { font-size: var(--fs-panel); }
   .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
   .qblock fieldset > * { margin: 0; }
-  .qblock legend { padding: 0; margin-bottom: 4px; font-size: var(--fs-card); font-weight: var(--w-semibold); line-height: 1.25; letter-spacing: -.01em; }
+  .qblock :is(legend, .qgroup-title) { padding: 0; margin-bottom: 4px; font-size: var(--fs-card); font-weight: var(--w-semibold); line-height: 1.25; letter-spacing: -.01em; }
   .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
   .qblock .opts { grid-template-columns: 1fr; gap: 8px; }
   .qblock .opts button { padding: 11px 12px; font-size: var(--fs-body); }
   .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
   #about .opts { grid-template-columns: 1fr 1fr; }
+  /* A group of questions on one axis (the two bedtimes): the label beside its scale, the
+     label column as wide as the longest label so the scales line up; on phones the label goes on top. */
+  .qgroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 14px; align-items: center; }
+  .qgroup > * { margin: 0; }
+  .qgroup-title { grid-column: 1 / -1; }
+  .qrow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 8px; }
+  .qrow > * { margin: 0; }
+  .qrow-label { font-weight: var(--w-bold); }
+  .qrow > .note { grid-column: 1 / -1; }
+  @media (max-width: 640px) {
+    .qgroup { grid-template-columns: minmax(0, 1fr); row-gap: 14px; }
+    .qrow { row-gap: 6px; }
+  }
   .qbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; }
   .qbar .qstrip { flex: 1; min-width: 0; }
   .qbar .btn { white-space: nowrap; }

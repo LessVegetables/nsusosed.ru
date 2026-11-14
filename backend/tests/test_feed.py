@@ -60,7 +60,7 @@ async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_
 
 async def test_feed_is_sorted_by_compatibility_and_never_shows_exact_numbers(make_client, login):
     seeker = await person(make_client, login, "s@g.nsu.ru")
-    night_owl = BASE | {"A1": 4, "A2": 4, "F1": 3, "C2": 3}
+    night_owl = BASE | {"A1": 4, "A2": 5, "F1": 3, "C2": 3}
     await listed(await person(make_client, login, "a@g.nsu.ru", answers=night_owl, contact="@owl_nsu"), dorm(room_label="200", rooms=room("🦉🌙⭐")))
     await listed(await person(make_client, login, "b@g.nsu.ru", contact="@twin_nsu"), dorm(room_label="201", rooms=room("🐶🍕🚀")))
     await listed(await person(make_client, login, "c@g.nsu.ru", answers=None, contact="@new_nsu"), dorm(room_label="202", rooms=room("🍎🍐🍊")))

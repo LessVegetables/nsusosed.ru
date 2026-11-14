@@ -460,6 +460,22 @@
   .opts button[aria-pressed="true"] { background: var(--primary); color: var(--on-fill); transform: translate(var(--depth-sm), var(--depth-sm)); box-shadow: 0 0 0 var(--edge); }
   .opts button[aria-pressed="true"]::after { background: var(--on-fill); }
   .opts button:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; transform: none; } /* NEW */
+  /* Scale (NEW): options that are steps on one axis (bedtime hours) as one bar of equal cells
+     with short mono labels. Two scales stacked line up cell for cell. Chosen: yellow, pressed in. */
+  .scale {
+    display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
+    border: var(--border); border-radius: var(--r); box-shadow: var(--sh); overflow: hidden; background: var(--surface);
+  }
+  .scale button {
+    min-height: 48px; padding: 10px 0; border: 0; background: var(--surface); color: var(--text);
+    font: var(--w-bold) var(--fs-small) / 1.1 var(--mono); letter-spacing: var(--track-tight); white-space: nowrap;
+    cursor: pointer; transition: box-shadow var(--press);
+  }
+  .scale button + button { border-left: var(--border-thin); }
+  .scale button[aria-pressed="true"] { background: var(--primary); color: var(--on-fill); box-shadow: inset var(--depth) var(--depth) 0 var(--edge); }
+  .scale button:focus-visible { outline-offset: calc(-2 * var(--line-w)); }
+  .scale button:disabled { cursor: not-allowed; opacity: .5; }
+  @media (hover: hover) { .scale button:not([aria-pressed="true"]):not(:disabled):hover { background: var(--hover-fill); } }
   .sub { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
   .sub > .box { padding: 16px; }
   .sub b { display: block; margin-bottom: 10px; font-weight: var(--w-black); }

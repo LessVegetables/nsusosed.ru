@@ -199,6 +199,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Breakdown | `.breakdown > div.match / .partial / .mismatch > small` | One tile per topic, with words |
 | Questionnaire | `.box.quiz > .quiz-top + .question + .opts + .sub + .hard + .qnav` | Purple panel; progress `.prog > i.done / i.now / i` |
 | Options | `.opts[data-choice=single] > button[aria-pressed]` | 2px outline, 1px shadow (lighter than the panel around them). Chosen: yellow, pressed in, black dot. Disabled (NEW): 50% opacity |
+| Scale (NEW) | `.scale > button[aria-pressed]` | Options that are steps on one axis (bedtime hours): one outlined bar of equal cells with short mono labels (`до 23`, `23–00`, …); the full text goes in `aria-label` and `title`. Stacked scales line up cell for cell. Chosen: yellow, pressed in |
 | Question strip (NEW, proposal) | `nav.qstrip > button[data-state]` | One square cell per question, no gaps; click jumps to it. Empty = not answered, `done` purple, `off` gray stripes (doesn't apply), `missing` red (after a failed save). Hover: header-nav gray. `.flush`: a full-width band of 21px-tall cells, no outer line |
 | Toggle chips | `.tog > button[aria-pressed]` | Multi-select; on = pink |
 | Slider | `.range > input[type=range] + output` | Script sets `--fill` on input |
