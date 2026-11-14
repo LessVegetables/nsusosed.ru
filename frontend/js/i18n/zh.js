@@ -170,6 +170,7 @@ export default {
   "title.compatibility": "匹配度如何计算 — nsusosed",
   "nav.label": "栏目",
   "nav.questionnaire": "问卷",
+  "nav.questionnaireShort": "问卷",
   "quiz.eyebrow": "问卷",
   "quiz.title": "你的生活习惯",
   "quiz.intro": "20 个关于日常生活的问题——大约 3 分钟。这里没有正确答案：我们要找的是让你住得舒服的人。部分回答会显示在个人资料中，部分只有算法能看到（标有 🔒）。",

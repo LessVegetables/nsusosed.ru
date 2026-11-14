@@ -279,7 +279,12 @@
   /* With viewport-fit=cover, iOS lets the page run under the status bar; once stuck at top: 0 the
      header would slide under the notch. The safe-area padding keeps its content below it. */
   .site-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top); background: var(--surface); color: var(--text); border-bottom: var(--border); }
-  .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+  /* Logo left, sections centered on the page, the action (Log in, language) right. */
+  .site-header .wrap { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+  .site-header .wrap > .logo { justify-self: start; }
+  .site-header .wrap > .site-nav { grid-column: 2; }
+  .site-header .wrap > :last-child:not(.site-nav, .tabbar) { grid-column: 3; justify-self: end; }
+  .logo-icon { display: none; }
   .logo { display: flex; align-items: center; gap: 8px; font-weight: var(--w-black); font-size: 24px; letter-spacing: var(--track-tight); text-decoration: none; }
   .logo span { display: inline-block; padding: 0 8px; background: var(--accent); color: var(--on-fill); border: var(--border); border-radius: var(--r-sm); transform: rotate(var(--tilt-logo)); }
   .site-nav { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -546,20 +551,18 @@
   .upload:has(input:focus-visible) { outline: var(--line-w) solid var(--focus-ring); outline-offset: 3px; }
   .upload[aria-busy="true"] { cursor: progress; opacity: .6; }
 
-  /* --- Tab bar (NEW, proposal): the phone menu. Fixed to the bottom on screens up to 640px,
-     where the header nav is hidden; the current section is yellow. --- */
+  /* --- Tab bar (NEW, proposal): the phone menu. On screens up to 640px the header becomes the logo
+     icon followed by the sections as tabs; the current section is yellow. --- */
   .tabbar { display: none; }
   @media (max-width: 640px) {
-    .tabbar {
-      position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-      background: var(--surface); color: var(--text); border-top: var(--border); padding-bottom: env(safe-area-inset-bottom);
-    }
-    .tabbar a { display: grid; place-items: center; min-height: 56px; padding: 6px 2px; text-align: center; text-decoration: none; font-size: var(--fs-label); font-weight: var(--w-heavy); line-height: 1.1; }
-    .tabbar a + a { border-left: var(--border-thin); }
+    .site-header:has(.tabbar) .wrap { display: flex; gap: 0; padding: 0; }
+    .site-header:has(.tabbar) .logo { display: none; }
+    .site-header .logo-icon { display: grid; place-items: center; flex: none; padding: 0 var(--gutter); }
+    .logo-icon img { display: block; width: 36px; height: 36px; }
+    .tabbar { flex: 1; min-width: 0; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+    .tabbar a { display: grid; place-items: center; min-width: 0; min-height: 56px; padding: 6px 2px; border-left: var(--border-thin); text-align: center; text-decoration: none; font-size: var(--fs-label); font-weight: var(--w-heavy); line-height: 1.1; overflow-wrap: anywhere; }
     .tabbar a[aria-current="page"] { background: var(--primary); color: var(--on-fill); }
     .tabbar a:focus-visible { outline-offset: -6px; }
-    body:has(.tabbar) { padding-bottom: calc(56px + env(safe-area-inset-bottom)); }
-    body:has(.tabbar) .site-header .btn { display: none; } /* "Account" is in the bar */
   }
 
   /* --- Responsive --- */
@@ -571,7 +574,7 @@
   }
   @media (max-width: 640px) {
     :root { --gutter: var(--gutter-phone); }
-    .site-nav { display: none; }      /* phones need a menu button or bottom bar (not designed yet) */
+    .site-nav { display: none; }      /* phones: the sections are in the tab bar */
     .steps, .cards, .opts, .sub { grid-template-columns: 1fr; }
     .quiz { padding: 18px; }
     .toast { left: var(--gutter-phone); right: var(--gutter-phone); max-width: none; }

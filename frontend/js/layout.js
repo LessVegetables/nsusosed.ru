@@ -1,4 +1,4 @@
-// Shared page frame: language, session, header and footer.
+// Shared page frame: language, session, header (with the phone tab bar) and footer.
 //
 // Every page calls initPage() once:
 //   auth: 'none'     — public page, never asks the server who you are
@@ -14,33 +14,27 @@ import { mountLangSwitch } from './lang-switch.js';
 import { KEYS, local, session } from './storage.js';
 import { el, toast } from './ui.js';
 
-/** The right end of the header: "Account" when logged in; for a guest, the language switch on the
- *  pages that offer one (landing, login), otherwise "Log in". */
+/** The header. Logged in: logo, then the sections centered (Account last); on phones the logo
+ *  shrinks to the icon and the sections become a tab bar inside the header. A guest gets the
+ *  language switch on the pages that offer one (landing, login), otherwise "Log in", on the right. */
 function header(user, onLangPick) {
-  const action = user
-    ? el('a', { class: 'btn secondary', href: '/account', i18n: 'nav.account' })
-    : onLangPick ? mountLangSwitch(el('div'), { onPick: onLangPick })
+  const here = location.pathname.replace(/\.html$/, '');
+  const current = (href) => (here === href ? 'page' : null);
+  const logo = el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed');
+  if (!user) {
+    const action = onLangPick ? mountLangSwitch(el('div'), { onPick: onLangPick })
       : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
-  const here = location.pathname.replace(/\.html$/, '');
-  const current = (href) => (here === href ? 'page' : null);
+    return el('div', { class: 'wrap' }, logo, action);
+  }
+  // Each nav gets its own labels: the tab bar's are short enough for a phone.
+  const link = (href, label) => el('a', { href, ...label, 'aria-current': current(href) });
   return el('div', { class: 'wrap' },
-    el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed'),
-    user && el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' },
-      el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
-      el('a', { href: '/home', i18n: 'nav.myHome', 'aria-current': current('/home') }),
-      el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') })),
-    action);
-}
-
-/** Phones: the header has no room for a menu, so the sections live in a bar at the bottom. */
-function tabbar() {
-  const here = location.pathname.replace(/\.html$/, '');
-  const current = (href) => (here === href ? 'page' : null);
-  return el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' },
-    el('a', { href: '/feed', i18n: 'nav.feed', 'aria-current': current('/feed') }),
-    el('a', { href: '/home', i18n: 'nav.homeShort', 'aria-current': current('/home') }),
-    el('a', { href: '/questionnaire', i18n: 'nav.questionnaire', 'aria-current': current('/questionnaire') }),
-    el('a', { href: '/account', i18n: 'nav.account', 'aria-current': current('/account') }));
+    logo,
+    el('a', { class: 'logo-icon', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('img', { src: '/img/logo-icon.svg', alt: '' })),
+    el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.myHome' }),
+      link('/questionnaire', { i18n: 'nav.questionnaire' }), link('/account', { i18n: 'nav.account' })),
+    el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.homeShort' }),
+      link('/questionnaire', { i18n: 'nav.questionnaireShort' }), link('/account', { i18n: 'nav.account' })));
 }
 
 function footer(user) {
@@ -86,7 +80,6 @@ export async function initPage({ auth = 'optional', onLangPick } = {}) {
 
   document.querySelector('.site-header')?.replaceChildren(header(user, onLangPick));
   document.querySelector('.site-footer')?.replaceChildren(footer(user));
-  if (user && !document.querySelector('.tabbar')) document.body.append(tabbar());
   translate();
   document.documentElement.dataset.ready = '';
 

@@ -120,9 +120,6 @@
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
   @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
 
-  /* Above the phone tab bar. */
-  @media (max-width: 640px) { body:has(.tabbar) .qbar { bottom: calc(68px + env(safe-area-inset-bottom)); } }
-
   /* Feed */
   .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
   .feed-more:empty { display: none; }
