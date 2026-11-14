@@ -99,7 +99,8 @@
   @media (max-width: 640px) {
     .qblock .opts[data-row]:has(> :nth-child(4)) { grid-template-columns: 1fr 1fr; grid-auto-flow: row; }
   }
-  #about .opts { grid-template-columns: 1fr 1fr; }
+  #intent { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { #intent { grid-template-columns: 1fr; } }
   /* A group of questions on one axis (the two bedtimes): the label beside its scale, the
      label column as wide as the longest label so the scales line up; on phones the label goes on top. */
   .qgroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 14px; align-items: center; }

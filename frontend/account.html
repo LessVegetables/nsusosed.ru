@@ -31,7 +31,6 @@
       <div class="account-grid">
         <form class="box pad" id="profile" novalidate>
           <h2 data-i18n="account.profile.title">Профиль</h2>
-          <p class="hint" data-i18n="account.profile.hint">Имя, фото и пара слов о себе: их видят те, с кем ты подбираешься в соседи.</p>
           <div class="row">
             <span id="avatar" data-private></span>
             <div class="stack">
@@ -47,30 +46,30 @@
             <input id="last-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
             <span class="error" id="last-name-err" hidden></span>
           </label>
-          <label class="field"><span data-i18n="account.bio.label">О себе</span>
-            <textarea id="bio" rows="4" maxlength="500" aria-describedby="bio-hint"></textarea>
-            <small id="bio-hint" data-i18n="account.bio.hint">Курс, чем увлекаешься, что важно в соседях. До 500 знаков.</small>
-          </label>
-        </form>
-
-        <form class="box pad" id="about" novalidate data-private>
-          <h2 data-i18n="account.about.title">Что ищешь</h2>
-          <fieldset>
-            <legend data-i18n="account.intent.label">Зачем ты здесь</legend>
-            <div class="opts" data-choice="single" id="intent">
-              <button type="button" data-value="seek_dorm" aria-pressed="false" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
-              <button type="button" data-value="seek_apt" aria-pressed="false" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
-              <button type="button" data-value="host" aria-pressed="false" data-i18n="account.intent.host">Ищу соседа к себе</button>
-              <button type="button" data-value="join" aria-pressed="false" data-i18n="account.intent.join">Меня пригласили в жильё</button>
-            </div>
-          </fieldset>
-          <fieldset>
+          <fieldset data-private>
             <legend data-i18n="account.gender.label">Пол</legend>
             <div class="opts" data-choice="single" id="gender">
               <button type="button" data-value="f" aria-pressed="false" data-i18n="account.gender.f">Женский</button>
               <button type="button" data-value="m" aria-pressed="false" data-i18n="account.gender.m">Мужской</button>
             </div>
             <p class="hint" data-i18n="account.gender.hint">Комнаты в общежитиях раздельные: показываем те, куда тебя могут поселить.</p>
+          </fieldset>
+        </form>
+
+        <form class="box pad" id="about" novalidate data-private>
+          <h2 id="about-title" data-i18n="account.about.title">О себе</h2>
+          <label class="field">
+            <textarea id="bio" rows="4" maxlength="500" aria-labelledby="about-title" aria-describedby="bio-hint"></textarea>
+            <small id="bio-hint" data-i18n="account.bio.hint">Курс, чем увлекаешься, что важно в соседях. До 500 знаков.</small>
+          </label>
+          <fieldset>
+            <legend data-i18n="account.intent.label">Я ищу…</legend>
+            <div class="opts" data-choice="single" id="intent">
+              <button type="button" data-value="seek_dorm" aria-pressed="false" data-i18n="account.intent.seek_dorm">место в общежитии</button>
+              <button type="button" data-value="seek_apt" aria-pressed="false" data-i18n="account.intent.seek_apt">комнату в квартире</button>
+              <button type="button" data-value="host" aria-pressed="false" data-i18n="account.intent.host">соседа к себе</button>
+              <button type="button" data-value="join" aria-pressed="false" data-i18n="account.intent.join">…ничего, меня пригласили в жильё</button>
+            </div>
           </fieldset>
           <label class="field"><span data-i18n="account.faculty.label">Факультет</span>
             <span class="short-select"><select id="faculty"></select><span class="short-select-label" aria-hidden="true"></span></span>
