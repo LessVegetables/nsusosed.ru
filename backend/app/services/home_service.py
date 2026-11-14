@@ -16,7 +16,7 @@ from app.services import image_service
 from app.utils import emoji as emoji_util
 from app.utils.contact import PRIMARY_TYPES
 from app.utils.errors import (already_in_home, emoji_taken, invite_invalid, last_manager, no_permission, not_found,
-                              room_occupied, room_taken, too_many_photos, validation_error)
+                              last_photo, room_occupied, room_taken, too_many_photos, validation_error)
 from app.utils.security import sha256_hex
 
 DORM_BY_ID = {d["id"]: d for d in DORMS}
@@ -59,8 +59,10 @@ def to_out(home: Home, membership: Membership) -> HomeOut:
     dorm = DORM_BY_ID.get(home.building) if home.kind == "dorm" else None
     needs_contact = not any(c.type in PRIMARY_TYPES for m in members for c in m.user.contacts)
     needs_free_place = not any(r.free_places > 0 for r in home.rooms)
+    needs_photo = not home.photos
     return HomeOut(
-        id=home.id, kind=home.kind, description=home.description, building=home.building, district=home.district,
+        id=home.id, kind=home.kind, description=home.description, sunlight=home.sunlight,
+        building=home.building, district=home.district,
         lat=dorm["lat"] if dorm else home.lat, lon=dorm["lon"] if dorm else home.lon,
         radius_m=0 if home.kind == "dorm" else home.radius_m,
         utilities_mode=home.utilities_mode, utilities_rub=home.utilities_rub, internet_mode=home.internet_mode,
@@ -73,8 +75,8 @@ def to_out(home: Home, membership: Membership) -> HomeOut:
                             avatar_url=image_service.avatar_url(m.user.avatar_file), room_id=m.room_id,
                             is_you=m.user_id == membership.user_id, permissions=_permissions(m)) for m in members],
         permissions=_permissions(membership),
-        needs_contact=needs_contact, needs_free_place=needs_free_place,
-        visible=not needs_contact and not needs_free_place,
+        needs_contact=needs_contact, needs_free_place=needs_free_place, needs_photo=needs_photo,
+        visible=not needs_contact and not needs_free_place and not needs_photo,
     )
 
 
@@ -119,6 +121,7 @@ def _apply_room(room: Room, data: RoomIn, position: int) -> None:
 
 def _apply_home(home: Home, body: HomeIn) -> None:
     home.description = body.description
+    home.sunlight = body.sunlight
     home.building = body.building
     if body.room_label is not None:
         home.room_label = body.room_label
@@ -250,6 +253,8 @@ async def delete_photo(db, user: User, home_id, photo_id) -> HomeOut:
     photo = next((p for p in home.photos if p.id == photo_id), None)
     if photo is None:
         raise not_found("Фото не найдено.")
+    if len(home.photos) == 1:
+        raise last_photo()
     home.photos.remove(photo)
     for position, p in enumerate(home.photos):
         p.position = position

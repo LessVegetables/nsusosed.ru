@@ -80,7 +80,8 @@ function info() {
   const facts = [
     fact(t('room.fact.free'), t('feed.places', { free: room.free_places, total: room.capacity })),
     fact(t('room.fact.for'), genderLabel(room.gender)),
-  ];
+    room.sunlight && fact(t('room.fact.sun'), t(`home.sun.${room.sunlight}`)),
+  ].filter(Boolean);
   if (room.kind === 'apartment') {
     facts.push(
       fact(t('room.fact.rent'), rub(room.rent_rub)),

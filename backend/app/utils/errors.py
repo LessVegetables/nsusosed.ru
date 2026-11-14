@@ -90,6 +90,10 @@ def too_many_photos():
     return AppError(409, "TOO_MANY_PHOTOS", "Достигнуто максимальное число фото.")
 
 
+def last_photo():
+    return AppError(409, "LAST_PHOTO", "Нужно хотя бы одно фото: сначала добавьте другое.")
+
+
 def room_taken(room_id) -> AppError:
     """The dorm room is already listed. The page offers to contact the people who listed it."""
     return AppError(409, "ROOM_TAKEN", "Эта комната уже есть на сайте.", data={"room_id": str(room_id)})

@@ -1,6 +1,6 @@
 """The seeker's side: feed, room page, contacts (needs Postgres)."""
 
-from tests.test_homes import ORIGIN, apartment, dorm
+from tests.test_homes import ORIGIN, apartment, dorm, picture
 from tests.test_scoring import BASE
 
 
@@ -17,8 +17,12 @@ async def person(make_client, login, email, name="Иван", *, answers=BASE, ad
     return c
 
 
-async def listed(c, body) -> dict:
+async def listed(c, body, photo=True) -> dict:
     r = await c.post("/api/homes", json=body, headers=ORIGIN)
+    assert r.status_code == 201, r.text
+    if not photo:
+        return r.json()
+    r = await c.post(f"/api/homes/{r.json()['id']}/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
     assert r.status_code == 201, r.text
     return r.json()
 
@@ -174,3 +178,17 @@ async def test_contacts_are_a_separate_request_that_needs_a_questionnaire(make_c
     r = await no_quiz.post(f"/api/rooms/{room_id}/contacts", headers=ORIGIN)
     assert r.status_code == 409 and r.json()["error"]["code"] == "QUESTIONNAIRE_REQUIRED"
     assert (await make_client().post(f"/api/rooms/{room_id}/contacts", headers=ORIGIN)).status_code == 401
+
+
+async def test_a_home_without_photos_stays_out_of_the_feed(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    host = await person(make_client, login, "h@g.nsu.ru", contact="@nophoto_nsu")
+    home = await listed(host, dorm(), photo=False)
+    assert (await feed(seeker))["items"] == []
+    assert (await seeker.get(f"/api/rooms/{home['rooms'][0]['id']}")).status_code == 404
+    r = await host.post(f"/api/homes/{home['id']}/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
+    assert r.status_code == 201, r.text
+    items = (await feed(seeker))["items"]
+    assert len(items) == 1
+    page = (await seeker.get(f"/api/rooms/{items[0]['room_id']}")).json()
+    assert page["sunlight"] == "sunny"

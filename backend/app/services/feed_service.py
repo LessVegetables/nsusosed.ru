@@ -1,8 +1,8 @@
 """The seeker's side: the feed of rooms with free places and a room's page.
 
 Who sees what:
-  - a room appears once its home is reachable (a host with a phone, Telegram or VK) and it
-    has a free place;
+  - a room appears once its home is reachable (a host with a phone, Telegram or VK), has at
+    least one photo and a free place;
   - a hard block between the viewer and anyone living there hides the room completely, as if
     it did not exist (a 0% would give a hidden answer away);
   - scores go out only as a rounded percent and coarse badges; residents' hidden answers never.
@@ -55,8 +55,9 @@ def _active(home: Home) -> list[Membership]:
     return [m for m in home.memberships if m.user.deleted_at is None]
 
 
-def _reachable(home: Home) -> bool:
-    return any(c.type in PRIMARY_TYPES for m in _active(home) for c in m.user.contacts)
+def _shown(home: Home) -> bool:
+    """Seekers see a home once a host can be reached and it has at least one photo."""
+    return bool(home.photos) and any(c.type in PRIMARY_TYPES for m in _active(home) for c in m.user.contacts)
 
 
 def _score(viewer_answers: dict, home: Home, answers: dict) -> _Scored:
@@ -103,7 +104,7 @@ async def get_feed(db, user: User, kind: str, whole_campus: bool, any_gender: bo
     hidden_by_faculty = hidden_by_gender = 0
     for home in homes:
         members = _active(home)
-        if any(m.user_id == user.id for m in members) or not _reachable(home):
+        if any(m.user_id == user.id for m in members) or not _shown(home):
             continue
         scored = _score(mine, home, answers)
         if scored.blocked:
@@ -147,7 +148,7 @@ async def _room_for(db, user: User, room_id) -> tuple[Home, Room, bool, _Scored,
     my_raw = answers.get(user.id, {})
     scored = _Scored(per_resident={})
     if not is_mine:
-        if not _reachable(home):
+        if not _shown(home):
             raise not_found("Комната не найдена.")
         if q.is_complete(my_raw, user.is_adult):
             scored = _score(q.for_scoring(my_raw, bool(user.is_adult)), home, answers)
@@ -173,7 +174,7 @@ async def get_room(db, user: User, room_id) -> RoomPage:
         room_id=room.id, home_id=home.id, kind=home.kind, building=home.building, district=home.district,
         lat=dorm["lat"] if dorm else home.lat, lon=dorm["lon"] if dorm else home.lon,
         radius_m=0 if home.kind == "dorm" else home.radius_m,
-        description=home.description, emoji=room.emoji, room_name=room.name, gender=room.gender,
+        description=home.description, sunlight=home.sunlight, emoji=room.emoji, room_name=room.name, gender=room.gender,
         capacity=room.capacity, free_places=room.free_places, rent_rub=room.rent_rub,
         utilities_mode=home.utilities_mode, utilities_rub=home.utilities_rub, internet_mode=home.internet_mode,
         photos=[PhotoOut(id=p.id, url=image_service.home_photo_url(home.id, p.file_name), width=p.width, height=p.height)

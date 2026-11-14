@@ -70,6 +70,7 @@ class RoomPage(BaseModel):
     lon: Optional[float] = None
     radius_m: Optional[int] = None   # 0 = an exact point (dorm building); otherwise the approximate area
     description: str
+    sunlight: Optional[str] = None
     emoji: str
     room_name: str
     gender: str

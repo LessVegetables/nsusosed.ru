@@ -181,6 +181,7 @@
   .invite-fresh { display: grid; gap: 10px; }
   .invite-fresh > * { margin: 0; }
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .hblock .opts.three { grid-template-columns: repeat(3, 1fr); }  /* a scale reads in one row */
   @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
 
   /* Feed */

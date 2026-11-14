@@ -21,6 +21,8 @@ import { AKADEMGORODOK, addArea, addPin, createMap, obfuscate } from '../map.js'
 import { el, errorText, saved, setBusy, toast } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
+// Moved into the form (above the "List it" button) while the place is new; see render().
+const photosSection = $('photos-section');
 const MAX_ROOMS = 6;
 
 const { user } = await initPage({ auth: 'required' });
@@ -36,11 +38,11 @@ const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2
 
 function stateFrom(h) {
   if (!h) {
-    return { kind: null, description: '', building: '', room_number: '', room_letter: null, district: '', area: null,
+    return { kind: null, description: '', sunlight: '', building: '', room_number: '', room_letter: null, district: '', area: null,
       utilities_mode: '', utilities_rub: '', internet_mode: '', rooms: [blankRoom()] };
   }
   return {
-    kind: h.kind, description: h.description, building: h.building ?? '', room_number: '', room_letter: null,
+    kind: h.kind, description: h.description, sunlight: h.sunlight ?? '', building: h.building ?? '', room_number: '', room_letter: null,
     district: h.district ?? '', area: h.kind === 'apartment' ? { lat: h.lat, lon: h.lon, radius_m: h.radius_m } : null,
     utilities_mode: h.utilities_mode ?? '', utilities_rub: h.utilities_rub ?? '', internet_mode: h.internet_mode ?? '',
     rooms: h.rooms.map((r) => ({ ...r, rent_rub: r.rent_rub ?? '' })),
@@ -99,7 +101,7 @@ function select(obj, key, options, { numeric = false, onchange } = {}) {
 }
 
 /** Single-choice buttons. Changing the answer re-renders only when `rerender` is set. */
-function choice(legend, obj, key, options, { path, hint, rerender = false } = {}) {
+function choice(legend, obj, key, options, { path, hint, rerender = false, cls = '' } = {}) {
   const buttons = options.map(([value, label]) => el('button', {
     type: 'button', 'aria-pressed': String(obj[key] === value), disabled: !canEdit,
     onclick: () => {
@@ -109,7 +111,7 @@ function choice(legend, obj, key, options, { path, hint, rerender = false } = {}
       changed(true);
     },
   }, label));
-  return el('fieldset', {}, el('legend', {}, legend), el('div', { class: 'opts' }, ...buttons),
+  return el('fieldset', {}, el('legend', {}, legend), el('div', { class: `opts ${cls}`.trim() }, ...buttons),
     hint && el('p', { class: 'hint' }, hint), path && problem(path));
 }
 
@@ -325,8 +327,12 @@ function aboutSection() {
   area.addEventListener('change', () => changed(true));
   return el('section', { class: 'box pad hblock' },
     el('h2', {}, t('home.about.title')),
-    field(t('home.about.label'), area, { hint: t('home.about.hint') }));
+    field(t('home.about.label'), area, { hint: t('home.about.hint') }),
+    choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
+      { path: 'sunlight', hint: t('home.sun.hint'), cls: 'three' }));
 }
+
+const SUNLIGHT = ['sunny', 'partial', 'shady'];
 
 // ── Status, photos, leaving ─────────────────────────────
 
@@ -336,6 +342,7 @@ function renderStatus() {
   if (home.visible) notes.push(el('p', { class: 'note success' }, `✓ ${t('home.status.visible')}`));
   if (home.needs_contact) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsContact')} `, el('a', { href: '/account' }, t('home.status.addContact'))));
   if (home.needs_free_place) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsFreePlace')}`));
+  if (home.needs_photo) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsPhoto')}`));
   if (!canEdit) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.readOnly')}`));
   $('status').replaceChildren(...notes);
 }
@@ -345,7 +352,7 @@ let pendingPhotos = []; // [{ file, url }]
 const MAX_PHOTOS = 10;
 
 function renderPhotos() {
-  const section = $('photos-section');
+  const section = photosSection;
   section.hidden = !home && !state.kind;
   if (section.hidden) return;
   const canPhotos = home ? home.permissions.can_photos : true;
@@ -370,7 +377,8 @@ function renderPhotos() {
     el('img', { src: p.url, alt: t('home.photos.alt', { n: i + 1 }), loading: 'lazy' }),
     canPhotos && el('figcaption', {},
       i > 0 ? el('button', { type: 'button', 'aria-label': t('home.photos.first'), title: t('home.photos.first'), onclick: () => makeFirst(i) }, '★') : el('span', {}),
-      el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×'))));
+      // A listed place keeps at least one photo: the last one can only be replaced, not removed.
+      (!home || list.length > 1) ? el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×') : el('span', {}))));
   let upload = null;
   if (canPhotos && list.length < MAX_PHOTOS) {
     const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true });
@@ -379,6 +387,7 @@ function renderPhotos() {
       const files = [...input.files].slice(0, MAX_PHOTOS - list.length);
       if (!home) {
         pendingPhotos.push(...files.map((file) => ({ file, url: URL.createObjectURL(file) })));
+        if (errors.photos) { delete errors.photos; }
         renderPhotos();
         return;
       }
@@ -391,7 +400,8 @@ function renderPhotos() {
     el('h2', {}, t('home.photos.title')),
     el('p', { class: 'hint' }, t('home.photos.hint')),
     !home && pendingPhotos.length > 0 && el('p', { class: 'note' }, `⚠ ${t('home.photos.pending')}`),
-    el('div', { class: 'photos' }, ...tiles, upload)));
+    el('div', { class: 'photos' }, ...tiles, upload),
+    problem('photos')));
 }
 
 /** Upload one by one, in order; stop at the first that fails. */
@@ -614,6 +624,9 @@ function render() {
         el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
     ].filter(Boolean));
   }
+  // A new place needs a photo before it's listed, so the photos go above the button.
+  const bar = form.querySelector('.qbar');
+  if (bar) form.insertBefore(photosSection, bar); else form.after(photosSection);
   mountMap();
   renderPhotos();
   renderResidents();
@@ -628,6 +641,7 @@ function payload() {
   return {
     kind: state.kind,
     description: state.description,
+    sunlight: state.sunlight || null,
     building: apartment ? null : state.building || null,
     room_label: apartment ? null : roomLabel(),
     district: apartment ? state.district : null,
@@ -661,6 +675,8 @@ function missing() {
     if (state.utilities_mode === 'split') need('utilities_rub', String(state.utilities_rub).trim());
     need('internet_mode', state.internet_mode);
   }
+  need('sunlight', state.sunlight);
+  if (!home && !pendingPhotos.length) out.photos = 'PHOTO_REQUIRED';
   state.rooms.forEach((room, i) => {
     need(`rooms.${i}.gender`, room.gender);
     if (state.kind === 'apartment') need(`rooms.${i}.rent_rub`, String(room.rent_rub).trim());
@@ -669,9 +685,11 @@ function missing() {
   return out;
 }
 
+const FORM_ERROR = '#home-form .note.error, #photos-section .note.error';
+
 function showErrors() {
   render();
-  document.querySelector('#home-form .note.error')?.scrollIntoView({ block: 'center' });
+  document.querySelector(FORM_ERROR)?.scrollIntoView({ block: 'center' });
 }
 
 // A new place: sent once, by the button.
@@ -695,10 +713,10 @@ $('home-form').addEventListener('submit', async (e) => {
     if (pendingPhotos.length) {
       const queued = pendingPhotos;
       pendingPhotos = [];
-      $('photos-section').setAttribute('aria-busy', 'true');
+      photosSection.setAttribute('aria-busy', 'true');
       await uploadPhotos(queued.map((p) => p.file));
       queued.forEach((p) => URL.revokeObjectURL(p.url));
-      $('photos-section').removeAttribute('aria-busy');
+      photosSection.removeAttribute('aria-busy');
       renderPhotos();
     }
   } catch (err) {
@@ -707,7 +725,7 @@ $('home-form').addEventListener('submit', async (e) => {
     errors = err.fields ?? {};
     if (err.code === 'ROOM_TAKEN') takenRoomId = err.data?.room_id ?? null;
     showErrors();
-    if (!document.querySelector('#home-form .note.error')) toast(t('error.title'), errorText(err), { error: true });
+    if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
   }
 });
 
@@ -757,7 +775,7 @@ async function saveHome() {
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
     setErrors(err.fields ?? {}, err.code === 'ROOM_TAKEN' ? err.data?.room_id ?? null : null);
-    if (!document.querySelector('#home-form .note.error')) toast(t('error.title'), errorText(err), { error: true });
+    if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
     return;
   }
   // Take over what only the server knows: the ids of new rooms (it keeps their order).

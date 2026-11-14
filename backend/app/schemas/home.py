@@ -54,6 +54,8 @@ class RoomIn(BaseModel):
 class HomeIn(BaseModel):
     kind: Literal["dorm", "apartment"]
     description: str = Field(default="", max_length=1000)
+    # How much sun gets in. Optional in the type so a missing answer gets the usual REQUIRED.
+    sunlight: Optional[Literal["sunny", "partial", "shady"]] = None
     rooms: list[RoomIn] = Field(..., min_length=1, max_length=MAX_ROOMS)
 
     # Dorm. room_label may be left out when editing: the stored one is kept.
@@ -77,6 +79,8 @@ class HomeIn(BaseModel):
     @model_validator(mode="after")
     def check(self) -> "HomeIn":
         errors: dict[str, str] = {}
+        if self.sunlight is None:
+            errors["sunlight"] = "REQUIRED"
         if self.kind == "dorm":
             if self.building not in DORM_IDS:
                 errors["building"] = "UNKNOWN_DORM" if self.building else "REQUIRED"
@@ -211,6 +215,7 @@ class HomeOut(BaseModel):
     id: UUID
     kind: str
     description: str
+    sunlight: Optional[str] = None
     building: Optional[str] = None
     district: Optional[str] = None
     # Dorm: the building's exact point, radius 0 (None until the building list has coordinates).
@@ -228,6 +233,7 @@ class HomeOut(BaseModel):
     # What still keeps seekers from seeing this home.
     needs_contact: bool      # no host has a phone, Telegram or VK yet
     needs_free_place: bool   # every room is full
+    needs_photo: bool        # no photos yet
     visible: bool
 
 
