@@ -332,7 +332,7 @@ export default {
   "home.residents.remove": "Remove from this place",
   "home.residents.removeConfirm": "Remove {name} from this place?",
   "home.invites.title": "Invites",
-  "home.invites.hint": "Send a roommate the link: it attaches their account to this place. The link works for 7 days.",
+  "home.invites.hint": "Send a roommate the link: it attaches their account to this place.",
   "home.invites.noRight": "Roommates can be invited by those who have the right to.",
   "home.invites.room": "Which room",
   "home.invites.create": "Create a link",

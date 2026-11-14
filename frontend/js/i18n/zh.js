@@ -332,7 +332,7 @@ export default {
   "home.residents.remove": "从住处移除",
   "home.residents.removeConfirm": "要把 {name} 从住处移除吗？",
   "home.invites.title": "邀请",
-  "home.invites.hint": "把链接发给室友：对方可以用它把账户关联到这个住处。链接 7 天内有效。",
+  "home.invites.hint": "把链接发给室友：对方可以用它把账户关联到这个住处。",
   "home.invites.noRight": "只有拥有权限的人才能邀请室友。",
   "home.invites.room": "哪个房间",
   "home.invites.create": "生成链接",

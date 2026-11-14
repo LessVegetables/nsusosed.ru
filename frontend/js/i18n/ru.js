@@ -332,7 +332,7 @@ export default {
   "home.residents.remove": "Убрать из жилья",
   "home.residents.removeConfirm": "Убрать {name} из жилья?",
   "home.invites.title": "Приглашения",
-  "home.invites.hint": "Отправь соседу ссылку: по ней он привяжет свой аккаунт к этому жилью. Ссылка работает 7 дней.",
+  "home.invites.hint": "Отправь соседу ссылку: по ней он привяжет свой аккаунт к этому жилью.",
   "home.invites.noRight": "Приглашать соседей могут те, у кого есть на это право.",
   "home.invites.room": "В какую комнату",
   "home.invites.create": "Создать ссылку",
