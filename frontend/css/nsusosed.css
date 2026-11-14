@@ -86,7 +86,7 @@
     --track-caps:  .06em;  /* uppercase mono labels */
 
     /* --- Lines, corners, shadows --- */
-    --line-w: 3px;
+    --line-w: 3px; /* was 3px*/
     --line-w-thin: 2px;
     --border: var(--line-w) solid var(--edge);
     --border-thin: var(--line-w-thin) solid var(--edge);
@@ -95,7 +95,7 @@
     --r: 10px;        /* boxes, buttons, inputs, tabs */
     --r-lg: 12px;     /* headline highlight */
     --r-pill: 999px;  /* tags, slider track */
-    --depth-sm: 3px;  --depth: 5px;  --depth-lg: 8px;
+    --depth-sm: 1px;  --depth: 2px;  --depth-lg: 3px;       /* where 3, 5, 8px respectively*/
     --sh-sm: var(--depth-sm) var(--depth-sm) 0 var(--edge);
     --sh:    var(--depth) var(--depth) 0 var(--edge);
     --sh-lg: var(--depth-lg) var(--depth-lg) 0 var(--edge);

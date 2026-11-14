@@ -54,7 +54,7 @@ Component internals (a card's 16px padding, a chip's 3px × 8px) are deliberatel
 
 Loud, friendly and very clear. Blocks look like stickers cut from colored paper and stuck on graph paper. It should feel like a student project done with confidence, not like a bank or a startup dashboard. Decoration never gets in the way of understanding what the service does: when the demo's hero collage of overlapping cards confused people on phones, it was replaced by one clean card.
 
-1. **Every block is a box.** Outline 3px, radius 10px, hard shadow 5px down-right with no blur. No soft shadows, gradients or glass.
+1. **Every block is a box.** Outline 3px, radius 10px, hard shadow 2px down-right with no blur. No soft shadows, gradients or glass.
 2. **Color is a flat fill, and text on a fill is black.** Fill colors are never text colors (red text on white is only 2.8:1).
 3. **Color has fixed meanings.** Green = matches, yellow = partly matches, red = doesn't match / error. Always say it in words too ("совпадает", "немного отличается"), never color alone.
 4. **Heavy type.** Rubik 800–900 for headings and buttons; JetBrains Mono in uppercase for labels, meta lines and anything typed (email, code).
@@ -136,7 +136,7 @@ Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels u
 | `--line-w` | 3px | Box, button, input, tab, card outlines |
 | `--line-w-thin` | 2px | Tags, chips, notes (dashed), facts dividers, toggle chips |
 | `--r-xs` / `--r-sm` / `--r` / `--r-lg` / `--r-pill` | 6 / 8 / 10 / 12 / 999px | Chips & checkboxes / notes, photos, logo / boxes, buttons, inputs / headline highlight / tags |
-| `--sh-sm` / `--sh` / `--sh-lg` | 3 / 5 / 8px down-right | Tabs, pager, toggles / boxes, buttons, options / hovered cards, toast |
+| `--sh-sm` / `--sh` / `--sh-lg` | 1 / 2 / 3px down-right (`--depth-sm` / `--depth` / `--depth-lg`; were 3 / 5 / 8px) | Tabs, pager, toggles / boxes, buttons, options / hovered cards, toast |
 
 ## 6. Layout and spacing
 
@@ -158,9 +158,9 @@ Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels u
 | What | How |
 |---|---|
 | Button hover | Lifts `--hover-lift` (2px) up-left; its shadow grows to match. Only on devices with a real pointer (`@media (hover: hover)`), so taps don't leave buttons stuck "lifted" |
-| Button press | Sinks `--press-depth` (5px) into its shadow; shadow disappears. 80ms |
+| Button press | Sinks `--press-depth` (= `--depth`, 2px) into its shadow; shadow disappears. 80ms |
 | Selected option or tab | Stays pressed in |
-| Card hover | Lifts `--card-lift` (3px); shadow grows to 8px |
+| Card hover | Lifts `--card-lift` (3px); shadow grows to `--depth-lg` (3px) |
 | Toast | Pops in with an overshoot, 0.4s |
 | Ticker | Marquee, 26s per loop |
 
