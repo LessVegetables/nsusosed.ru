@@ -30,7 +30,10 @@
         <h1 class="title" data-i18n="login.email.title">Твоя почта НГУ</h1>
         <p data-i18n="login.email.text">Пришлём на неё одноразовый код.</p>
         <label class="field"><span data-i18n="login.email.label">Университетская почта</span>
-          <input type="email" id="email" name="email" autocomplete="email" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="i.ivanov@g.nsu.ru" aria-describedby="email-err" required>
+          <span class="suffix-field">
+            <input type="text" id="email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="i.ivanov" aria-describedby="email-err" required>
+            <span class="suffix" id="email-suffix" aria-hidden="true">@g.nsu.ru</span>
+          </span>
           <span class="error" id="email-err" hidden></span>
         </label>
         <div>

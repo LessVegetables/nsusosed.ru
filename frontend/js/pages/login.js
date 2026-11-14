@@ -43,6 +43,14 @@ const reason = (code) => {
 
 // ── Step 1: email ───────────────────────────────────────
 
+// A bare name gets the @g.nsu.ru shown at the field's edge. Typing an "@" of your own hides that
+// suffix, and whatever address you typed is sent as is.
+const DEFAULT_DOMAIN = '@g.nsu.ru';
+const fullEmail = (value) => (value && !value.includes('@') ? value + DEFAULT_DOMAIN : value);
+const updateSuffix = () => { $('email-suffix').hidden = $('email').value.includes('@'); };
+$('email').addEventListener('input', updateSuffix);
+updateSuffix();
+
 async function requestCode(button) {
   setBusy(button, true);
   try {
@@ -73,7 +81,7 @@ async function requestCode(button) {
 steps.email.addEventListener('submit', async (e) => {
   e.preventDefault();
   $('email-note').hidden = true;
-  state.email = $('email').value.trim().toLowerCase();
+  state.email = fullEmail($('email').value.trim().toLowerCase());
   const emailProblem = !state.email ? 'REQUIRED' : !state.email.includes('@') ? 'INVALID_EMAIL' : null;
   fieldError($('email'), $('email-err'), emailProblem && reason(emailProblem));
   const accepted = $('privacy').checked;

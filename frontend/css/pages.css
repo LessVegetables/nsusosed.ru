@@ -23,6 +23,20 @@
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  /* Email: the field box holds the input plus a gray "@g.nsu.ru" at its right edge, so a bare
+     name is enough. The suffix hides once the user types an "@" of their own. */
+  .suffix-field {
+    display: flex; align-items: center; margin-top: 8px;
+    border: var(--border); border-radius: var(--r); background: var(--surface); box-shadow: inset 3px 3px 0 var(--inset-shade);
+  }
+  .suffix-field:focus-within { background: var(--field-focus); box-shadow: var(--sh); }
+  .suffix-field:has([aria-invalid="true"]) { background: var(--error-soft); }
+  .field .suffix-field input { flex: 1; min-width: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
+  .suffix-field .suffix {
+    padding-right: 14px; white-space: nowrap; font: var(--w-bold) 18px var(--mono);
+    color: color-mix(in srgb, var(--text) 45%, transparent);
+  }
+  .suffix-field .suffix[hidden] { display: none; }
   .hint { font-size: var(--fs-small); font-weight: var(--w-semibold); }
 
   /* Landing: the "not a student?" box */
