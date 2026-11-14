@@ -127,21 +127,14 @@ function refresh() {
 }
 
 // ── The question strip ──────────────────────────────────
-// One cell per thing on the form, in page order: the three facts, then every question shown.
+// One cell per question shown, in page order.
 // Empty = no answer yet, purple = answered, gray = doesn't apply (18+ for someone under 18),
 // red = required and still empty after a "Save" that was refused.
 
 let triedToSave = false;
 
 function stripCells() {
-  const facts = [
-    { node: $('f-gender'), done: !!about.gender },
-    { node: $('f-adult'), done: !!about.adult },
-    { node: $('f-faculty'), done: !!about.faculty },
-  ].map(({ node, done }) => ({
-    node, label: node.querySelector('legend, span').textContent, state: done ? 'done' : triedToSave ? 'missing' : '',
-  }));
-  const questions = [...$('blocks').querySelectorAll('[data-question]')].filter((node) => !node.hidden).map((node) => {
+  return [...$('blocks').querySelectorAll('[data-question]')].filter((node) => !node.hidden).map((node) => {
     const q = byId[node.dataset.question];
     let state = '';
     if (underage(q)) state = 'off';
@@ -149,7 +142,6 @@ function stripCells() {
     else if (triedToSave && q.required) state = 'missing';
     return { node, label: tr(q.text), state };
   });
-  return [...facts, ...questions];
 }
 
 function drawStrips() {

@@ -441,7 +441,13 @@
   .qstrip button[data-state="done"]::before    { background: var(--quiz); }
   .qstrip button[data-state="off"]::before     { background: var(--unfit-2); border-style: dashed; }
   .qstrip button[data-state="missing"]::before { background: var(--mismatch); }
-  @media (hover: hover) { .qstrip button:hover::before { transform: translateY(calc(-1 * var(--hover-lift))); } }
+  @media (hover: hover) { .qstrip:not(.flush) button:hover::before { transform: translateY(calc(-1 * var(--hover-lift))); } }
+  /* .flush: the cells are the whole bar, edge to edge, split by thin lines (a band under the header). */
+  .qstrip.flush { gap: 0; overflow: hidden; }
+  .qstrip.flush button { padding: 0; }
+  .qstrip.flush button + button { border-left: var(--border-thin); }
+  .qstrip.flush button::before { height: 14px; border: 0; border-radius: 0; }
+  @media (hover: hover) { .qstrip.flush button:hover::before { opacity: .7; } }
   .question {
     margin: 0 0 20px; padding: 14px 18px; background: var(--surface); color: var(--text); border: var(--border); border-radius: var(--r);
     font-size: var(--fs-question); font-weight: var(--w-black); line-height: 1.05;
