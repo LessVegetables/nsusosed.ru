@@ -23,6 +23,9 @@
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  /* The buttons share the form's full width; with two (← back, go on) they split it evenly. */
+  .login form > .actions { justify-self: stretch; display: flex; gap: 14px; }
+  .login .actions .btn { flex: 1; justify-content: center; }
   /* Email: the field box holds the input plus a gray "@g.nsu.ru" at its right edge, so a bare
      name is enough. The suffix hides once the user types an "@" of their own. */
   .suffix-field {

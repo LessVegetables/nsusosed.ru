@@ -40,7 +40,7 @@
           <label class="check"><input type="checkbox" id="privacy" aria-describedby="privacy-err"><span><span data-i18n="login.privacy.before">Я согласен(на) с</span> <a href="/privacy" target="_blank" rel="noopener" data-i18n="login.privacy.link">политикой обработки персональных данных</a></span></label>
           <p class="note error" id="privacy-err" hidden></p>
         </div>
-        <div><button class="btn" type="submit" data-i18n="login.email.submit">Получить код →</button></div>
+        <div class="actions"><button class="btn" type="submit" data-i18n="login.email.submit">Получить код</button></div>
         <p class="note" id="email-note" hidden></p>
         <p class="hint"><span data-i18n="login.noEmail">Ещё нет почты НГУ? Напиши в наш Telegram-бот</span> <a href="https://t.me/nsusosed_bot" target="_blank" rel="noopener">@nsusosed_bot</a> <span data-i18n="login.noEmail.or">или на</span> <a href="mailto:support@nsusosed.ru">support@nsusosed.ru</a>.</p>
       </form>
@@ -57,9 +57,9 @@
           <input id="last-name" name="family-name" autocomplete="family-name" maxlength="40" aria-describedby="last-name-err" required>
           <span class="error" id="last-name-err" hidden></span>
         </label>
-        <div class="row">
-          <button class="btn secondary" type="button" id="name-back" data-i18n="login.back">← Назад</button>
-          <button class="btn dark" type="submit" data-i18n="login.name.submit">Дальше →</button>
+        <div class="actions">
+          <button class="btn secondary" type="button" id="name-back" data-i18n="login.back">Назад</button>
+          <button class="btn dark" type="submit" data-i18n="login.name.submit">Дальше</button>
         </div>
       </form>
 
@@ -72,9 +72,9 @@
         </div>
         <p class="note error" id="code-err" hidden></p>
         <div class="timer" id="timer" hidden><span data-i18n="login.code.validFor">Код действует ещё</span> <b id="timer-left"></b></div>
-        <div class="row">
-          <button class="btn secondary" type="button" id="code-back" data-i18n="login.back">← Назад</button>
-          <button class="btn dark" type="submit" data-i18n="login.code.submit">Войти →</button>
+        <div class="actions">
+          <button class="btn secondary" type="button" id="code-back" data-i18n="login.back">Назад</button>
+          <button class="btn dark" type="submit" data-i18n="login.code.submit">Войти</button>
         </div>
         <p class="hint">
           <span id="resend-wait"></span>
