@@ -32,8 +32,11 @@ const tr = (texts) => texts[currentLang()] ?? texts.ru;
 
 // ── Which questions are asked right now ─────────────────
 
+/** An 18+ question for someone who said they're under 18: shown grayed out, never asked. */
+const underage = (q) => q.adult_only && about.adult === 'no';
+
 function applies(q) {
-  if (q.adult_only && about.adult !== 'yes') return false;
+  if (underage(q)) return false;
   if (q.show_if) {
     const chosen = [answers[q.show_if.question]].flat();
     return chosen.some((c) => q.show_if.any_of.includes(c));
@@ -72,6 +75,7 @@ function questionNode(q) {
       !q.required && firstVisit === false && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
     el('div', { class: 'opts', 'data-choice': q.type }, ...options),
+    q.adult_only && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
     el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
 }
 
@@ -101,12 +105,15 @@ function render() {
 function refresh() {
   for (const node of document.querySelectorAll('[data-question]')) {
     const q = byId[node.dataset.question];
-    node.hidden = !applies(q);
+    node.hidden = !applies(q) && !underage(q);
+    node.disabled = underage(q);
     const chosen = [answers[q.id]].flat();
     for (const button of node.querySelectorAll('.opts button')) {
       button.setAttribute('aria-pressed', String(chosen.includes(Number(button.dataset.index))));
     }
-    if (answered(q)) node.querySelector('.note').hidden = true;
+    const notice = node.querySelector('[data-underage]');
+    if (notice) notice.hidden = !underage(q);
+    if (answered(q) || underage(q)) node.querySelector('.note.error').hidden = true;
   }
   for (const [group, value] of [['gender', about.gender], ['adult', about.adult]]) {
     for (const button of $(group).querySelectorAll('button')) {
@@ -116,8 +123,63 @@ function refresh() {
   const required = requiredNow();
   const done = required.filter(answered).length;
   $('progress-text').textContent = t('quiz.progress', { done, total: required.length });
-  $('progress').replaceChildren(...required.map((q) => el('i', { class: answered(q) ? 'done' : '' })));
+  drawStrips();
 }
+
+// ── The question strip ──────────────────────────────────
+// One cell per thing on the form, in page order: the three facts, then every question shown.
+// Empty = no answer yet, purple = answered, gray = doesn't apply (18+ for someone under 18),
+// red = required and still empty after a "Save" that was refused.
+
+let triedToSave = false;
+
+function stripCells() {
+  const facts = [
+    { node: $('f-gender'), done: !!about.gender },
+    { node: $('f-adult'), done: !!about.adult },
+    { node: $('f-faculty'), done: !!about.faculty },
+  ].map(({ node, done }) => ({
+    node, label: node.querySelector('legend, span').textContent, state: done ? 'done' : triedToSave ? 'missing' : '',
+  }));
+  const questions = [...$('blocks').querySelectorAll('[data-question]')].filter((node) => !node.hidden).map((node) => {
+    const q = byId[node.dataset.question];
+    let state = '';
+    if (underage(q)) state = 'off';
+    else if (answered(q)) state = 'done';
+    else if (triedToSave && q.required) state = 'missing';
+    return { node, label: tr(q.text), state };
+  });
+  return [...facts, ...questions];
+}
+
+function drawStrips() {
+  const cells = stripCells();
+  for (const strip of [$('strip-top'), $('strip-bottom')]) {
+    strip.replaceChildren(...cells.map(({ node, label, state }) => el('button', {
+      type: 'button', tabindex: '-1', title: label, 'data-state': state || null,
+      onclick: () => node.scrollIntoView({ block: 'start' }),
+    })));
+  }
+}
+
+/** Questions scrolled to must clear the sticky header and strip: tell the CSS how tall they are. */
+function trackStickyHeight() {
+  const header = document.querySelector('.site-header');
+  const root = document.documentElement.style;
+  const set = () => {
+    root.setProperty('--header-h', `${header.offsetHeight}px`);
+    root.setProperty('--sticky-h', `${header.offsetHeight + $('strip-bar').offsetHeight}px`);
+  };
+  const watcher = new ResizeObserver(set);
+  watcher.observe(header);
+  watcher.observe($('strip-bar'));
+}
+
+/** Wide screens: the top strip steps aside while the save bar (which has its own strip) is in view. */
+new IntersectionObserver(([entry]) => {
+  $('strip-bar').toggleAttribute('data-away', entry.isIntersecting);
+}).observe($('qbar'));
+trackStickyHeight();
 
 for (const [group, key] of [['gender', 'gender'], ['adult', 'adult']]) {
   for (const button of $(group).querySelectorAll('button')) {
@@ -153,7 +215,7 @@ function firstGap() {
   for (const q of requiredNow()) {
     if (answered(q)) continue;
     const node = $(`q-${q.id}`);
-    node.querySelector('.note').hidden = false;
+    node.querySelector('.note.error').hidden = false;
     gaps.push(node);
   }
   return gaps[0] ?? null;
@@ -183,6 +245,7 @@ async function send(button, only) {
 
 function show(id) {
   for (const panel of ['quiz', 'done', 'extra', 'intent']) $(panel).hidden = panel !== id;
+  $('strip-bar').hidden = id !== 'quiz';
   window.scrollTo(0, 0);
   $(id).querySelector('h1')?.setAttribute('tabindex', '-1');
   $(id).querySelector('h1')?.focus();
@@ -201,6 +264,8 @@ async function finish() {
 $('quiz').addEventListener('submit', async (e) => {
   e.preventDefault();
   const gap = firstGap();
+  triedToSave = true;
+  drawStrips();
   if (gap) {
     gap.scrollIntoView({ block: 'center' });
     (gap.querySelector('button, select') ?? gap).focus({ preventScroll: true });

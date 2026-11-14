@@ -67,7 +67,7 @@
     <span class="tag">Для студентов НГУ</span>
     <h1 class="display" data-i18n="headline">Соседи, которые живут <mark class="highlight">так же,</mark> как вы</h1>
     <p class="lead" data-i18n="lead">Короткая анкета о привычках — и комнаты в общежитии и квартиры со свободными местами, отсортированные по совместимости.</p>
-    <div class="row"><a class="btn" href="#forms" data-i18n="cta">Войти по почте →</a><a class="btn secondary" href="#how">Как это работает</a></div>
+    <div class="row"><a class="btn" href="#forms" data-i18n="cta">Войти по почте</a><a class="btn secondary" href="#how">Как это работает</a></div>
   </section>
 
   <!-- Colors -->
@@ -132,10 +132,10 @@
     <h2 class="spec-h">Buttons, tags, chips, notes</h2>
     <span class="spec-label">Buttons: primary · secondary · accent · dark · disabled · busy</span>
     <div class="row">
-      <button class="btn" type="button">Дальше →</button>
-      <button class="btn secondary" type="button">← Назад</button>
+      <button class="btn" type="button">Дальше</button>
+      <button class="btn secondary" type="button">Назад</button>
       <button class="btn accent" type="button">Показать контакты</button>
-      <button class="btn dark" type="button">Войти →</button>
+      <button class="btn dark" type="button">Войти</button>
       <button class="btn" type="button" disabled>Получить код</button>
       <button class="btn" type="button" data-busy-demo>Сохранить</button>
       <button class="linkbtn" type="button">Изменить почту</button>
@@ -167,7 +167,7 @@
         <label class="field">Университетская почта<input type="email" value="student1@gmail.com" aria-invalid="true" aria-describedby="email-err"><span class="error" id="email-err">Нужен адрес @g.nsu.ru</span></label>
         <div class="stack">
           <label class="check"><input type="checkbox" checked><span>Я согласен(на) с <a href="#">политикой обработки персональных данных</a></span></label>
-          <div><button class="btn" type="button">Получить код →</button></div>
+          <div><button class="btn" type="button">Получить код</button></div>
         </div>
       </form>
       <form class="box fill-blue" action="#" novalidate>
@@ -178,7 +178,7 @@
           <input inputmode="numeric" maxlength="1" aria-label="Цифра 1"><input inputmode="numeric" maxlength="1" aria-label="Цифра 2"><input inputmode="numeric" maxlength="1" aria-label="Цифра 3"><input inputmode="numeric" maxlength="1" aria-label="Цифра 4"><input inputmode="numeric" maxlength="1" aria-label="Цифра 5"><input inputmode="numeric" maxlength="1" aria-label="Цифра 6">
         </div>
         <div class="timer">Код действует ещё <b>9:42</b></div>
-        <button class="btn dark" type="button">Войти →</button>
+        <button class="btn dark" type="button">Войти</button>
         <p>Ещё раз через 0:48 · <button class="linkbtn" type="button">Изменить почту</button></p>
       </form>
     </div>
@@ -297,7 +297,12 @@
           <p class="hint">1 — почти неважно, 10 — очень важно.</p></div>
       </div>
       <div class="box hard"><label class="check"><input type="checkbox"><span>Жёсткое условие: не показывать жильё, где кто-то отвечает иначе</span></label></div>
-      <div class="qnav"><a class="btn secondary" href="#quiz">← Назад</a><a class="btn" href="#quiz">Дальше →</a></div>
+      <div class="qnav"><a class="btn secondary" href="#quiz">Назад</a><a class="btn" href="#quiz">Дальше</a></div>
+    </div>
+    <!-- Question strip (NEW, proposal): answered, not answered, doesn't apply, missing after "Save" -->
+    <div class="box pad stack">
+      <span class="tag">Полоска вопросов</span>
+      <nav class="qstrip" aria-label="Вопросы"><button type="button" data-state="done" title="Ответ есть"></button><button type="button" data-state="done"></button><button type="button" data-state="done"></button><button type="button" data-state="missing" title="Нет ответа после «Сохранить»"></button><button type="button" data-state="done"></button><button type="button" data-state="off" title="Не относится"></button><button type="button" title="Ещё нет ответа"></button><button type="button"></button><button type="button" data-state="missing"></button><button type="button"></button><button type="button"></button><button type="button"></button></nav>
     </div>
   </section>
 

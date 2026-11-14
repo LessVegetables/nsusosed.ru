@@ -198,7 +198,8 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Contacts | `.contact-box` | Green; shown after "Показать контакты" |
 | Breakdown | `.breakdown > div.match / .partial / .mismatch > small` | One tile per topic, with words |
 | Questionnaire | `.box.quiz > .quiz-top + .question + .opts + .sub + .hard + .qnav` | Purple panel; progress `.prog > i.done / i.now / i` |
-| Options | `.opts[data-choice=single] > button[aria-pressed]` | 2px outline, 1px shadow (lighter than the panel around them). Chosen: yellow, pressed in, black dot |
+| Options | `.opts[data-choice=single] > button[aria-pressed]` | 2px outline, 1px shadow (lighter than the panel around them). Chosen: yellow, pressed in, black dot. Disabled (NEW): 50% opacity |
+| Question strip (NEW, proposal) | `nav.qstrip > button[data-state]` | One thin cell per question; click jumps to it. Empty = not answered, `done` purple, `off` gray dashed (doesn't apply), `missing` red (after a failed save) |
 | Toggle chips | `.tog > button[aria-pressed]` | Multi-select; on = pink |
 | Slider | `.range > input[type=range] + output` | Script sets `--fill` on input |
 | Hard condition | `.box.hard > .check` | Red panel |

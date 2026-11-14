@@ -428,6 +428,20 @@
   .prog i { flex: 1; height: 14px; border: var(--line-w-thin) solid var(--on-fill); border-radius: 4px; background: var(--white); }
   .prog i.done { background: var(--on-fill); }
   .prog i.now  { background: var(--primary); }
+  /* Question strip (NEW, proposal): one thin cell per question, each a button that jumps to it.
+     data-state: none = not answered, "done" = answered (purple), "off" = doesn't apply (gray),
+     "missing" = still unanswered after "Save" (red). The visible cell is ::before; the button
+     itself is taller, so a cell is easier to hit than it looks. --- */
+  .qstrip { display: flex; gap: 3px; }
+  .qstrip button { flex: 1; min-width: 0; padding: 5px 0; background: none; border: 0; cursor: pointer; }
+  .qstrip button::before {
+    content: ""; display: block; height: 10px; border: var(--line-w-thin) solid var(--edge); border-radius: 3px;
+    background: var(--surface); transition: transform var(--press);
+  }
+  .qstrip button[data-state="done"]::before    { background: var(--quiz); }
+  .qstrip button[data-state="off"]::before     { background: var(--unfit-2); border-style: dashed; }
+  .qstrip button[data-state="missing"]::before { background: var(--mismatch); }
+  @media (hover: hover) { .qstrip button:hover::before { transform: translateY(calc(-1 * var(--hover-lift))); } }
   .question {
     margin: 0 0 20px; padding: 14px 18px; background: var(--surface); color: var(--text); border: var(--border); border-radius: var(--r);
     font-size: var(--fs-question); font-weight: var(--w-black); line-height: 1.05;
@@ -441,6 +455,7 @@
   .opts button::after { content: ""; flex: none; width: 18px; height: 18px; border: var(--border-thin); border-radius: 50%; background: var(--surface); }
   .opts button[aria-pressed="true"] { background: var(--primary); color: var(--on-fill); transform: translate(var(--depth-sm), var(--depth-sm)); box-shadow: 0 0 0 var(--edge); }
   .opts button[aria-pressed="true"]::after { background: var(--on-fill); }
+  .opts button:disabled { cursor: not-allowed; opacity: .5; box-shadow: none; transform: none; } /* NEW */
   .sub { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
   .sub > .box { padding: 16px; }
   .sub b { display: block; margin-bottom: 10px; font-weight: var(--w-black); }
@@ -602,7 +617,7 @@
     :root { --hover-lift: 0px; --card-lift: 0px; }
     html { scroll-behavior: auto; }
     .ticker > div, .toast, .btn[aria-busy="true"]::after { animation: none; }
-    .btn, .opts button, .card { transition: none; }
+    .btn, .opts button, .card, .qstrip button::before { transition: none; }
   }
 }
 

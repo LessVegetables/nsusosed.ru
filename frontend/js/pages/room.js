@@ -138,7 +138,7 @@ function render() {
   const hasPlace = room.lat != null && room.lon != null;
   // replaceChildren() would print a `false`/`null` from the `cond && el(...)` items as text.
   root.replaceChildren(...[
-    el('p', {}, el('a', { class: 'linkbtn', href: `/feed?kind=${room.kind}` }, `← ${t('room.back')}`)),
+    el('p', {}, el('a', { class: 'linkbtn', href: `/feed?kind=${room.kind}` }, t('room.back'))),
     el('div', { class: gallery() ? 'listing' : 'listing single' }, gallery(), info()),
     room.compatibility && el('section', {},
       breakdown(room.compatibility),

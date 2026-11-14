@@ -67,8 +67,20 @@
   .account-grid .field textarea { resize: vertical; }
 
   /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
-     fieldsets inside them. The save bar sticks to the bottom so it is always under the thumb. */
-  .qpage { max-width: 760px; }
+     fieldsets inside them. A strip of question cells sticks under the header; the save bar sits
+     after the last block (on phones it is just a full-width button). */
+  .qpage, .qstrip-bar > .wrap { max-width: 760px; }
+  .qstrip-bar {
+    position: sticky; top: var(--header-h, 0px); z-index: 25;
+    background: var(--surface); border-bottom: var(--border);
+    transition: opacity .15s, visibility .15s;
+  }
+  .qstrip-bar > .wrap { padding-top: 3px; padding-bottom: 3px; }
+  .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }
+  @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
+  @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
+  .qpage :is(fieldset, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
+  .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
   .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
   .qintro > * { margin: 0; }
@@ -83,11 +95,15 @@
   .qblock .opts button { padding: 11px 12px; font-size: var(--fs-body); }
   .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
   #about .opts { grid-template-columns: 1fr 1fr; }
-  .qbar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
-  .qbar-progress { flex: 1; min-width: 0; display: grid; gap: 6px; }
-  .qbar .prog i { height: 10px; min-width: 0; }
+  .qbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; }
+  .qbar .qstrip { flex: 1; min-width: 0; }
   .qbar .btn { white-space: nowrap; }
-  .qbar .prog { max-width: none; }
+  /* Phones: no bar, only the buttons, full width under the last block (skip goes under save). */
+  @media (max-width: 640px) {
+    .qbar { display: contents; }
+    .qbar .qstrip { display: none; }
+    .qbar .linkbtn { order: 1; justify-self: center; min-height: 44px; }
+  }
   .solo-panel { display: grid; gap: 16px; justify-items: start; }
   .solo-panel > * { margin: 0; }
   .solo-panel .opts { justify-self: stretch; }
