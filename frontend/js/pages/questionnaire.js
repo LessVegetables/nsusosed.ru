@@ -81,8 +81,12 @@ function pick(q, index) {
   if (q.type !== 'multi' || answers[q.id].length === 1 && (q.exclusive ?? []).includes(index)) advance($(`q-${q.id}`));
 }
 
-// ── Moving on ───────────────────────────────────────────
-// An answer given brings the next question up, after a beat so the choice is seen first.
+// ── Moving on (phones) ──────────────────────────────────
+// On a phone an answer given brings the next question up, after a beat so the choice is seen
+// first. It stops a quarter of the way down the screen, so its answers sit in the middle and
+// lower part, under the thumb. Not on a computer: there the page stays where it is.
+
+const phone = matchMedia('(max-width: 640px) and (pointer: coarse)');
 
 /** Everything still to be answered on the page, in order: the facts, then the questions. */
 function steps() {
@@ -90,8 +94,16 @@ function steps() {
     .filter((node) => !node.hidden && !node.disabled);
 }
 
+/** Scroll so `node` starts `share` of the way down the screen (never under the sticky header). */
+function bringUp(node, share) {
+  const sticky = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sticky-h')) || 0;
+  const offset = Math.max(innerHeight * share, sticky + 16);
+  window.scrollTo({ top: scrollY + node.getBoundingClientRect().top - offset });
+}
+
 let advancing;
 function advance(from) {
+  if (!phone.matches) return;
   clearTimeout(advancing);
   advancing = setTimeout(() => {
     const list = steps();
@@ -100,8 +112,8 @@ function advance(from) {
     // The next row of the same group is right below already.
     if (group && group === from.closest('.qgroup')) return;
     // A group comes up with its heading; after the last question, the "Done" button.
-    if (next) (group ?? next).scrollIntoView({ block: 'start' });
-    else if (!$('qbar').hidden) $('qbar').scrollIntoView({ block: 'center' });
+    if (next) bringUp(group ?? next, 1 / 4);
+    else if (!$('qbar').hidden) bringUp($('qbar').querySelector('[type=submit]'), 1 / 2);
   }, 250);
 }
 
