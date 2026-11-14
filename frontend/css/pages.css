@@ -10,7 +10,7 @@
   /* Footer sits at the bottom even on short pages. */
   body { min-height: 100dvh; display: flex; flex-direction: column; }
   main { flex: 1; }
-  .site-footer { margin-top: 0; }
+  .site-footer { margin-top: 0; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); }
   .site-footer a { font-weight: var(--w-bold); }
 
   /* Landing */
@@ -19,6 +19,11 @@
 
   /* Login: one narrow column; the three steps replace each other. */
   .login { max-width: 520px; display: grid; gap: var(--gap); }
+  /* The login page's padding takes only the height a screen has to spare (none on a 600px one,
+     the usual 56px from about 820px up), so on a phone the form and the footer both fit and
+     nothing slides. A screen still too short simply scrolls. Not on join.html, which shares
+     the .login layout but has no #step-email. */
+  .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--section-y)); }
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
