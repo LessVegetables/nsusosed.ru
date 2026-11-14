@@ -20,7 +20,7 @@ def dorm(**changes) -> dict:
 
 
 def apartment(**changes) -> dict:
-    base = {"kind": "apartment", "district": "Верхняя зона", "sunlight": "partial", "lat": 54.84512, "lon": 83.09876, "radius_m": 420,
+    base = {"kind": "apartment", "district": "Верхняя зона", "description": "Двушка у леса", "sunlight": "partial", "lat": 54.84512, "lon": 83.09876, "radius_m": 420,
             "utilities_mode": "split", "utilities_rub": 2500, "internet_mode": "included",
             "rooms": [{"name": "Большая", "gender": "any", "capacity": 2, "free_places": 1, "rent_rub": 14000, "emoji": "🦊🌵🎸"},
                       {"name": "Маленькая", "gender": "f", "capacity": 1, "free_places": 1, "rent_rub": 11000, "emoji": "🐙🍋🎲"}]}
@@ -132,6 +132,8 @@ async def test_apartment_validation(make_client, login):
     assert await fields(await post(internet_mode=None)) == {"internet_mode": "REQUIRED"}
     rooms = apartment()["rooms"]
     assert await fields(await post(rooms=[rooms[0] | {"rent_rub": None}])) == {"rooms.0.rent_rub": "REQUIRED"}
+    assert await fields(await post(rooms=[rooms[0] | {"name": "  "}])) == {"rooms.0.name": "REQUIRED"}
+    assert await fields(await post(description=" ")) == {"description": "REQUIRED"}
     assert await fields(await post(rooms=[rooms[0], rooms[1] | {"emoji": "🎸🦊🌵"}])) == {"rooms.1.emoji": "EMOJI_TAKEN"}
     r = await post(utilities_mode="included", utilities_rub=999)
     assert r.status_code == 201 and r.json()["utilities_rub"] is None

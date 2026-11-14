@@ -304,7 +304,7 @@ function roomSection(room, index) {
         onclick: () => { state.rooms.splice(index, 1); render(); changed(true); } }, t('home.room.remove'))),
     problem(`rooms.${index}`),
     home && !room.id && el('p', { class: 'note' }, `⚠ ${t('home.room.unsaved')}`),
-    apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') })),
+    apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') }), { path: `rooms.${index}.name` }),
     choice(t('home.room.gender'), room, 'gender', genders, { path: `rooms.${index}.gender`, hint: t('home.room.genderHint'), cls: apartment ? 'three' : '' }),
     el('div', { class: 'two-fields' },
       field(t('home.room.capacity'), select(room, 'capacity', places(1, 6), { numeric: true, onchange: () => {
@@ -329,7 +329,7 @@ function aboutSection() {
   area.addEventListener('change', () => changed(true));
   return el('section', { class: 'box pad hblock' },
     el('h2', {}, t('home.about.title')),
-    field(t('home.about.label'), area),
+    field(t('home.about.label'), area, { path: 'description' }),
     choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
       { path: 'sunlight', cls: 'three slim' }));
 }
@@ -684,11 +684,15 @@ function missing() {
     if (state.utilities_mode === 'split') need('utilities_rub', String(state.utilities_rub).trim());
     need('internet_mode', state.internet_mode);
   }
+  need('description', state.description.trim());
   need('sunlight', state.sunlight);
   if (!home && !pendingPhotos.length) out.photos = 'PHOTO_REQUIRED';
   state.rooms.forEach((room, i) => {
     need(`rooms.${i}.gender`, room.gender);
-    if (state.kind === 'apartment') need(`rooms.${i}.rent_rub`, String(room.rent_rub).trim());
+    if (state.kind === 'apartment') {
+      need(`rooms.${i}.name`, room.name.trim());
+      need(`rooms.${i}.rent_rub`, String(room.rent_rub).trim());
+    }
     need(`rooms.${i}.emoji`, room.emoji.trim());
   });
   return out;

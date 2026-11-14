@@ -81,6 +81,8 @@ class HomeIn(BaseModel):
         errors: dict[str, str] = {}
         if self.sunlight is None:
             errors["sunlight"] = "REQUIRED"
+        if not self.description:
+            errors["description"] = "REQUIRED"
         if self.kind == "dorm":
             if self.building not in DORM_IDS:
                 errors["building"] = "UNKNOWN_DORM" if self.building else "REQUIRED"
@@ -120,6 +122,8 @@ class HomeIn(BaseModel):
             for i, room in enumerate(self.rooms):
                 if room.rent_rub is None:
                     errors[f"rooms.{i}.rent_rub"] = "REQUIRED"
+                if not room.name:
+                    errors[f"rooms.{i}.name"] = "REQUIRED"
             self.building = self.room_label = None
         keys = [emoji_util.normalize(r.emoji)[1] for r in self.rooms]
         for i, key in enumerate(keys):
