@@ -128,8 +128,9 @@ function questionNode(q) {
     type: 'button', 'data-index': index, 'aria-pressed': 'false', onclick: () => pick(q, index),
   }, tr(option)));
   return el('fieldset', { id: `q-${q.id}`, 'data-question': q.id },
-    el('legend', {}, tr(q.text),
-      q.hidden && el('span', { class: 'tag', title: t('quiz.hidden.title') }, `🔒 ${t('quiz.hidden')}`),
+    el('legend', {},
+      q.hidden && el('span', { role: 'img', title: t('quiz.hidden.title'), 'aria-label': t('quiz.hidden.title') }, '🔒'),
+      q.hidden && ' ', tr(q.text),
       !q.required && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
     el('div', { class: 'opts', 'data-choice': q.type, 'data-row': shortOptions(q) || null }, ...options),

@@ -280,7 +280,7 @@ function costsSection() {
       textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500' }),
       { path: 'utilities_rub', hint: t('home.costs.utilitiesHint') }),
     choice(t('home.costs.internet'), state, 'internet_mode',
-      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode' }));
+      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'three' }));
 }
 
 function roomSection(room, index) {
@@ -314,22 +314,22 @@ function roomSection(room, index) {
     apartment && field(t('home.room.rent'), textInput(room, 'rent_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '14000' }),
       { path: `rooms.${index}.rent_rub`, hint: t('home.room.rentHint') }),
     el('div', {},
-      el('label', { class: 'field' }, el('span', {}, t('home.room.emoji')), emojiInput,
+      el('label', { class: 'field' }, el('span', {}, t('home.room.emoji')),
+        el('div', { class: 'emoji-field' }, emojiInput, roll),
         el('small', { id: `emoji-hint-${index}` }, t('home.room.emojiHint'))),
-      problem(`rooms.${index}.emoji`)),
-    el('div', {}, roll));
+      problem(`rooms.${index}.emoji`)));
 }
 
 function aboutSection() {
-  const area = el('textarea', { rows: 5, maxlength: 1000, disabled: !canEdit });
+  const area = el('textarea', { rows: 5, maxlength: 1000, placeholder: t('home.about.hint'), disabled: !canEdit });
   area.value = state.description;
   area.addEventListener('input', () => { state.description = area.value; changed(); });
   area.addEventListener('change', () => changed(true));
   return el('section', { class: 'box pad hblock' },
     el('h2', {}, t('home.about.title')),
-    field(t('home.about.label'), area, { hint: t('home.about.hint') }),
+    field(t('home.about.label'), area),
     choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
-      { path: 'sunlight', hint: t('home.sun.hint'), cls: 'three' }));
+      { path: 'sunlight', cls: 'three' }));
 }
 
 const SUNLIGHT = ['sunny', 'partial', 'shady'];
@@ -340,9 +340,12 @@ function renderStatus() {
   if (!home) { $('status').replaceChildren(); return; }
   const notes = [];
   if (home.visible) notes.push(el('p', { class: 'note success' }, `✓ ${t('home.status.visible')}`));
-  if (home.needs_contact) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsContact')} `, el('a', { href: '/account' }, t('home.status.addContact'))));
+  // Red: the listing is hidden until this is fixed.
+  if (home.needs_contact) {
+    notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.needsContact')} `,
+      el('a', { href: '/account' }, t('home.status.addContact'))));
+  }
   if (home.needs_free_place) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsFreePlace')}`));
-  // Red: unlike the other gaps, this one is easy to cause by accident (deleting the last photo).
   if (home.needs_photo) {
     notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.needsPhoto')} `,
       el('a', { href: '#photos-section' }, t('home.status.addPhoto'))));

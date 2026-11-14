@@ -82,7 +82,7 @@ for f in frontend/js/*.js frontend/js/pages/*.js; do node --input-type=module --
 | `/home` | logged in | List or edit your place; residents, invites, photos |
 | `/join` | logged in | Join a place by invite link or code |
 | `/account` | logged in | Profile, contacts, language, logout, delete |
-| `/compatibility`, `/privacy` | everyone | How the score works; personal data |
+| `/compatibility`, `/privacy`, `/support` | everyone | How the score works; personal data; how to reach us |
 
 The language switch appears on `/`, `/login` and `/account` only. The account's language is
 saved on the server and cached in `localStorage`.

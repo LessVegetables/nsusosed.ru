@@ -43,6 +43,7 @@ function footer(user) {
     el('nav', { class: 'row', 'data-i18n-attr': 'aria-label:footer.label' },
       // The language lives in the account; the footer only points there.
       user && el('a', { href: '/account#language', i18n: 'footer.language' }),
+      el('a', { href: '/support', i18n: 'footer.support' }),
       el('a', { href: '/privacy', i18n: 'footer.privacy' })));
 }
 

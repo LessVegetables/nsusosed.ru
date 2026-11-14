@@ -209,7 +209,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Footer | `.site-footer` | Yellow band |
 | Row (NEW) | `.row` | Buttons or controls side by side; wraps |
 | Language switch (NEW, proposal) | `.langsw[role=group] > button[aria-pressed]` | RU / EN / 中文; current = black, like a tab. Landing, login and account pages only |
-| Dialog (NEW, proposal) | `dialog.dialog > h2 + p + .row` | Confirmations; opened with `showModal()` |
+| Dialog (NEW, proposal) | `dialog.dialog > h2 + p + .row` | Confirmations; opened with `showModal()`. On phones the buttons stack, full width |
 | Avatar (NEW, proposal) | `img.avatar` or `span.avatar` (first letter) | Square, outlined; blue when there is no photo |
 | More (NEW, proposal) | `details.more > summary + .note` | Fold-out hint under a field |
 | Map (NEW, proposal) | `.map` (Leaflet inside), `.map-pin` | Outlined map block; pink pin; apartment area as a circle |

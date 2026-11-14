@@ -336,6 +336,7 @@
     font: var(--w-bold) 18px var(--mono); box-shadow: inset 3px 3px 0 var(--inset-shade);
   }
   .field :is(input, select, textarea):focus { background: var(--field-focus); box-shadow: var(--sh); }
+  .field :is(input, textarea)::placeholder { color: color-mix(in srgb, var(--text) 50%, transparent); opacity: 1; }
   .field small { display: block; font-weight: var(--w-semibold); margin-top: 6px; }
   .field [aria-invalid="true"] { background: var(--error-soft); }
   .field .error { display: inline-block; margin-top: 8px; padding: 3px 8px; border: var(--border-thin); border-radius: var(--r-xs); background: var(--mismatch); color: var(--on-fill); font-size: var(--fs-small); font-weight: var(--w-bold); }
@@ -624,6 +625,7 @@
     .site-nav { display: none; }      /* phones: the sections are in the tab bar */
     .steps, .cards, .opts, .sub { grid-template-columns: 1fr; }
     .quiz { padding: 18px; }
+    .dialog .row { flex-direction: column; align-items: stretch; }  /* phones: buttons stacked, full width */
     .toast { left: var(--gutter-phone); right: var(--gutter-phone); max-width: none; }
     .decor { display: none; }         /* phones: no overlapping decoration */
   }
