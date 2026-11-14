@@ -31,6 +31,7 @@ on the same Wi-Fi open it.
 | `js/layout.js` | `initPage()`: language, session, header, footer, phone tab bar |
 | `js/routes.js` | `homeFor(user)`: where a logged-in person belongs right now |
 | `js/map.js` | Leaflet maps and `obfuscate()`, the function that hides an apartment's location |
+| `js/autosave.js` | `autosaver()`: pages have no save buttons; a change is sent as soon as it is made |
 | `js/compat.js` | How a compatibility result is drawn (percent, badges) |
 | `js/pages/*.js` | One script per page |
 | `vendor/leaflet/` | Leaflet 1.9.4, vendored (the CSP allows no script CDN) |
@@ -56,6 +57,10 @@ Read `design/README.md` first, especially section 15. In short:
   non-JSON answers itself. `js/analytics.js` is the `data-before-send` hook: it redacts invite
   codes and drops errors from browser extensions. Pages carry `data-release="dev"
   data-environment="development"`; the deploy workflow stamps the commit and `production`.
+- **No save buttons.** A choice saves when it is made, a text field a moment after typing stops
+  (`js/autosave.js`). `/account` and `/home` answer each save with the "Saved" toast (`saved()` in
+  `js/ui.js`); the questionnaire saves its draft quietly. Only creating something new (listing a
+  place) has a button.
 - Every string is in the three dictionaries, in sentence case. `tools/check_i18n.py` fails on a
   missing, extra or unused key.
 - Check a 375px-wide screen and a desktop, light and dark, in Russian, English and Chinese.
@@ -71,7 +76,7 @@ for f in frontend/js/*.js frontend/js/pages/*.js; do node --input-type=module --
 |---|---|---|
 | `/` | everyone | Landing for new visitors; logged-in people go to their page; an expired session goes to `/login` |
 | `/login` | guests | Email → name (first login) → code |
-| `/questionnaire` | logged in | Facts, the questionnaire, "what are you looking for?" |
+| `/questionnaire` | logged in | Facts, all 20 questions (a draft saved after every answer), "what are you looking for?" |
 | `/feed` | logged in | Rooms with free places; dorm and apartment tabs |
 | `/room?id=…` | logged in | One room: photos, map, residents, compatibility, contacts |
 | `/home` | logged in | List or edit your place; residents, invites, photos |

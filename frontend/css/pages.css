@@ -67,8 +67,8 @@
   .account-grid .field textarea { resize: vertical; }
 
   /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
-     fieldsets inside them. A strip of question cells sticks under the header; the save bar sits
-     after the last block (on phones it is just a full-width button). */
+     fieldsets inside them. A strip of question cells sticks under the header; on the first visit
+     a bar with the "Done" button sits after the last block (on phones just a full-width button). */
   .qpage { max-width: 760px; }
   .qstrip-bar {
     position: sticky; top: var(--header-h, 0px); z-index: 25;
@@ -80,7 +80,7 @@
   @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
   .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
   .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
-  .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
+  .qpage form, .qpage #blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
   .qintro > * { margin: 0; }
   .qblock { display: grid; gap: 24px; }
@@ -116,7 +116,7 @@
   .qbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; }
   .qbar .qstrip { flex: 1; min-width: 0; }
   .qbar .btn { white-space: nowrap; }
-  /* Phones: no bar, only the buttons, full width under the last block (skip goes under save). */
+  /* Phones: no bar, only the buttons, full width under the last block (a link button goes last). */
   @media (max-width: 640px) {
     .qbar { display: contents; }
     .qbar .qstrip { display: none; }

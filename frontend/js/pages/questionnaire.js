@@ -1,13 +1,17 @@
 // The questionnaire: one page, small sections.
 //
-// First visit:  facts (gender, 18+, faculty) + the required questions → "Готово!" →
-//               the four optional questions (or skip) → "what are you looking for?" → their page.
-// Later visits: everything on one page, optional questions inside their blocks, one save button.
+// Facts (gender, 18+, faculty) and all the questions, optional ones included, on one page.
+// Every answer is saved the moment it is given (a draft: the page can be left and come back
+// to), quietly: no "Saved" pop-up here. There is no save button.
+// First visit:  a "Done" button under the last block checks nothing required is missing, then
+//               "what are you looking for?" → their page.
+// Later visits: no button at all; a required question left empty is marked right away.
 //
 // Question texts come from the server in all three languages (GET /api/questionnaire), so a
 // new questionnaire version needs no change here.
 
 import { ApiError, get, put } from '../api.js';
+import { autosaver } from '../autosave.js';
 import { reportBug } from '../errors.js';
 import { renderFacultyPicker } from '../faculty.js';
 import { currentLang, t } from '../i18n.js';
@@ -21,7 +25,8 @@ const $ = (id) => document.getElementById(id);
 let { user } = await initPage({ auth: 'required' });
 const [quiz, meta] = await Promise.all([get('/questionnaire'), get('/meta')]);
 
-const firstVisit = !quiz.complete;
+// Still on the way in: the questionnaire isn't complete, or "what are you looking for?" wasn't answered.
+const onboarding = !quiz.complete || !user.intent;
 const answers = { ...quiz.answers };
 const about = {
   gender: user.gender,
@@ -48,6 +53,10 @@ function applies(q) {
   return true;
 }
 
+// Drawn on the strip and next to the question: required and still empty. On the first visit
+// only after "Done" was pressed; later, at once.
+let showGaps = !onboarding;
+
 const answered = (q) => answers[q.id] != null && (!Array.isArray(answers[q.id]) || answers[q.id].length > 0);
 const requiredNow = () => quiz.questions.filter((q) => q.required && applies(q));
 
@@ -67,6 +76,7 @@ function pick(q, index) {
   // An answer can switch a later question on or off (nicotine → dependence).
   for (const other of quiz.questions) if (!applies(other)) delete answers[other.id];
   refresh();
+  saveDraft.now();
 }
 
 /** Answers short in every language ("0–1", "2–3", "4 or more") fit side by side in one row.
@@ -82,7 +92,7 @@ function questionNode(q) {
   return el('fieldset', { id: `q-${q.id}`, 'data-question': q.id },
     el('legend', {}, tr(q.text),
       q.hidden && el('span', { class: 'tag', title: t('quiz.hidden.title') }, `🔒 ${t('quiz.hidden')}`),
-      !q.required && firstVisit === false && el('span', { class: 'tag' }, t('quiz.optional'))),
+      !q.required && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
     el('div', { class: 'opts', 'data-choice': q.type, 'data-row': shortOptions(q) || null }, ...options),
     q.adult_only && !q.show_if && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
@@ -127,13 +137,10 @@ function blockNode(block, questions) {
 }
 
 function render() {
-  const inMain = (q) => !firstVisit || q.required;
   $('blocks').replaceChildren(...quiz.blocks
-    .map((b) => [b, quiz.questions.filter((q) => q.block === b.id && inMain(q))])
+    .map((b) => [b, quiz.questions.filter((q) => q.block === b.id)])
     .filter(([, qs]) => qs.length)
     .map(([b, qs]) => blockNode(b, qs)));
-  $('extra-blocks').replaceChildren(el('section', { class: 'box pad qblock' },
-    ...quiz.questions.filter((q) => !q.required).map(questionNode)));
   renderFacultyPicker($('faculty'), meta.faculties, about.faculty);
   refresh();
 }
@@ -150,7 +157,7 @@ function refresh() {
     }
     const notice = node.querySelector('[data-underage]');
     if (notice) notice.hidden = !grayed(q);
-    if (answered(q) || grayed(q)) node.querySelector('.note.error').hidden = true;
+    node.querySelector('.note.error').hidden = !(showGaps && q.required && applies(q) && !answered(q));
   }
   for (const [group, value] of [['gender', about.gender], ['adult', about.adult]]) {
     for (const button of $(group).querySelectorAll('button')) {
@@ -164,19 +171,19 @@ function refresh() {
 }
 
 // ── The question strip ──────────────────────────────────
-// One cell per question shown, in page order.
-// Empty = no answer yet, purple = answered, gray = doesn't apply (18+ for someone under 18),
-// red = required and still empty after a "Save" that was refused.
-
-let triedToSave = false;
+// One cell per question, all 20, in page order.
+// Empty = no answer yet, purple = answered, red = required and still empty (see showGaps),
+// gray = doesn't apply: 18+ for someone under 18, or a follow-up that isn't asked (its cell
+// leads to the question it depends on).
 
 function stripCells() {
-  return [...$('blocks').querySelectorAll('[data-question]')].filter((node) => !node.hidden).map((node) => {
-    const q = byId[node.dataset.question];
+  return quiz.questions.map((q) => {
+    const own = $(`q-${q.id}`);
+    const node = own.hidden && q.show_if ? $(`q-${q.show_if.question}`) : own;
     let state = '';
-    if (grayed(q)) state = 'off';
+    if (!applies(q)) state = 'off';
     else if (answered(q)) state = 'done';
-    else if (triedToSave && q.required) state = 'missing';
+    else if (showGaps && q.required) state = 'missing';
     return { node, label: tr(q.text), state };
   });
 }
@@ -206,7 +213,8 @@ function trackStickyHeight() {
   watcher.observe($('strip-bar'));
 }
 
-/** Wide screens: the top strip steps aside while the save bar (which has its own strip) is in view. */
+/** Wide screens: the top strip steps aside while the bottom bar (which has its own strip) is in view. */
+$('qbar').hidden = !onboarding;
 new IntersectionObserver(([entry]) => {
   $('strip-bar').toggleAttribute('data-away', entry.isIntersecting);
 }).observe($('qbar'));
@@ -219,12 +227,14 @@ for (const [group, key] of [['gender', 'gender'], ['adult', 'adult']]) {
       $(`f-${group}`).querySelector('.note')?.remove();
       for (const q of quiz.questions) if (!applies(q)) delete answers[q.id];
       refresh();
+      saveDraft.now();
     });
   }
 }
 $('faculty').addEventListener('change', () => {
   about.faculty = $('faculty').value;
   $('f-faculty').querySelector('.note')?.remove();
+  saveDraft.now();
 });
 
 render();
@@ -232,34 +242,28 @@ document.addEventListener('langchange', render);
 
 // ── Saving ──────────────────────────────────────────────
 
-function complain(host) {
-  if (!host.querySelector(':scope > .note')) host.append(el('p', { class: 'note error' }, `✕ ${t('quiz.unanswered')}`));
-  return host;
+/** What is stored: the answers given, in question order (so two equal sets compare equal). */
+function draft() {
+  return Object.fromEntries(quiz.questions.filter(answered)
+    .map((q) => [q.id, Array.isArray(answers[q.id]) ? [...answers[q.id]].sort((a, b) => a - b) : answers[q.id]]));
 }
 
-/** Mark what's missing; returns the first such element, or null when everything is answered. */
-function firstGap() {
-  const gaps = [];
-  if (!about.gender) gaps.push(complain($('f-gender')));
-  if (!about.adult) gaps.push(complain($('f-adult')));
-  if (!about.faculty) gaps.push(complain($('f-faculty')));
-  for (const q of requiredNow()) {
-    if (answered(q)) continue;
-    const node = $(`q-${q.id}`);
-    node.querySelector('.note.error').hidden = false;
-    gaps.push(node);
-  }
-  return gaps[0] ?? null;
-}
+let savedDraft = JSON.stringify(draft());
 
-async function send(button, only) {
-  setBusy(button, true);
+/** Send what changed since the last save. Resolves to false if the server refused it. */
+async function save() {
   try {
-    if (!only) {
-      user = await put('/me', { gender: about.gender, is_adult: about.adult === 'yes', faculty: about.faculty });
-    }
-    const body = Object.fromEntries(Object.entries(answers).filter(([id]) => !only || only.includes(id)));
-    const saved = await put('/questionnaire', { version: quiz.version, answers: body });
+    const facts = {};
+    if (about.gender && about.gender !== user.gender) facts.gender = about.gender;
+    if (about.adult && (about.adult === 'yes') !== user.is_adult) facts.is_adult = about.adult === 'yes';
+    if (about.faculty && about.faculty !== user.faculty) facts.faculty = about.faculty;
+    if (Object.keys(facts).length) user = await put('/me', facts);
+    // Which questions are asked depends on "are you 18?": until then the answers wait on the page.
+    if (user.is_adult == null) return true;
+    const body = draft();
+    if (JSON.stringify(body) === savedDraft) return true;
+    const saved = await put('/questionnaire', { version: quiz.version, answers: body, replace: true });
+    savedDraft = JSON.stringify(body);
     quiz.complete = saved.complete;
     return true;
   } catch (err) {
@@ -269,13 +273,30 @@ async function send(button, only) {
     if (err.code === 'QUESTIONNAIRE_OUTDATED') { location.reload(); return false; }
     toast(t('error.title'), errorText(err), { error: true });
     return false;
-  } finally {
-    setBusy(button, false);
   }
 }
 
+const saveDraft = autosaver(save);
+
+function complain(host) {
+  if (!host.querySelector(':scope > .note')) host.append(el('p', { class: 'note error' }, `✕ ${t('quiz.unanswered')}`));
+  return host;
+}
+
+/** Mark what's missing; returns the first such element, or null when everything is answered. */
+function firstGap() {
+  showGaps = true;
+  refresh();
+  const gaps = [];
+  if (!about.gender) gaps.push(complain($('f-gender')));
+  if (!about.adult) gaps.push(complain($('f-adult')));
+  if (!about.faculty) gaps.push(complain($('f-faculty')));
+  gaps.push(...requiredNow().filter((q) => !answered(q)).map((q) => $(`q-${q.id}`)));
+  return gaps[0] ?? null;
+}
+
 function show(id) {
-  for (const panel of ['quiz', 'done', 'extra', 'intent']) $(panel).hidden = panel !== id;
+  for (const panel of ['quiz', 'intent']) $(panel).hidden = panel !== id;
   $('strip-bar').hidden = id !== 'quiz';
   window.scrollTo(0, 0);
   $(id).querySelector('h1')?.setAttribute('tabindex', '-1');
@@ -292,29 +313,19 @@ async function finish() {
   location.assign(homeFor({ ...user, questionnaire_complete: true }));
 }
 
+// "Done" (first visit only): everything is saved already; check nothing required is missing.
 $('quiz').addEventListener('submit', async (e) => {
   e.preventDefault();
   const gap = firstGap();
-  triedToSave = true;
-  drawStrips();
   if (gap) {
     gap.scrollIntoView({ block: 'center' });
     (gap.querySelector('button, select') ?? gap).focus({ preventScroll: true });
     return;
   }
-  if (!await send(e.submitter)) return;
-  if (firstVisit) show('done'); else toast(t('account.saved'), '', { ms: 2500 });
-});
-
-$('more').addEventListener('click', () => show('extra'));
-$('skip').addEventListener('click', finish);
-$('extra-skip').addEventListener('click', finish);
-
-$('extra').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const optional = quiz.questions.filter((q) => !q.required && answered(q)).map((q) => q.id);
-  if (optional.length && !await send(e.submitter, optional)) return;
-  finish();
+  setBusy(e.submitter, true);
+  const ok = await saveDraft.now();
+  setBusy(e.submitter, false);
+  if (ok) finish();
 });
 
 for (const button of $('intent-opts').querySelectorAll('button')) {

@@ -23,7 +23,7 @@
 
   <main id="main" tabindex="-1">
     <!-- One cell per question, stuck under the header; on wide screens it steps aside once the
-         same strip in the save bar at the bottom comes into view. -->
+         same strip in the bar at the bottom (first visit only) comes into view. -->
     <div class="qstrip-bar" id="strip-bar">
       <nav class="qstrip flush" id="strip-top" aria-hidden="true"></nav>
     </div>
@@ -33,7 +33,7 @@
       <form id="quiz" novalidate data-private>
         <header class="qintro">
           <h1 class="title" data-i18n="quiz.title">Как ты живёшь</h1>
-          <p class="lead" data-i18n="quiz.intro">20 вопросов про быт — около 3 минут. Здесь нет правильных ответов: мы ищем человека, с которым тебе будет удобно жить. Часть ответов видна в профиле, часть — только алгоритму (это отмечено значком 🔒).</p>
+          <p class="lead" data-i18n="quiz.intro">20 вопросов про быт — около 3 минут. Здесь нет правильных ответов: мы ищем человека, с которым тебе будет удобно жить. Часть ответов видна в профиле, часть — только алгоритму (это отмечено значком 🔒). Ответы сохраняются сами: можно прерваться и вернуться позже.</p>
           <p class="hint"><a href="/compatibility" data-i18n="quiz.how">Как считается совместимость</a></p>
         </header>
 
@@ -68,29 +68,7 @@
         <div class="qbar box" id="qbar">
           <span class="sr-only" id="progress-text" aria-live="polite"></span>
           <nav class="qstrip" id="strip-bottom" aria-hidden="true"></nav>
-          <button class="btn" type="submit" data-i18n="quiz.save">Сохранить</button>
-        </div>
-      </form>
-
-      <!-- After the required part: the four optional questions -->
-      <section class="box pad fill-green solo-panel" id="done" hidden>
-        <h1 class="title" data-i18n="quiz.done.title">Готово!</h1>
-        <p class="lead" data-i18n="quiz.done.text">Хочешь, чтобы подбор был точнее? Ещё 4 коротких вопроса — около 40 секунд.</p>
-        <div class="row">
-          <button class="btn dark" type="button" id="more" data-i18n="quiz.done.more">Ответить</button>
-          <button class="btn secondary" type="button" id="skip" data-i18n="quiz.done.skip">Пропустить</button>
-        </div>
-      </section>
-
-      <form id="extra" novalidate hidden data-private>
-        <header class="qintro">
-          <span class="tag" data-i18n="quiz.extra.eyebrow">Необязательно</span>
-          <h1 class="title" data-i18n="quiz.extra.title">Ещё 4 вопроса</h1>
-        </header>
-        <div id="extra-blocks"></div>
-        <div class="qbar box">
-          <button class="linkbtn" type="button" id="extra-skip" data-i18n="quiz.done.skip">Пропустить</button>
-          <button class="btn" type="submit" data-i18n="quiz.save">Сохранить</button>
+          <button class="btn" type="submit" data-i18n="quiz.finish">Готово</button>
         </div>
       </form>
 

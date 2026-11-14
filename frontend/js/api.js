@@ -22,6 +22,7 @@ export async function api(method, path, body) {
     init.body = body;
   } else if (body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
+    init.keepalive = true; // an autosave sent while the page is being left still arrives
     init.body = JSON.stringify(body);
   }
   let res;

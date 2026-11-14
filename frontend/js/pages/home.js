@@ -4,17 +4,21 @@
 // language switched); typing only writes into `state`. That keeps one source of truth and
 // makes re-translation free.
 //
+// A new place is sent once, with the "List it" button. After that there is no save button:
+// every change to the form saves itself (see "Autosave") and answers with a "Saved" pop-up.
+//
 // Privacy rules this page is responsible for:
 //   - a dorm room's number is sent once and never shown again (the server doesn't return it);
 //   - an apartment's address is used only to find a point on the map; the point is replaced
 //     by an obfuscated circle here, in the browser, and only the circle is sent.
 
 import { ApiError, del, get, post, put } from '../api.js';
+import { autosaver } from '../autosave.js';
 import { reportBug } from '../errors.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { AKADEMGORODOK, addArea, addPin, createMap, obfuscate } from '../map.js';
-import { el, errorText, setBusy, toast } from '../ui.js';
+import { el, errorText, saved, setBusy, toast } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
 const MAX_ROOMS = 6;
@@ -78,7 +82,8 @@ function field(label, input, { hint, path } = {}) {
 function textInput(obj, key, attrs = {}) {
   const input = el('input', { ...attrs, disabled: !canEdit });
   input.value = obj[key] ?? '';
-  input.addEventListener('input', () => { obj[key] = input.value; });
+  input.addEventListener('input', () => { obj[key] = input.value; changed(); });
+  input.addEventListener('change', () => changed(true));
   return input;
 }
 
@@ -88,6 +93,7 @@ function select(obj, key, options, { numeric = false, onchange } = {}) {
   node.addEventListener('change', () => {
     obj[key] = numeric ? Number(node.value) : node.value;
     onchange?.();
+    changed(true);
   });
   return node;
 }
@@ -100,6 +106,7 @@ function choice(legend, obj, key, options, { path, hint, rerender = false } = {}
       obj[key] = value;
       if (rerender) render();
       else buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(options[i][0] === value)));
+      changed(true);
     },
   }, label));
   return el('fieldset', {}, el('legend', {}, legend), el('div', { class: 'opts' }, ...buttons),
@@ -163,14 +170,14 @@ function placeSection() {
       el('p', { class: 'hint' }, t('home.place.pinHint')),
       host,
       el('div', { class: 'row' },
-        el('button', { class: 'btn', type: 'button', onclick: () => { state.area = obfuscate(place.point); place.step = 'area'; render(); } }, t('home.place.hide')),
+        el('button', { class: 'btn', type: 'button', onclick: () => { state.area = obfuscate(place.point); place.step = 'area'; render(); changed(true); } }, t('home.place.hide')),
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; render(); } }, t('home.place.back'))));
   } else {
     body.push(
       el('p', { class: 'note success' }, `✓ ${t('home.place.areaHint')}`),
       host,
       canEdit && el('div', { class: 'row' },
-        place.point && el('button', { class: 'btn secondary', type: 'button', onclick: () => { state.area = obfuscate(place.point); render(); } }, t('home.place.reroll')),
+        place.point && el('button', { class: 'btn secondary', type: 'button', onclick: () => { state.area = obfuscate(place.point); render(); changed(true); } }, t('home.place.reroll')),
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; place.results = null; render(); } }, t('home.place.again'))));
   }
 
@@ -236,15 +243,16 @@ function roomSection(room, index) {
     setBusy(roll, true);
     const [emoji] = await rollEmoji();
     setBusy(roll, false);
-    if (emoji) { room.emoji = emoji; emojiInput.value = emoji; }
+    if (emoji) { room.emoji = emoji; emojiInput.value = emoji; changed(true); }
   } }, t('home.room.roll'));
 
   return el('section', { class: 'box pad hblock' },
     el('div', { class: 'row spread' },
       el('h2', {}, apartment ? t('home.room.titleN', { n: index + 1 }) : t('home.room.title')),
       apartment && canEdit && state.rooms.length > 1 && el('button', { class: 'linkbtn', type: 'button',
-        onclick: () => { state.rooms.splice(index, 1); render(); } }, t('home.room.remove'))),
+        onclick: () => { state.rooms.splice(index, 1); render(); changed(true); } }, t('home.room.remove'))),
     problem(`rooms.${index}`),
+    home && !room.id && el('p', { class: 'note' }, `⚠ ${t('home.room.unsaved')}`),
     apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') })),
     choice(t('home.room.gender'), room, 'gender', genders, { path: `rooms.${index}.gender`, hint: t('home.room.genderHint') }),
     el('div', { class: 'two-fields' },
@@ -265,7 +273,8 @@ function roomSection(room, index) {
 function aboutSection() {
   const area = el('textarea', { rows: 5, maxlength: 1000, disabled: !canEdit });
   area.value = state.description;
-  area.addEventListener('input', () => { state.description = area.value; });
+  area.addEventListener('input', () => { state.description = area.value; changed(); });
+  area.addEventListener('change', () => changed(true));
   return el('section', { class: 'box pad hblock' },
     el('h2', {}, t('home.about.title')),
     field(t('home.about.label'), area, { hint: t('home.about.hint') }));
@@ -289,7 +298,7 @@ function renderPhotos() {
   if (!home) return;
   const canPhotos = home.permissions.can_photos;
   const act = async (action) => {
-    try { home = await action(); renderPhotos(); } catch (err) {
+    try { home = await action(); renderPhotos(); saved(); } catch (err) {
       if (!(err instanceof ApiError)) throw err;
       toast(t('error.title'), errorText(err), { error: true });
     }
@@ -311,7 +320,7 @@ function renderPhotos() {
       for (const file of files) {
         const body = new FormData();
         body.append('file', file);
-        try { home = await post(`/homes/${home.id}/photos`, body); } catch (err) {
+        try { home = await post(`/homes/${home.id}/photos`, body); saved(); } catch (err) {
           if (!(err instanceof ApiError)) throw err;
           toast(t('error.title'), errorText(err), { error: true });
           break;
@@ -362,7 +371,7 @@ function renderResidents() {
   };
   const rows = home.residents.map((person) => {
     const url = `/homes/${home.id}/residents/${person.user_id}`;
-    const update = async (change) => { await homeAction(() => put(url, change)); renderResidents(); renderInvites(); };
+    const update = async (change) => { if (await homeAction(() => put(url, change))) saved(); renderResidents(); renderInvites(); };
     const rights = manage
       ? el('div', { class: 'rights' }, ...RIGHTS.map((name) => {
         const box = el('input', { type: 'checkbox' });
@@ -517,12 +526,13 @@ function render() {
           const [emoji] = await rollEmoji();
           state.rooms.push(blankRoom(emoji ?? ''));
           render();
+          changed(true);
         } }, `+ ${t('home.room.add')}`)),
       apartment && costsSection(),
       aboutSection(),
-      canEdit && el('div', { class: 'qbar box' },
-        !home ? el('button', { class: 'linkbtn', type: 'button', onclick: () => { state = stateFrom(null); errors = {}; takenRoomId = null; render(); } }, t('home.changeKind')) : el('span', {}),
-        el('button', { class: 'btn', type: 'submit' }, home ? t('home.save') : t('home.publish'))),
+      !home && el('div', { class: 'qbar box' },
+        el('button', { class: 'linkbtn', type: 'button', onclick: () => { state = stateFrom(null); errors = {}; takenRoomId = null; render(); } }, t('home.changeKind')),
+        el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
     ].filter(Boolean));
   }
   mountMap();
@@ -580,22 +590,24 @@ function showErrors() {
   document.querySelector('#home-form .note.error')?.scrollIntoView({ block: 'center' });
 }
 
+// A new place: sent once, by the button.
 $('home-form').addEventListener('submit', async (e) => {
   e.preventDefault();
+  if (home) { changed(true); return; } // Enter in a field
   const button = e.submitter;
   takenRoomId = null;
   errors = missing();
   if (Object.keys(errors).length) { showErrors(); return; }
   setBusy(button, true);
   try {
-    const created = !home;
-    home = home ? await put(`/homes/${home.id}`, payload()) : await post('/homes', payload());
+    home = await post('/homes', payload());
     state = stateFrom(home);
+    savedKey = JSON.stringify(payload());
     place.step = state.area ? 'area' : 'search';
     place.point = null;
     render();
-    toast(created ? t('home.created') : t('account.saved'), created ? t('home.createdText') : '', { ms: created ? 6000 : 2500 });
-    if (created) window.scrollTo(0, 0);
+    toast(t('home.created'), t('home.createdText'));
+    window.scrollTo(0, 0);
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
@@ -605,6 +617,81 @@ $('home-form').addEventListener('submit', async (e) => {
     if (!document.querySelector('#home-form .note.error')) toast(t('error.title'), errorText(err), { error: true });
   }
 });
+
+// ── Autosave (once the place is listed) ─────────────────
+
+let savedKey = home ? JSON.stringify(payload()) : null; // the form as the server has it
+
+/** Rebuild the form without losing the field being typed in. */
+function rerender() {
+  const controls = () => [...$('home-form').querySelectorAll('input, select, textarea, button')];
+  const active = document.activeElement;
+  const at = controls().indexOf(active);
+  let range = null;
+  try { if (at >= 0 && active.selectionStart != null) range = [active.selectionStart, active.selectionEnd]; } catch { /* not a text field */ }
+  render();
+  const node = at >= 0 ? controls()[at] : null;
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  try { if (range) node.setSelectionRange(...range); } catch { /* not a text field */ }
+}
+
+function setErrors(next, taken = null) {
+  if (JSON.stringify(next) === JSON.stringify(errors) && taken === takenRoomId) return;
+  errors = next;
+  takenRoomId = taken;
+  rerender();
+}
+
+async function saveHome() {
+  const body = payload();
+  if (JSON.stringify(body) === savedKey) { setErrors({}); return; } // e.g. a cleared field typed back
+  const gaps = missing();
+  if (Object.keys(gaps).length) {
+    // Nothing is sent until the form is whole. A room that was just added says so itself
+    // ("not saved yet") instead of turning red before anyone had a chance to fill it in.
+    setErrors(Object.fromEntries(Object.entries(gaps).filter(([path]) => {
+      const room = path.match(/^rooms\.(\d+)\./);
+      return !room || state.rooms[room[1]].id;
+    })));
+    return;
+  }
+  try {
+    home = await put(`/homes/${home.id}`, body);
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    if (err.status === 401) { location.replace('/login'); return; }
+    setErrors(err.fields ?? {}, err.code === 'ROOM_TAKEN' ? err.data?.room_id ?? null : null);
+    if (!document.querySelector('#home-form .note.error')) toast(t('error.title'), errorText(err), { error: true });
+    return;
+  }
+  // Take over what only the server knows: the ids of new rooms (it keeps their order).
+  // The rest of `state` stays as it is: the person may have typed on while this was sent.
+  const added = body.rooms.some((room) => !room.id);
+  state.rooms.forEach((room, i) => { if (i < body.rooms.length) room.id = home.rooms[i]?.id ?? room.id; });
+  // The dorm room number is sent once and not shown again.
+  const sentLabel = body.room_label;
+  if (sentLabel && state.room_label.trim() === sentLabel) state.room_label = '';
+  savedKey = JSON.stringify({ ...body, room_label: null, rooms: body.rooms.map((room, i) => ({ ...room, id: home.rooms[i]?.id })) });
+  if (added || sentLabel || Object.keys(errors).length || takenRoomId) {
+    errors = {};
+    takenRoomId = null;
+    rerender();
+  } else {
+    renderStatus();
+    renderResidents();
+    renderInvites();
+  }
+  saved();
+}
+
+const saveSoon = autosaver(saveHome, 1200);
+
+/** The form changed: save after a pause in typing, or at once (`now`) after a click or leaving a field. */
+function changed(now = false) {
+  if (!home || !canEdit) return;
+  if (now) saveSoon.now(); else saveSoon();
+}
 
 render();
 document.addEventListener('langchange', render);

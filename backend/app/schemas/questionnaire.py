@@ -18,5 +18,8 @@ class QuestionnaireOut(BaseModel):
 
 class AnswersIn(BaseModel):
     version: int
-    # May be partial: the page saves the main part first and the optional questions later.
+    # May be partial: the page saves a draft after every answer.
     answers: dict[str, Any] = Field(..., max_length=40)
+    # False: these answers are added to the stored ones. True: they replace them, so an answer
+    # the person took back (the last option of a multi-select unticked) is forgotten.
+    replace: bool = False
