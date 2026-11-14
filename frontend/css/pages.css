@@ -27,6 +27,9 @@
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  /* iOS Safari gives inputs its own padding, which leaves a narrow code box too little room
+     for a 30px digit and clips it to a sliver. The boxes need none of it. */
+  .code input { -webkit-appearance: none; appearance: none; width: 100%; padding: 0; line-height: 1; }
   /* The buttons share the form's full width; with two (← back, go on) they split it evenly. */
   .login form > .actions { justify-self: stretch; display: flex; gap: 14px; }
   .login .actions .btn { flex: 1; justify-content: center; }
