@@ -62,7 +62,7 @@ export default {
   "title.account": "Аккаунт — nsusosed",
   "title.privacy": "Персональные данные — nsusosed",
   "index.how.eyebrow": "Как это работает",
-  "index.how.title": "Четыре шага. Всё.",
+  "index.how.title": "Четыре шага",
   "index.how.1.title": "Войди",
   "index.how.1.text": "По почте НГУ, без пароля: пришлём одноразовый код.",
   "index.how.2.title": "Ответь",

@@ -62,7 +62,7 @@ export default {
   "title.account": "账户 — nsusosed",
   "title.privacy": "个人信息 — nsusosed",
   "index.how.eyebrow": "使用方法",
-  "index.how.title": "四步搞定。",
+  "index.how.title": "四个步骤",
   "index.how.1.title": "登录",
   "index.how.1.text": "使用 NSU 邮箱，无需密码：我们会发送一次性验证码。",
   "index.how.2.title": "答题",

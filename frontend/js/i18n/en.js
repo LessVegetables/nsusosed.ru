@@ -62,7 +62,7 @@ export default {
   "title.account": "Account — nsusosed",
   "title.privacy": "Personal data — nsusosed",
   "index.how.eyebrow": "How it works",
-  "index.how.title": "Four steps. That's it.",
+  "index.how.title": "Four steps",
   "index.how.1.title": "Log in",
   "index.how.1.text": "With your NSU email and no password: we send a one-time code.",
   "index.how.2.title": "Answer",
