@@ -72,12 +72,12 @@
   .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
   .qintro > * { margin: 0; }
-  .qblock { display: grid; gap: 28px; }
+  .qblock { display: grid; gap: 24px; }
   .qblock > * { margin: 0; }
   .qblock > h2 { font-size: var(--fs-panel); }
   .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
   .qblock fieldset > * { margin: 0; }
-  .qblock legend { padding: 0; margin-bottom: 12px; font-size: var(--fs-card); font-weight: var(--w-black); line-height: 1.15; letter-spacing: var(--track-tight); }
+  .qblock legend { padding: 0; margin-bottom: 4px; font-size: var(--fs-card); font-weight: var(--w-heavy); line-height: 1.25; letter-spacing: -.01em; }
   .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
   .qblock .opts { grid-template-columns: 1fr; gap: 10px; }
   .qblock .opts button { padding: 14px; font-size: var(--fs-body); }

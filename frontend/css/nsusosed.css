@@ -124,6 +124,12 @@
     color-scheme: light;
   }
 
+  /* --- Phones: the panel and card heading sizes are fixed, not clamped, so on a ~300px column
+     they wrapped to four lines of black type. Smaller here; desktop keeps 30 / 22px. --- */
+  @media (max-width: 640px) {
+    :root { --fs-panel: 24px; --fs-card: 18px; }
+  }
+
   /* --- Dark themes (NEW) — three candidates. Dark 3 "light cards" is the DEFAULT: the system
      dark setting and <html data-theme="dark"> use it. Dark 1 and Dark 2 stay available as
      data-theme="dark-dim" / "dark-muted" until the final decision. --- */

@@ -117,8 +117,8 @@ All three keep the color fills unchanged with black text, and every text pair is
 | Display (hero) | `.display` | `--fs-display` 42–84px | 900 | .95 | Sentence |
 | Section title | `.title` | `--fs-title` 32–54px | 900 | 1 | Sentence |
 | Question | `.question` | `--fs-question` 26–40px | 900 | 1.05 | Sentence |
-| Panel heading | `.auth h3`, `.info h3` | `--fs-panel` 30px | 900 | 1.05 | Sentence |
-| Card title | `.card h3` | `--fs-card` 22px | 900 | 1.1 | Sentence |
+| Panel heading | `.auth h3`, `.info h3` | `--fs-panel` 30px (24px on phones) | 900 | 1.05 | Sentence |
+| Card title | `.card h3` | `--fs-card` 22px (18px on phones) | 900 | 1.1 | Sentence |
 | Lead | `.lead` | `--fs-lead` 19px | 500 | 1.5 | Sentence |
 | Body | (default) | `--fs-body` 16px | 500 | 1.5 | Sentence |
 | Answer option | `.opts button` | 18px (16px in the lifestyle blocks) | 500 | — | Sentence |
