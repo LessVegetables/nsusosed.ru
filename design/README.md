@@ -7,6 +7,7 @@ The visual language for the rewritten nsusosed.ru: thick black outlines, hard sh
 | `README.md` | This spec: the rules and the reasons behind them |
 | [`nsusosed.css`](nsusosed.css) | **The one stylesheet.** Tokens at the top, then base styles, components and utilities |
 | [`specimen.html`](specimen.html) | Every token and component on one page, with theme and RU/EN/中文 switches |
+| [`logo-icon.svg`](logo-icon.svg) | The logo icon for the phone header (a copy of `frontend/img/logo-icon.svg`) |
 | `specimen.css`, `specimen.js` | Layout and behavior for the specimen page only (not part of the system) |
 
 To view the specimen, serve this folder and open `specimen.html` (opening the file directly won't run its script):

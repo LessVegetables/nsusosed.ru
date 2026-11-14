@@ -15,15 +15,23 @@
 <body>
 
 <header class="site-header">
+  <!-- The logged-in header: logo, sections centered (Account last); at ≤ 640px the logo icon and the tab bar.
+       A guest gets logo + "Войти" (or the language switch) on the right instead of the navs. -->
   <div class="wrap">
-    <a class="logo" href="#"><span>nsu</span>sosed</a>
-    <nav class="site-nav" aria-label="Основное меню">
+    <a class="logo" href="#" aria-label="nsusosed — главная"><span>nsu</span>sosed</a>
+    <a class="logo-icon" href="#" aria-label="nsusosed — главная"><img src="logo-icon.svg" alt=""></a>
+    <nav class="site-nav" aria-label="Разделы">
       <a href="#matches" aria-current="page">Подборка</a>
-      <a href="#quiz">Анкета</a>
       <a href="#listing">Моё жильё</a>
+      <a href="#quiz">Анкета</a>
       <a href="#forms">Аккаунт</a>
     </nav>
-    <a class="btn" href="#forms">Войти</a>
+    <nav class="tabbar" aria-label="Разделы">
+      <a href="#matches" aria-current="page">Подборка</a>
+      <a href="#listing">Жильё</a>
+      <a href="#quiz">Анкета</a>
+      <a href="#forms">Аккаунт</a>
+    </nav>
   </div>
 </header>
 <div class="ticker" aria-hidden="true"><div>
