@@ -142,8 +142,9 @@ function dormSection() {
     taken);
 }
 
-// A dorm room is a number from 100 to 999 plus the block letter: Б, М or none. The letter
-// button starts at "?" (not chosen yet); each click moves it on to the next letter.
+// A dorm room is a number from 100 to 999 plus the block letter: Б, М or none, read "100Б".
+// The letter button right of the number starts at "?" (not chosen yet); each click moves it
+// on to the next letter. The letters are Cyrillic in every language: that's what's on the doors.
 const ROOM_LETTERS = ['b', 'm', ''];
 const LETTER_TEXT = { b: 'Б', m: 'М', '': '' };
 const ROOM_NUMBER = /^[1-9][0-9]{2}$/;
@@ -186,7 +187,7 @@ function roomField() {
   return el('div', {},
     el('div', { class: 'field' },
       el('label', { for: 'room-number' }, t('home.dorm.room')),
-      el('div', { class: 'room-field' }, letter, number),
+      el('div', { class: 'room-field' }, number, letter),
       el('small', {}, home ? t('home.dorm.roomHintEdit') : t('home.dorm.roomHint'))),
     problem('room_label'));
 }
@@ -306,7 +307,8 @@ function roomSection(room, index) {
         if (room.free_places > room.capacity) room.free_places = room.capacity;
         render();
       } })),
-      field(t('home.room.free'), select(room, 'free_places', places(0, room.capacity), { numeric: true }), { path: `rooms.${index}.free_places` })),
+      field(t('home.room.free'), Object.assign(select(room, 'free_places', places(0, room.capacity), { numeric: true }), { id: `free-${index}` }),
+        { path: `rooms.${index}.free_places` })),
     apartment && field(t('home.room.rent'), textInput(room, 'rent_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '14000' }),
       { path: `rooms.${index}.rent_rub`, hint: t('home.room.rentHint') }),
     el('div', {},
@@ -338,47 +340,71 @@ function renderStatus() {
   $('status').replaceChildren(...notes);
 }
 
+// Photos picked before the place is listed wait here and are uploaded right after it is.
+let pendingPhotos = []; // [{ file, url }]
+const MAX_PHOTOS = 10;
+
 function renderPhotos() {
   const section = $('photos-section');
-  section.hidden = !home;
-  if (!home) return;
-  const canPhotos = home.permissions.can_photos;
+  section.hidden = !home && !state.kind;
+  if (section.hidden) return;
+  const canPhotos = home ? home.permissions.can_photos : true;
   const act = async (action) => {
     try { home = await action(); renderPhotos(); saved(); } catch (err) {
       if (!(err instanceof ApiError)) throw err;
       toast(t('error.title'), errorText(err), { error: true });
     }
   };
-  const tiles = home.photos.map((p, i) => el('figure', {},
+  // The same tiles for both: on the server (home) or still in the browser (pending).
+  const list = home ? home.photos.map((p) => ({ id: p.id, url: p.url })) : pendingPhotos;
+  const makeFirst = (i) => (home
+    ? act(() => put(`/homes/${home.id}/photos/order`, { photo_ids: [list[i].id, ...list.filter((_, j) => j !== i).map((x) => x.id)] }))
+    : (pendingPhotos.unshift(...pendingPhotos.splice(i, 1)), renderPhotos()));
+  const remove = (i) => {
+    if (home) { act(() => del(`/homes/${home.id}/photos/${list[i].id}`)); return; }
+    URL.revokeObjectURL(pendingPhotos[i].url);
+    pendingPhotos.splice(i, 1);
+    renderPhotos();
+  };
+  const tiles = list.map((p, i) => el('figure', {},
     el('img', { src: p.url, alt: t('home.photos.alt', { n: i + 1 }), loading: 'lazy' }),
     canPhotos && el('figcaption', {},
-      i > 0 ? el('button', { type: 'button', 'aria-label': t('home.photos.first'), title: t('home.photos.first'),
-        onclick: () => act(() => put(`/homes/${home.id}/photos/order`, { photo_ids: [p.id, ...home.photos.filter((x) => x.id !== p.id).map((x) => x.id)] })) }, '★') : el('span', {}),
-      el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'),
-        onclick: () => act(() => del(`/homes/${home.id}/photos/${p.id}`)) }, '×'))));
+      i > 0 ? el('button', { type: 'button', 'aria-label': t('home.photos.first'), title: t('home.photos.first'), onclick: () => makeFirst(i) }, '★') : el('span', {}),
+      el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×'))));
   let upload = null;
-  if (canPhotos && home.photos.length < 10) {
+  if (canPhotos && list.length < MAX_PHOTOS) {
     const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true });
     upload = el('label', { class: 'upload' }, input, `+ ${t('home.photos.add')}`);
     input.addEventListener('change', async () => {
-      const files = [...input.files].slice(0, 10 - home.photos.length);
-      upload.setAttribute('aria-busy', 'true');
-      for (const file of files) {
-        const body = new FormData();
-        body.append('file', file);
-        try { home = await post(`/homes/${home.id}/photos`, body); saved(); } catch (err) {
-          if (!(err instanceof ApiError)) throw err;
-          toast(t('error.title'), errorText(err), { error: true });
-          break;
-        }
+      const files = [...input.files].slice(0, MAX_PHOTOS - list.length);
+      if (!home) {
+        pendingPhotos.push(...files.map((file) => ({ file, url: URL.createObjectURL(file) })));
+        renderPhotos();
+        return;
       }
+      upload.setAttribute('aria-busy', 'true');
+      await uploadPhotos(files);
       renderPhotos();
     });
   }
   section.replaceChildren(el('div', { class: 'box pad hblock' },
     el('h2', {}, t('home.photos.title')),
     el('p', { class: 'hint' }, t('home.photos.hint')),
+    !home && pendingPhotos.length > 0 && el('p', { class: 'note' }, `⚠ ${t('home.photos.pending')}`),
     el('div', { class: 'photos' }, ...tiles, upload)));
+}
+
+/** Upload one by one, in order; stop at the first that fails. */
+async function uploadPhotos(files) {
+  for (const file of files) {
+    const body = new FormData();
+    body.append('file', file);
+    try { home = await post(`/homes/${home.id}/photos`, body); saved(); } catch (err) {
+      if (!(err instanceof ApiError)) throw err;
+      toast(t('error.title'), errorText(err), { error: true });
+      return;
+    }
+  }
 }
 
 // ── Residents and rights ────────────────────────────────
@@ -533,7 +559,14 @@ function renderDanger() {
   if (!home) return;
   $('danger').replaceChildren(el('div', { class: 'box pad hblock' },
     el('h2', {}, t('home.leave.heading')),
-    el('p', { class: 'hint' }, t('home.leave.hint')),
+    el('p', { class: 'hint' }, t('home.leave.hint'), ' ',
+      el('a', { href: '#free-0', onclick: (e) => {
+        e.preventDefault();
+        const target = $('free-0');
+        // Focus first: focusing during a smooth scroll stops it in Chromium.
+        target?.focus({ preventScroll: true });
+        target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } }, t('home.leave.setZero'))),
     el('div', {}, el('button', { class: 'btn secondary', type: 'button', onclick: () => $('leave-dialog').showModal() }, t('home.leave.button')))));
 }
 
@@ -659,6 +692,15 @@ $('home-form').addEventListener('submit', async (e) => {
     render();
     toast(t('home.created'), t('home.createdText'));
     window.scrollTo(0, 0);
+    if (pendingPhotos.length) {
+      const queued = pendingPhotos;
+      pendingPhotos = [];
+      $('photos-section').setAttribute('aria-busy', 'true');
+      await uploadPhotos(queued.map((p) => p.file));
+      queued.forEach((p) => URL.revokeObjectURL(p.url));
+      $('photos-section').removeAttribute('aria-busy');
+      renderPhotos();
+    }
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
