@@ -276,7 +276,9 @@
   .note.success { background: var(--match); color: var(--on-fill); }
 
   /* --- Site header --- */
-  .site-header { position: sticky; top: 0; z-index: 30; background: var(--surface); color: var(--text); border-bottom: var(--border); }
+  /* With viewport-fit=cover, iOS lets the page run under the status bar; once stuck at top: 0 the
+     header would slide under the notch. The safe-area padding keeps its content below it. */
+  .site-header { position: sticky; top: 0; z-index: 30; padding-top: env(safe-area-inset-top); background: var(--surface); color: var(--text); border-bottom: var(--border); }
   .site-header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
   .logo { display: flex; align-items: center; gap: 8px; font-weight: var(--w-black); font-size: 24px; letter-spacing: var(--track-tight); text-decoration: none; }
   .logo span { display: inline-block; padding: 0 8px; background: var(--accent); color: var(--on-fill); border: var(--border); border-radius: var(--r-sm); transform: rotate(var(--tilt-logo)); }
@@ -325,7 +327,10 @@
   /* --- One-time code: six boxes; the focused one turns yellow. --- */
   .code { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 14px; }
   .code input {
-    min-width: 0; aspect-ratio: 4 / 5; text-align: center; outline: none;
+    /* No padding or native look: iOS Safari's default input padding leaves a narrow box too
+       little room for a 30px digit and clips it to a sliver. */
+    -webkit-appearance: none; appearance: none; width: 100%; min-width: 0; padding: 0; line-height: 1;
+    aspect-ratio: 4 / 5; text-align: center; outline: none;
     border: var(--border); border-radius: var(--r); background: var(--surface); color: var(--text); font: var(--w-bold) 30px var(--mono);
   }
   .code input:focus { background: var(--primary); color: var(--on-fill); box-shadow: var(--sh-sm); }
