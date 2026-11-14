@@ -14,9 +14,8 @@
   .site-footer a { font-weight: var(--w-bold); }
 
   /* Landing */
-  .hero { display: grid; gap: var(--gap); align-content: start; }
+  .hero { display: grid; gap: var(--gap); align-content: start; padding-top: var(--gap); }
   .hero .lead { margin: 0; }
-  .hero-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
 
   /* Login: one narrow column; the three steps replace each other. */
   /* The login page fits a phone screen (iPhone 13: 390×664 in Safari), so it shouldn't slide:

@@ -6,7 +6,6 @@
 import { ApiError, get } from '../api.js';
 import { reportBug } from '../errors.js';
 import { initPage } from '../layout.js';
-import { mountLangSwitch } from '../lang-switch.js';
 import { homeFor } from '../routes.js';
 import { KEYS, local, session } from '../storage.js';
 
@@ -25,7 +24,6 @@ const go = await destination();
 if (go) {
   location.replace(go);
 } else {
-  await initPage({ auth: 'none' });
   // A guest's pick lasts for this tab; the login page passes it on to the account.
-  mountLangSwitch(document.getElementById('lang'), { onPick: (code) => session.set(KEYS.lang, code) });
+  await initPage({ auth: 'none', onLangPick: (code) => session.set(KEYS.lang, code) });
 }

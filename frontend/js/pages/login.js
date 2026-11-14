@@ -3,7 +3,6 @@
 
 import { ApiError, get, post } from '../api.js';
 import { currentLang, t } from '../i18n.js';
-import { mountLangSwitch } from '../lang-switch.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
 import { KEYS, local, session } from '../storage.js';
@@ -12,11 +11,12 @@ import { errorText, setBusy } from '../ui.js';
 const RESEND_COOLDOWN = 60; // seconds; the server enforces the same pause
 const $ = (id) => document.getElementById(id);
 
-const { user } = await initPage({ auth: 'optional' });
+// A language pick here lasts for this tab and is saved to the account on login.
+const { user } = await initPage({
+  auth: 'optional',
+  onLangPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); },
+});
 if (user) location.replace(homeFor(user));
-
-// A pick here lasts for this tab and is saved to the account on login.
-mountLangSwitch($('lang'), { onPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); } });
 
 const steps = { email: $('step-email'), name: $('step-name'), code: $('step-code') };
 const cells = [...$('code').querySelectorAll('input')];

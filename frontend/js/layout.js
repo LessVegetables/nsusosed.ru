@@ -4,18 +4,23 @@
 //   auth: 'none'     — public page, never asks the server who you are
 //         'optional' — public page that looks different when logged in
 //         'required' — sends guests to /login
+//   onLangPick: puts the RU / EN / 中文 switch in a guest's header; called after each pick
 // It resolves to { user } (null for a guest) after the page is translated and shown.
 
 import { ApiError, get } from './api.js';
 import { reportBug } from './errors.js';
 import { detectLang, setLang, t, translate } from './i18n.js';
+import { mountLangSwitch } from './lang-switch.js';
 import { KEYS, local, session } from './storage.js';
 import { el, toast } from './ui.js';
 
-function header(user) {
+/** The right end of the header: "Account" when logged in; for a guest, the language switch on the
+ *  pages that offer one (landing, login), otherwise "Log in". */
+function header(user, onLangPick) {
   const action = user
     ? el('a', { class: 'btn secondary', href: '/account', i18n: 'nav.account' })
-    : location.pathname.startsWith('/login') ? null : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
+    : onLangPick ? mountLangSwitch(el('div'), { onPick: onLangPick })
+      : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
   const here = location.pathname.replace(/\.html$/, '');
   const current = (href) => (here === href ? 'page' : null);
   return el('div', { class: 'wrap' },
@@ -57,7 +62,7 @@ async function whoAmI(auth) {
   }
 }
 
-export async function initPage({ auth = 'optional' } = {}) {
+export async function initPage({ auth = 'optional', onLangPick } = {}) {
   const langReady = setLang(detectLang());
   let user = null;
   try {
@@ -79,7 +84,7 @@ export async function initPage({ auth = 'optional' } = {}) {
     }
   }
 
-  document.querySelector('.site-header')?.replaceChildren(header(user));
+  document.querySelector('.site-header')?.replaceChildren(header(user, onLangPick));
   document.querySelector('.site-footer')?.replaceChildren(footer(user));
   if (user && !document.querySelector('.tabbar')) document.body.append(tabbar());
   translate();
