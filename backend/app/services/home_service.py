@@ -16,7 +16,7 @@ from app.services import image_service
 from app.utils import emoji as emoji_util
 from app.utils.contact import PRIMARY_TYPES
 from app.utils.errors import (already_in_home, emoji_taken, invite_invalid, last_manager, no_permission, not_found,
-                              last_photo, room_occupied, room_taken, too_many_photos, validation_error)
+                              room_occupied, room_taken, too_many_photos, validation_error)
 from app.utils.security import sha256_hex
 
 DORM_BY_ID = {d["id"]: d for d in DORMS}
@@ -253,8 +253,6 @@ async def delete_photo(db, user: User, home_id, photo_id) -> HomeOut:
     photo = next((p for p in home.photos if p.id == photo_id), None)
     if photo is None:
         raise not_found("Фото не найдено.")
-    if len(home.photos) == 1:
-        raise last_photo()
     home.photos.remove(photo)
     for position, p in enumerate(home.photos):
         p.position = position

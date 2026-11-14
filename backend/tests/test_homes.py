@@ -255,9 +255,10 @@ async def test_photos_upload_reorder_delete_and_go_with_the_home(make_client, lo
 
     r = await c.request("DELETE", f"{url}/{first['id']}", headers=ORIGIN)
     assert [p["id"] for p in r.json()["photos"]] == [second["id"]] and len(list(folder.glob("*.jpg"))) == 1
-    # A home always keeps at least one photo.
+    # The last one can go too: the home is then hidden until it has a photo again.
     r = await c.request("DELETE", f"{url}/{second['id']}", headers=ORIGIN)
-    assert r.status_code == 409 and r.json()["error"]["code"] == "LAST_PHOTO" and len(list(folder.glob("*.jpg"))) == 1
+    assert r.json()["photos"] == [] and r.json()["needs_photo"] is True and r.json()["visible"] is False
+    assert not list(folder.glob("*.jpg"))
 
     # The last person out takes the home and its photos with them.
     assert (await c.request("DELETE", "/api/homes/mine/membership", headers=ORIGIN)).status_code == 204

@@ -342,7 +342,11 @@ function renderStatus() {
   if (home.visible) notes.push(el('p', { class: 'note success' }, `✓ ${t('home.status.visible')}`));
   if (home.needs_contact) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsContact')} `, el('a', { href: '/account' }, t('home.status.addContact'))));
   if (home.needs_free_place) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsFreePlace')}`));
-  if (home.needs_photo) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsPhoto')}`));
+  // Red: unlike the other gaps, this one is easy to cause by accident (deleting the last photo).
+  if (home.needs_photo) {
+    notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.needsPhoto')} `,
+      el('a', { href: '#photos-section' }, t('home.status.addPhoto'))));
+  }
   if (!canEdit) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.readOnly')}`));
   $('status').replaceChildren(...notes);
 }
@@ -357,7 +361,7 @@ function renderPhotos() {
   if (section.hidden) return;
   const canPhotos = home ? home.permissions.can_photos : true;
   const act = async (action) => {
-    try { home = await action(); renderPhotos(); saved(); } catch (err) {
+    try { home = await action(); renderPhotos(); renderStatus(); saved(); } catch (err) {
       if (!(err instanceof ApiError)) throw err;
       toast(t('error.title'), errorText(err), { error: true });
     }
@@ -377,8 +381,7 @@ function renderPhotos() {
     el('img', { src: p.url, alt: t('home.photos.alt', { n: i + 1 }), loading: 'lazy' }),
     canPhotos && el('figcaption', {},
       i > 0 ? el('button', { type: 'button', 'aria-label': t('home.photos.first'), title: t('home.photos.first'), onclick: () => makeFirst(i) }, '★') : el('span', {}),
-      // A listed place keeps at least one photo: the last one can only be replaced, not removed.
-      (!home || list.length > 1) ? el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×') : el('span', {}))));
+      el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×'))));
   let upload = null;
   if (canPhotos && list.length < MAX_PHOTOS) {
     const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true });
@@ -394,6 +397,7 @@ function renderPhotos() {
       upload.setAttribute('aria-busy', 'true');
       await uploadPhotos(files);
       renderPhotos();
+      renderStatus();
     });
   }
   section.replaceChildren(el('div', { class: 'box pad hblock' },
@@ -718,6 +722,7 @@ $('home-form').addEventListener('submit', async (e) => {
       queued.forEach((p) => URL.revokeObjectURL(p.url));
       photosSection.removeAttribute('aria-busy');
       renderPhotos();
+      renderStatus();
     }
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
