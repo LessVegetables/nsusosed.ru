@@ -40,7 +40,7 @@ export default {
   "login.name.submit": "Дальше →",
   "login.code.titleNew": "Приятно познакомиться, {name}!",
   "login.code.titleBack": "С возвращением!",
-  "login.code.text": "Отправили код на {email} (не забудьте проверить спам).",
+  "login.code.text": "Отправили код на {email} (не забудь проверить спам).",
   "login.code.label": "Код из письма, 6 цифр",
   "login.code.validFor": "Код действует ещё",
   "login.code.submit": "Войти →",
