@@ -18,13 +18,6 @@
   .hero .lead { margin: 0; }
 
   /* Login: one narrow column; the three steps replace each other. */
-  /* The login page fits a phone screen (iPhone 13: 390×664 in Safari), so it shouldn't slide:
-     no footer below the form (its links are in the form already), tighter padding, no
-     rubber-band bounce. A screen too short for the form (small phone, open keyboard) still
-     scrolls. Login page only: #step-email isn't on join.html, which shares the .login layout. */
-  html:has(#step-email) { overscroll-behavior: none; }
-  body:has(#step-email) .site-footer { display: none; }
-  .login:has(#step-email) { padding-top: var(--gap); padding-bottom: var(--gap); }
   .login { max-width: 520px; display: grid; gap: var(--gap); }
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
