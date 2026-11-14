@@ -195,9 +195,11 @@ function drawStrips() {
 function trackStickyHeight() {
   const header = document.querySelector('.site-header');
   const root = document.documentElement.style;
+  // Exact (fractional) heights: offsetHeight rounds, which left a hairline gap under the header.
   const set = () => {
-    root.setProperty('--header-h', `${header.offsetHeight}px`);
-    root.setProperty('--sticky-h', `${header.offsetHeight + $('strip-bar').offsetHeight}px`);
+    const headerH = header.getBoundingClientRect().height;
+    root.setProperty('--header-h', `${headerH}px`);
+    root.setProperty('--sticky-h', `${headerH + $('strip-bar').getBoundingClientRect().height}px`);
   };
   const watcher = new ResizeObserver(set);
   watcher.observe(header);
