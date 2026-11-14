@@ -20,10 +20,10 @@
   /* Login: one narrow column; the three steps replace each other. */
   .login { max-width: 520px; display: grid; gap: var(--gap); }
   /* The login page's padding takes only the height a screen has to spare (none on a 600px one,
-     the usual 56px from about 820px up), so on a phone the form and the footer both fit and
+     the usual --page-y, 32px, from about 730px up), so on a phone the form and the footer both fit and
      nothing slides. A screen still too short simply scrolls. Not on join.html, which shares
      the .login layout but has no #step-email. */
-  .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--section-y)); }
+  .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--page-y)); }
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }

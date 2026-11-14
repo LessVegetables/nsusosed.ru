@@ -38,7 +38,7 @@ Everything that defines the look lives in **section 1 of `nsusosed.css`** as CSS
 | Shadow depth | `--depth-sm`, `--depth`, `--depth-lg` |
 | The playful tilts | `--tilt-logo`, `--tilt-highlight`, `--tilt-badge`, `--tilt-unfit`, `--tilt-toast` (0deg = straight) |
 | Button movement | `--hover-lift` (0px = buttons don't move), `--press-depth`, `--press` (speed) |
-| Page width, gutters, section spacing | `--wrap`, `--gutter`, `--section-y`, `--gap` |
+| Page width, gutters, section spacing | `--wrap`, `--gutter`, `--section-y`, `--page-y`, `--gap` |
 
 Component internals (a card's 16px padding, a chip's 3px × 8px) are deliberately not tokens: they are details of one component, not design decisions, and making everything a token would make the file harder to read than the 30-stylesheet setup it's meant to replace.
 
@@ -140,7 +140,7 @@ Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels u
 ## 6. Layout and spacing
 
 - Container `.wrap`: max `--wrap` 1180px, side padding `--gutter` 20px (16px on phones).
-- Sections: `--section-y` 56px top and bottom. Section header `.shead`: eyebrow tag + title, actions (tabs) on the right.
+- Sections: `--section-y` 56px top and bottom; a page's first block (`main > .section:first-child`) uses `--page-y` 32px instead. Section header `.shead`: eyebrow tag + title, actions (tabs) on the right.
 - Gaps: cards `--gap` 24px · steps 20px · options and button rows 14px · chips 6px · inside a box 16–24px.
 - Breakpoints: **960px** (listing and auth stack; cards 2 columns; steps 2×2) and **640px** (everything single column, header nav hidden).
 

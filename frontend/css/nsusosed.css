@@ -116,7 +116,8 @@
     --wrap: 1180px;
     --gutter: 20px;
     --gutter-phone: 16px;
-    --section-y: 56px;
+    --section-y: 56px;     /* between stacked sections (landing page) */
+    --page-y: 32px;        /* above and below a page's main block, right under the header */
     --grid: 28px;
     --gap: 24px;            /* between cards */
 
@@ -197,6 +198,8 @@
   /* --- Layout --- */
   .wrap { max-width: var(--wrap); margin: 0 auto; padding-left: var(--gutter); padding-right: var(--gutter); }
   .section { padding-top: var(--section-y); padding-bottom: var(--section-y); }
+  main > .section:first-child { padding-top: var(--page-y); padding-bottom: var(--page-y); }
+  .title:first-child { margin-top: 0; }  /* the 10px is for a tag above it */
   .shead { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
   .stack > * + * { margin-top: 16px; }
 
