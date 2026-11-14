@@ -72,7 +72,7 @@
   .qpage { max-width: 760px; }
   .qstrip-bar {
     position: sticky; top: var(--header-h, 0px); z-index: 25;
-    border-bottom: var(--border);
+    border-bottom: var(--border); background: var(--edge); /* the slot a hovered cell drops out of */
     transition: opacity .15s, visibility .15s;
   }
   .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }

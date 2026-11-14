@@ -1,6 +1,6 @@
 {
  "version": 1,
- "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead. An option that must go mid-version is marked \"retired\": it keeps its index (old answers still score), but it is never shown and new answers can't pick it.",
+ "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead.",
  "blocks": [
   {
    "id": "A",
@@ -519,12 +519,6 @@
      "zh": "加热烟草（烟弹）"
     },
     {
-     "ru": "Вариант убран",
-     "en": "Option removed",
-     "zh": "已删除的选项",
-     "retired": true
-    },
-    {
      "ru": "Кальян — только в кальянной или в гостях",
      "en": "Hookah — only at a hookah bar or at someone's place",
      "zh": "水烟——只在水烟馆或别人家"
@@ -538,7 +532,7 @@
    "adult_only": true,
    "exclusive": [
     0,
-    6
+    5
    ],
    "hint": {
     "ru": "Можно выбрать несколько. Если выберешь «Не хочу отвечать», мы не будем предлагать тебя тем, кому от запахов плохо.",
@@ -591,8 +585,7 @@
      1,
      2,
      3,
-     4,
-     5
+     4
     ]
    }
   },

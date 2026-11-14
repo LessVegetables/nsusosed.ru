@@ -31,8 +31,8 @@ def test_non_user_answers_15_and_a_user_16():
 
 
 def test_declining_the_nicotine_question_does_not_ask_about_dependence():
-    assert is_complete(person(E1=[6]), True)
-    assert clean(person(E1=[6], E2=0), True)[0].get("E2") is None
+    assert is_complete(person(E1=[5]), True)
+    assert clean(person(E1=[5], E2=0), True)[0].get("E2") is None
 
 
 def test_under_18_is_never_asked_about_nicotine_and_stored_answers_are_ignored():
@@ -48,7 +48,7 @@ def test_under_18_is_never_asked_about_nicotine_and_stored_answers_are_ignored()
 @pytest.mark.parametrize("bad, reason", [
     ({"A1": 5}, "INVALID_CHOICE"), ({"A1": "1"}, "INVALID_CHOICE"), ({"A1": True}, "INVALID_CHOICE"),
     ({"E1": 1}, "INVALID_CHOICE"), ({"E1": []}, "INVALID_CHOICE"), ({"E1": [1, 1]}, "INVALID_CHOICE"),
-    ({"E1": [0, 1]}, "EXCLUSIVE_OPTION"), ({"E1": [6, 2]}, "EXCLUSIVE_OPTION"), ({"E1": [4]}, "INVALID_CHOICE"), ({"Z9": 0}, "UNKNOWN_QUESTION"),
+    ({"E1": [0, 1]}, "EXCLUSIVE_OPTION"), ({"E1": [5, 2]}, "EXCLUSIVE_OPTION"), ({"E1": [6]}, "INVALID_CHOICE"), ({"Z9": 0}, "UNKNOWN_QUESTION"),
 ])
 def test_invalid_answers(bad, reason):
     assert clean(bad, True)[1] == {next(iter(bad)): reason}
@@ -61,12 +61,12 @@ SENSITIVE = person(E3=0)
 
 @pytest.mark.parametrize("nicotine, is_blocked", [
     (dict(E1=[2], E2=4), True),                  # any cigarette use, however rare
-    (dict(E1=[6]), True),                        # declined to answer
+    (dict(E1=[5]), True),                        # declined to answer
     (dict(E1=[1], E2=1, A2=2), True),            # vape + within 30 min + awake past 01:00
     (dict(E1=[3], E2=0, A2=4), True),            # sticks, same
     (dict(E1=[1], E2=1, A2=1), False),           # dependent but asleep before 01:00
     (dict(E1=[1], E2=2, A2=4), False),           # up late but not dependent
-    (dict(E1=[4], E2=0, A2=4), False),           # snus: no aerosol
+    (dict(E1=[4], E2=0, A2=4), False),           # hookah: not in this hard block
     (dict(E1=[0]), False),
 ])
 def test_hard_blocks_against_someone_smells_make_unwell(nicotine, is_blocked):
@@ -138,7 +138,7 @@ def test_air_is_graded_and_shared_products_are_compatible():
     bothered = score_pair(vaper, person(E3=1)).dimensions["air"]
     fine = score_pair(vaper, person(E3=3)).dimensions["air"]
     assert bothered < fine < 100
-    assert score_pair(person(E1=[4], E2=0), person(E3=1)).dimensions["air"] > bothered   # snus barely counts
+    assert score_pair(person(E1=[4], E2=0), person(E3=1)).dimensions["air"] > bothered   # hookah barely counts
     other_vaper = person(E1=[1], E2=3, E3=1)
     assert score_pair(vaper, other_vaper).dimensions["air"] > bothered
     assert score_pair(BASE, person(G1=3)).dimensions["air"] == pytest.approx(100 * (1 - 0.3 * 2 / 3))

@@ -22,12 +22,6 @@ const [quiz, meta] = await Promise.all([get('/questionnaire'), get('/meta')]);
 
 const firstVisit = !quiz.complete;
 const answers = { ...quiz.answers };
-// A retired option is never shown or accepted again; drop it from old answers so a save goes through.
-for (const q of quiz.questions) {
-  if (!Array.isArray(answers[q.id])) continue;
-  answers[q.id] = answers[q.id].filter((i) => !q.options[i]?.retired);
-  if (!answers[q.id].length) delete answers[q.id];
-}
 const about = {
   gender: user.gender,
   adult: user.is_adult == null ? null : user.is_adult ? 'yes' : 'no',
@@ -74,7 +68,7 @@ function pick(q, index) {
 }
 
 function questionNode(q) {
-  const options = q.options.map((option, index) => !option.retired && el('button', {
+  const options = q.options.map((option, index) => el('button', {
     type: 'button', 'data-index': index, 'aria-pressed': 'false', onclick: () => pick(q, index),
   }, tr(option)));
   return el('fieldset', { id: `q-${q.id}`, 'data-question': q.id },
