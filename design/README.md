@@ -121,11 +121,12 @@ All three keep the color fills unchanged with black text, and every text pair is
 | Card title | `.card h3` | `--fs-card` 22px | 900 | 1.1 | Sentence |
 | Lead | `.lead` | `--fs-lead` 19px | 500 | 1.5 | Sentence |
 | Body | (default) | `--fs-body` 16px | 500 | 1.5 | Sentence |
+| Answer option | `.opts button` | 18px (16px in the lifestyle blocks) | 500 | — | Sentence |
 | Button | `.btn` | 16px | 800 | — | UPPERCASE (CSS) |
 | Tag / meta | `.tag`, `.meta` | `--fs-label` 12px mono | 700 | 1 | UPPERCASE (CSS) |
 | Big number | `.big-pct` | `--fs-number` 64px | 900 | 1 | — |
 
-Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels use `--track-caps` (.06em).
+Answers are regular weight on purpose: they are most of the text on the questionnaire, and in bold nothing on screen reads as plain text. Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels use `--track-caps` (.06em).
 
 **Writing.** Write every string in sentence case in HTML and translation files; uppercase comes only from CSS. That keeps translations clean, and Chinese has no case anyway. Russian: «ёлочки» quotes, a non-breaking space before ₽ and between a number and its unit (`14 500 ₽`, `4 этаж`), an em dash with spaces.
 

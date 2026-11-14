@@ -44,7 +44,7 @@
     color: color-mix(in srgb, var(--text) 45%, transparent);
   }
   .suffix-field .suffix[hidden] { display: none; }
-  .hint { font-size: var(--fs-small); font-weight: var(--w-semibold); }
+  .hint { font-size: var(--fs-small); font-weight: var(--w-body); }
 
   /* Landing: the "not a student?" box */
   .about { display: grid; gap: 14px; justify-items: start; }
