@@ -2,7 +2,8 @@
 // Each box saves on its own; the language saves the moment it is picked.
 
 import { ApiError, del, get, post, put } from '../api.js';
-import { currentLang, t } from '../i18n.js';
+import { renderFacultyPicker } from '../faculty.js';
+import { t } from '../i18n.js';
 import { mountLangSwitch } from '../lang-switch.js';
 import { initPage } from '../layout.js';
 import { KEYS, local, session } from '../storage.js';
@@ -128,11 +129,7 @@ const gender = choice($('gender'), user.gender);
 $('is-adult').checked = user.is_adult === true;
 
 function renderFaculties() {
-  const lang = currentLang();
-  $('faculty').replaceChildren(
-    el('option', { value: '' }, t('account.faculty.none')),
-    ...meta.faculties.map((f) => el('option', { value: f.id }, f[lang] ?? f.ru)));
-  $('faculty').value = user.faculty ?? '';
+  renderFacultyPicker($('faculty'), meta.faculties, user.faculty);
 }
 renderFaculties();
 

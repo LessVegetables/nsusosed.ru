@@ -127,6 +127,24 @@
   .solo-panel .opts { justify-self: stretch; }
   @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
 
+  /* Faculty picker (questionnaire, account; js/faculty.js). On phones the closed select shows
+     only the abbreviation ("ММФ"): its own text is made invisible and a label is laid over it.
+     The open list is the native one, so it keeps the full names. */
+  .short-select { display: grid; margin-top: 8px; }
+  .short-select > * { grid-area: 1 / 1; }
+  .field .short-select select { margin-top: 0; }
+  .short-select-label { display: none; }
+  @media (max-width: 640px) {
+    .field .short-select select { -webkit-text-fill-color: transparent; }
+    .short-select option { -webkit-text-fill-color: currentColor; }
+    .short-select-label {
+      display: block; align-self: center; min-width: 0; pointer-events: none;
+      padding: 0 40px 0 calc(14px + var(--line-w)); /* the select's padding + border; 40px clears the arrow */
+      font: var(--w-bold) 18px var(--mono); /* same as .field select */
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+  }
+
   /* My home: same single column as the questionnaire. */
   .hpage { max-width: 760px; display: grid; gap: var(--gap); }
   .hpage form, .hpage #status { display: grid; gap: var(--gap); }

@@ -9,6 +9,7 @@
 
 import { ApiError, get, put } from '../api.js';
 import { reportBug } from '../errors.js';
+import { renderFacultyPicker } from '../faculty.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
@@ -133,10 +134,7 @@ function render() {
     .map(([b, qs]) => blockNode(b, qs)));
   $('extra-blocks').replaceChildren(el('section', { class: 'box pad qblock' },
     ...quiz.questions.filter((q) => !q.required).map(questionNode)));
-  $('faculty').replaceChildren(
-    el('option', { value: '' }, t('account.faculty.none')),
-    ...meta.faculties.map((f) => el('option', { value: f.id }, f[currentLang()] ?? f.ru)));
-  $('faculty').value = about.faculty;
+  renderFacultyPicker($('faculty'), meta.faculties, about.faculty);
   refresh();
 }
 
