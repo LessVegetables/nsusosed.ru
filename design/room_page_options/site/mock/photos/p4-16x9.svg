@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" width="1200" height="675">
+<rect width="1200" height="675" fill="#8ce99a"/>
+<rect y="459" width="1200" height="216" fill="#e8c9a0"/><line x1="0" y1="459" x2="1200" y2="459" stroke="#000" stroke-width="8"/>
+<g stroke="#000" stroke-width="8" stroke-linejoin="round">
+<rect x="672" y="94" width="360" height="202" fill="#fef6e4"/>
+<line x1="852" y1="94" x2="852" y2="297"/><line x1="672" y1="195" x2="1032" y2="195"/>
+<rect x="96" y="378" width="504" height="108" rx="14" fill="#fff"/>
+<rect x="96" y="324" width="144" height="67" rx="14" fill="#ffd43b"/>
+<rect x="744" y="445" width="288" height="23" fill="#fff"/>
+<circle cx="240" cy="135" r="40" fill="#fff"/>
+</g>
+<g font-family="Rubik, Arial, sans-serif" font-weight="900">
+<rect x="28" y="563" width="628" height="84" rx="12" fill="#000"/>
+<text x="52" y="621" font-size="52" fill="#ffd43b">4 · Вид из окна · 16:9</text></g>
+</svg>

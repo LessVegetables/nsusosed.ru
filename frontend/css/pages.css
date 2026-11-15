@@ -212,15 +212,42 @@
   .empty { display: grid; gap: 10px; }
   .empty > * { margin: 0; }
 
-  /* Room page */
+  /* Room page: tiles ("bento", design/room_page_options option E). Four columns; the photo tile
+     takes two of them and the three rows of summary tiles beside it. Phones and tablets: two columns. */
   .rpage { display: grid; gap: var(--gap); }
   .rpage > * { margin: 0; min-width: 0; }
-  .listing.single { grid-template-columns: minmax(0, 640px); }
-  .info { display: grid; gap: 14px; justify-items: start; }
-  .info > * { margin: 0; }
-  .info > :is(.facts, .contact-box, .note, .stack) { justify-self: stretch; }
-  .info .title { font-size: var(--fs-panel); }
-  .info .facts b { font-size: var(--fs-body); }
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+  .tile { min-width: 0; display: grid; gap: 12px; align-content: start; }
+  .tile > * { margin: 0; }
+  .t-photo { grid-column: span 2; grid-row: span 3; min-width: 0; align-content: start; }
+  .t-title, .t-cta { grid-column: span 2; justify-items: start; }
+  .t-title .title { font-size: var(--fs-panel); }
+  .t-cta { align-content: space-between; }
+  .t-cta > :is(.stack, .note, .contact-box) { justify-self: stretch; }
+  .t-cta .stack > .btn { display: flex; width: 100%; }
+  .t-num { align-content: center; }
+  .t-num .big-pct.small { font-size: var(--fs-title); }
+  .t-wide { grid-column: 1 / -1; }
+  .t-half { grid-column: span 2; }
+  .t-half > .box { height: 100%; align-content: start; }
+  .bento.no-photo .t-cta { grid-column: 1 / -1; }
+  @media (max-width: 960px) {
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .t-photo { grid-row: auto; }
+    .t-half { grid-column: 1 / -1; }
+    .t-num .big-pct { font-size: var(--fs-title); }
+    .t-num .big-pct.small { font-size: var(--fs-panel); }
+  }
+  /* Photo tile: the main photo is a button (opens the viewer) with a counter on it; the
+     thumbnails are one row that scrolls. The padding keeps a lifted thumbnail from being clipped. */
+  .gallery .main-btn { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+  .photo-count { position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; border-radius: var(--r-xs); background: var(--black); color: var(--on-black); font: var(--w-bold) var(--fs-label) var(--mono); }
+  .gallery .thumbs { display: flex; overflow-x: auto; padding: 3px 3px 6px; }
+  .gallery .thumbs button { flex: 0 0 calc((100% - 30px) / 4.4); }
+  .lightbox { width: min(1000px, calc(100vw - 2 * var(--gutter))); padding: 12px; }
+  .lightbox img { display: block; width: 100%; max-height: 72vh; object-fit: contain; margin-bottom: 12px; border: var(--border); border-radius: var(--r-sm); background: var(--unfit); }
+  .lightbox .row { flex-wrap: nowrap; flex-direction: row; align-items: center; }
+  .lightbox .btn { min-width: 48px; padding-inline: 12px; }
   .rpage .breakdown { margin-top: 0; }
   .rblock { display: grid; gap: 12px; }
   .rblock > * { margin: 0; }
@@ -230,6 +257,9 @@
   .resident-card { display: grid; gap: 12px; align-content: start; }
   .resident-card > * { margin: 0; }
   .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
+  .person-head { flex-wrap: nowrap; }
+  .person-name { flex: 1; min-width: 0; }
+  .person-pct { font-size: var(--fs-card); transform: none; }
   .resident-card .meta { margin: 0; }
   /* Answers compared with the viewer's own (js/pages/room.js, compare()). A row is the question,
      a strip with one cell per answer option (theirs blue, mine yellow, so the distance between
@@ -249,9 +279,9 @@
   .cmp-who { flex: none; padding: 2px 6px; border: var(--border-thin); border-radius: var(--r-xs); color: var(--on-fill); font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
   .cmp [data-who="them"] { background: var(--info); }
   .cmp [data-who="me"] { background: var(--primary); }
-  /* The button that reveals the contacts fills the panel's width. */
-  .info .stack > .btn { display: flex; width: 100%; }
-  .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .other-rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .other-room { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px; border: var(--border-thin); border-radius: var(--r-sm); text-decoration: none; }
+  .other-room .emoji { font-size: var(--fs-card); box-shadow: none; }
   .contact-box > div + div { margin-top: 10px; }
 
   /* Privacy and other documents */

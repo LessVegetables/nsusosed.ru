@@ -1,0 +1,141 @@
+/* Room page layout options (scratchpad). Layout only, tokens only, in the pages layer —
+   so anything picked here can move into the site's pages.css as is. */
+
+@layer pages {
+  /* ---------- shared pieces ---------- */
+  .rpage h1.title { font-size: var(--fs-panel); margin: 0; }
+  .fact-tags { gap: 8px; }
+  .cta .btn { display: flex; width: 100%; }
+  .topic-rows { list-style: none; margin: 0; padding: 0; display: grid; justify-self: stretch; }
+  .topic-rows li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; font-weight: var(--w-bold); }
+  .topic-rows li + li { border-top: var(--border-thin); }
+  .info > :is(.cta, .topic-rows) { justify-self: stretch; }
+  .person-head { flex-wrap: nowrap; }
+  .person-name { flex: 1; min-width: 0; }
+  .person-pct { font-size: var(--fs-card); transform: none; }
+  .resident-cards.one-col { grid-template-columns: 1fr; }
+  /* Wide resident card: the differences sit in two columns instead of one long list. */
+  @media (min-width: 961px) { .resident-cards.wide .cmp { grid-template-columns: 1fr 1fr; column-gap: var(--gap); } }
+  .other-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .other-room { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px; border: var(--border-thin); border-radius: var(--r-sm); text-decoration: none; }
+  .other-room .emoji { font-size: var(--fs-card); box-shadow: none; }
+
+  /* Phones: "Показать контакты" stays within reach at the bottom of the screen. */
+  .cta-bar { display: none; }
+  @media (max-width: 960px) {
+    .cta-bar {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+      padding: 10px var(--gutter) calc(10px + env(safe-area-inset-bottom)); background: var(--surface); color: var(--text); border-top: var(--border);
+    }
+    .cta-bar .big-pct { font-size: var(--fs-badge); }
+    .cta-bar .btn { flex: 1; }
+    .rpage:has(.cta-bar) { padding-bottom: 96px; }
+    .rpage:has(.cta-bar) .info .cta, .rpage:has(.cta-bar) .ld-head .cta { display: none; }
+  }
+
+  /* ---------- photos ---------- */
+  .photo-count { position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; border-radius: var(--r-xs); background: var(--black); color: var(--on-black); font: var(--w-bold) var(--fs-label) var(--mono); }
+  /* 1. main + thumbnails; the thumbnails are one row that scrolls, however many there are */
+  .g-thumbs .main-btn { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+  .strip-thumbs { display: flex; overflow-x: auto; padding: 3px 3px 6px; }
+  .strip-thumbs button { flex: 0 0 calc((100% - 30px) / 4.4); }
+  /* 2. mosaic */
+  .mosaic { display: grid; gap: 10px; grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 200px 200px; }
+  .mosaic button, .strip button { position: relative; padding: 0; overflow: hidden; border: var(--border); border-radius: var(--r-sm); background: var(--unfit); cursor: zoom-in; }
+  .mosaic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .mosaic button:first-child { grid-row: 1 / -1; }
+  .mosaic button:nth-child(n+6) { display: none; }
+  .mosaic button[data-more]::after { content: attr(data-more); position: absolute; inset: 0; display: grid; place-items: center; background: color-mix(in srgb, var(--black) 60%, transparent); color: var(--white); font-size: var(--fs-badge); font-weight: var(--w-black); }
+  .mosaic[data-n="1"] { grid-template-columns: 1fr; }
+  .mosaic[data-n="1"][data-filled] { grid-template-columns: 3fr 2fr; }
+  .mosaic .map.fill { height: auto; grid-row: 1 / -1; box-shadow: none; }
+  .mosaic[data-n="2"] { grid-template-columns: 1fr 1fr; }
+  .mosaic[data-n="2"] button { grid-row: 1 / -1; }
+  .mosaic[data-n="3"] { grid-template-columns: 2fr 1fr; }
+  .mosaic[data-n="4"] button:last-of-type { grid-column: 2 / -1; }
+  @media (max-width: 640px) {
+    /* phones: a swipe row; the next photo peeks in from the right */
+    .mosaic, .mosaic[data-n] { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; margin-inline: calc(-1 * var(--gutter)); padding-inline: var(--gutter); scroll-padding-inline: var(--gutter); }
+    .mosaic button, .mosaic button:nth-child(n+6) { display: block; flex: 0 0 86%; aspect-ratio: 4 / 3; scroll-snap-align: start; }
+    .mosaic[data-n="1"] button { flex-basis: 100%; }
+    .mosaic button[data-more]::after { content: none; }
+    .mosaic[data-filled] { flex-wrap: wrap; overflow: visible; }
+    .mosaic .map.fill { flex: 0 0 100%; height: 200px; }
+  }
+  /* 3. film strip: whole photos, natural shapes */
+  .strip { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 6px; }
+  .strip button { flex: none; height: 360px; scroll-snap-align: start; }
+  .strip img { display: block; height: 100%; width: auto; }
+  @media (max-width: 640px) { .strip button { height: 250px; } }
+  /* 4. one photo filling a tile */
+  .slide { position: relative; height: 100%; min-height: 300px; }
+  .slide-photo { position: absolute; inset: 0; width: 100%; padding: 0; border: 0; background: var(--unfit); cursor: zoom-in; }
+  .slide-photo img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .slide-arrow { position: absolute; top: 50%; translate: 0 -50%; width: 44px; height: 44px; border: var(--border); border-radius: var(--r); background: var(--surface); color: var(--text); font-weight: var(--w-black); cursor: pointer; box-shadow: var(--sh-sm); }
+  .slide-arrow.prev { left: 10px; }
+  .slide-arrow.next { right: 10px; }
+  /* full-size viewer */
+  .lightbox { width: min(1000px, calc(100vw - 2 * var(--gutter))); padding: 12px; }
+  .lightbox img { display: block; width: 100%; max-height: 72vh; object-fit: contain; border: var(--border); border-radius: var(--r-sm); background: var(--unfit); margin-bottom: 12px; }
+  .lightbox .row { flex-wrap: nowrap; }
+  .lightbox .btn { min-width: 48px; padding-inline: 12px; }
+
+  /* ---------- B and C: content + sticky summary ---------- */
+  .lb { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: var(--gap); align-items: start; }
+  .lb > * { min-width: 0; }
+  .lb-photos, .lb-rest { grid-column: 1; }
+  .lb-side { grid-column: 2; grid-row: 1 / span 2; position: sticky; top: calc(var(--header-h, 70px) + 16px); }
+  .lb-rest { display: grid; gap: var(--gap); }
+  [data-opt="C"] .lb-side { grid-row: 1; }
+  .lc-head { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--gap); flex-wrap: wrap; }
+  .lc-title { display: grid; gap: 12px; justify-items: start; }
+  .lc-price { display: grid; justify-items: end; gap: 4px; }
+  .lc-price .big-pct { font-size: var(--fs-title); }
+  @media (max-width: 960px) {
+    .lb { grid-template-columns: minmax(0, 1fr); }
+    .lb-side { grid-column: 1; grid-row: auto; position: static; }
+    .lc-price { justify-items: start; }
+  }
+
+  /* ---------- D: people first ---------- */
+  .ld-head { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: var(--gap); align-items: center; }
+  .ld-title { display: grid; gap: 12px; justify-items: start; }
+  .ld { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: var(--gap); align-items: start; }
+  .ld-people, .ld-place { display: grid; gap: var(--gap); min-width: 0; }
+  .ld-score .score { margin: 0; }
+  .ld-score .big-pct { background: var(--surface); color: var(--text); }
+  .ld-score .breakdown { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  @media (max-width: 960px) {
+    .ld-head, .ld { grid-template-columns: minmax(0, 1fr); }
+    .ld-score .breakdown { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* ---------- E: bento ---------- */
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+  .tile { min-width: 0; display: grid; gap: 12px; align-content: start; }
+  .tile > * { margin: 0; }
+  .t-photo { grid-column: span 2; grid-row: span 3; overflow: hidden; }
+  .t-title, .t-cta { grid-column: span 2; justify-items: start; }
+  .t-cta { align-content: space-between; }
+  .t-cta .cta { justify-self: stretch; }
+  .t-num { align-content: center; }
+  .t-num .big-pct.small { font-size: var(--fs-title); }
+  .t-wide { grid-column: 1 / -1; }
+  .t-half { grid-column: span 2; }
+  .t-half > .box { height: 100%; align-content: start; }
+  @media (max-width: 960px) {
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .t-photo { grid-row: auto; aspect-ratio: 4 / 3; }
+    .t-half { grid-column: 1 / -1; }
+    .t-num .big-pct { font-size: var(--fs-title); }
+    .t-num .big-pct.small { font-size: var(--fs-panel); }
+  }
+
+  /* ---------- F: tabs ---------- */
+  .lf-tabs { position: sticky; top: var(--header-h, 70px); z-index: 10; padding: 10px 0; background: var(--page); }
+  .lf-panel, .lf-about { display: grid; gap: var(--gap); }
+  @media (max-width: 640px) {
+    .lf-tabs { flex-wrap: nowrap; gap: 6px; }
+    .lf-tabs [role="tab"] { flex: 1; min-width: 0; padding: 10px 6px; font-size: var(--fs-small); }
+  }
+}

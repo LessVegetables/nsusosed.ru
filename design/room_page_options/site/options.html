@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Room page: layout options</title>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/shell.css">
+  <script type="module" src="/shell.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="shell-bar box pad">
+      <div class="ctl"><span class="meta">Layout</span><div class="tabs" id="c-opt" role="tablist"></div></div>
+      <div class="ctl"><span class="meta">Listing</span><div class="tabs" id="c-kind" role="tablist"></div></div>
+      <div class="ctl"><span class="meta">Photos</span><div class="tabs" id="c-photos" role="tablist"></div></div>
+      <div class="ctl"><span class="meta">Gallery</span><div class="tabs" id="c-gallery" role="tablist"></div></div>
+      <div class="ctl"><span class="meta">Theme</span><div class="tabs" id="c-theme" role="tablist"></div></div>
+    </header>
+    <div class="box pad shell-note" id="note"></div>
+    <div class="previews">
+      <figure class="pv desktop"><figcaption class="meta"><span>Desktop · 1280px</span> <a id="open-d" target="_blank">open full size ↗</a></figcaption><div class="frame" id="frame-d"><iframe id="if-d" title="Desktop preview"></iframe></div></figure>
+      <figure class="pv phone"><figcaption class="meta"><span>Phone · 375px</span></figcaption><div class="frame"><iframe id="if-p" title="Phone preview"></iframe></div></figure>
+    </div>
+  </div>
+</body>
+</html>

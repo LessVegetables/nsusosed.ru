@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
+  <title data-i18n="title.questionnaire">Анкета — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/questionnaire.js"></script>
+  <script defer src="/js/analytics.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true" data-errors="true" data-release="dev" data-environment="development" data-before-send="nsusosedBeforeSend"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <!-- One cell per question, stuck under the header; on wide screens it steps aside once the
+         same strip in the bar at the bottom (first visit only) comes into view. -->
+    <div class="qstrip-bar" id="strip-bar">
+      <nav class="qstrip flush" id="strip-top" aria-hidden="true"></nav>
+    </div>
+    <div class="wrap section qpage">
+
+      <!-- The questionnaire itself -->
+      <form id="quiz" novalidate data-private>
+        <header class="qintro">
+          <h1 class="title" data-i18n="quiz.title">Как ты живёшь</h1>
+          <p class="lead" data-i18n="quiz.intro">20 вопросов про быт — около 3 минут. Здесь нет правильных ответов: мы ищем человека, с которым тебе будет удобно жить. Часть ответов видна в профиле, часть — только алгоритму (это отмечено значком 🔒). Ответы сохраняются сами: можно прерваться и вернуться позже.</p>
+          <p class="hint"><a href="/compatibility" data-i18n="quiz.how">Как считается совместимость</a></p>
+        </header>
+
+        <section class="box pad qblock" id="about" aria-labelledby="about-title">
+          <h2 id="about-title" data-i18n="quiz.about.title">Сначала пара фактов</h2>
+          <fieldset id="f-gender">
+            <legend data-i18n="account.gender.label">Пол</legend>
+            <div class="opts" id="gender">
+              <button type="button" data-value="f" aria-pressed="false" data-i18n="account.gender.f">Женский</button>
+              <button type="button" data-value="m" aria-pressed="false" data-i18n="account.gender.m">Мужской</button>
+            </div>
+            <p class="hint" data-i18n="account.gender.hint">Комнаты в общежитиях раздельные: показываем те, куда тебя могут поселить.</p>
+          </fieldset>
+          <fieldset id="f-adult">
+            <legend data-i18n="quiz.adult.label">Тебе есть 18?</legend>
+            <div class="opts" id="adult">
+              <button type="button" data-value="yes" aria-pressed="false" data-i18n="quiz.adult.yes">Да, есть</button>
+              <button type="button" data-value="no" aria-pressed="false" data-i18n="quiz.adult.no">Ещё нет</button>
+            </div>
+            <p class="hint" data-i18n="account.adult.hint">Дату рождения не спрашиваем. Младше 18 — не покажем вопросы о никотине.</p>
+          </fieldset>
+          <div id="f-faculty">
+            <label class="field"><span data-i18n="account.faculty.label">Факультет</span>
+              <span class="short-select"><select id="faculty"></select><span class="short-select-label" aria-hidden="true"></span></span>
+              <small data-i18n="account.faculty.hint">От факультета зависит, в каких общежитиях селят.</small>
+            </label>
+          </div>
+        </section>
+
+        <div id="blocks"></div>
+
+        <div class="qbar box" id="qbar">
+          <span class="sr-only" id="progress-text" aria-live="polite"></span>
+          <nav class="qstrip" id="strip-bottom" aria-hidden="true"></nav>
+          <button class="btn" type="submit" data-i18n="quiz.finish">Готово</button>
+        </div>
+      </form>
+
+      <!-- Last step of the first visit: what the person came for -->
+      <section class="box pad solo-panel" id="intent" hidden>
+        <span class="tag" data-i18n="quiz.intent.eyebrow">Последний шаг</span>
+        <h1 class="title" data-i18n="quiz.intent.title">Что ты ищешь?</h1>
+        <p data-i18n="quiz.intent.text">От этого зависит, что мы покажем первым. Потом можно поменять в аккаунте.</p>
+        <div class="opts" id="intent-opts">
+          <button type="button" data-value="seek_dorm" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
+          <button type="button" data-value="seek_apt" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
+          <button type="button" data-value="host" data-i18n="account.intent.host">Ищу соседа к себе</button>
+          <button type="button" data-value="join" data-i18n="account.intent.join">Меня пригласили в жильё</button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>

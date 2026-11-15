@@ -1,4 +1,5 @@
-// A room's page, as someone looking for a place sees it: photos, where it is (a dorm
+// A room's page, as someone looking for a place sees it, laid out as tiles (design/room_page_options,
+// option E): photos, the score and the price at a glance, where it is (a dorm
 // building exactly, an apartment as an approximate area), who lives there with their bios and
 // per-person compatibility, and the button that reveals the hosts' contacts.
 
@@ -20,7 +21,6 @@ let quiz = null;
 let meta = null;
 let contacts = null;     // filled after "get contact info"
 let contactsError = null;
-let shownPhoto = 0;
 let map = null;
 
 try {
@@ -33,21 +33,55 @@ try {
 const tr = (texts) => texts[currentLang()] ?? texts.ru;
 const rub = (n) => `${n.toLocaleString('ru-RU')} ₽`;
 const genderLabel = (g) => ({ f: t('feed.gender.f'), m: t('feed.gender.m'), any: t('feed.gender.any') }[g]);
-const fact = (label, value) => el('div', {}, el('small', {}, label), el('b', {}, value));
 
 function title() {
   if (room.kind === 'dorm') return t('home.dorm.n', { name: meta.dorms.find((d) => d.id === room.building)?.name ?? room.building });
   return room.room_name ? `${room.room_name} · ${room.district}` : t('join.confirm.apartment', { district: room.district });
 }
 
+/** The full-size viewer: one photo whole, arrows, a counter. */
+let lightbox = null;
+function openPhoto(index) {
+  if (!lightbox) {
+    lightbox = el('dialog', { class: 'dialog lightbox' });
+    lightbox.addEventListener('click', (e) => { if (e.target === lightbox) lightbox.close(); });
+    document.body.append(lightbox);
+  }
+  const many = room.photos.length > 1;
+  const show = (n) => {
+    const i = (n + room.photos.length) % room.photos.length;
+    lightbox.replaceChildren(
+      el('img', { src: room.photos[i].url, alt: t('home.photos.alt', { n: i + 1 }) }),
+      el('div', { class: 'row spread' },
+        el('button', { class: 'btn secondary', type: 'button', disabled: !many, 'aria-label': t('room.photo.prev'), onclick: () => show(i - 1) }, '←'),
+        el('span', { class: 'meta' }, `${i + 1} / ${room.photos.length}`),
+        el('button', { class: 'btn secondary', type: 'button', disabled: !many, 'aria-label': t('room.photo.next'), onclick: () => show(i + 1) }, '→'),
+        el('button', { class: 'btn dark', type: 'button', 'aria-label': t('a11y.close'), onclick: () => lightbox.close() }, '✕')));
+  };
+  show(index);
+  if (!lightbox.open) lightbox.showModal();
+}
+
+/** The photo tile: the main photo (a click opens it full size) over one scrolling row of
+ *  thumbnails, so two photos and twenty take the same space. One photo: no row at all. */
 function gallery() {
   if (!room.photos.length) return null;
-  const main = el('img', { class: 'main', src: room.photos[shownPhoto].url, alt: t('home.photos.alt', { n: shownPhoto + 1 }) });
-  const thumbs = room.photos.length > 1 && el('div', { class: 'thumbs' }, ...room.photos.map((p, i) => el('button', {
-    type: 'button', 'aria-pressed': String(i === shownPhoto), 'aria-label': t('home.photos.alt', { n: i + 1 }),
-    onclick: () => { shownPhoto = i; render(); },
+  const total = room.photos.length;
+  let shown = 0;
+  const main = el('img', { class: 'main', src: room.photos[0].url, alt: t('home.photos.alt', { n: 1 }) });
+  const count = total > 1 && el('span', { class: 'photo-count' }, `1 / ${total}`);
+  const thumbs = total > 1 && el('div', { class: 'thumbs' }, ...room.photos.map((p, i) => el('button', {
+    type: 'button', 'aria-pressed': String(i === 0), 'aria-label': t('home.photos.alt', { n: i + 1 }),
+    onclick: () => {
+      shown = i;
+      main.src = p.url;
+      main.alt = t('home.photos.alt', { n: i + 1 });
+      count.textContent = `${i + 1} / ${total}`;
+      [...thumbs.children].forEach((b, k) => b.setAttribute('aria-pressed', String(k === i)));
+    },
   }, el('img', { src: p.url, alt: '', loading: 'lazy' }))));
-  return el('div', { class: 'box gallery' }, main, thumbs);
+  return el('div', { class: 'box gallery t-photo' },
+    el('button', { class: 'main-btn', type: 'button', onclick: () => openPhoto(shown) }, main, count), thumbs);
 }
 
 function contactPanel() {
@@ -76,27 +110,24 @@ function contactPanel() {
   return el('div', { class: 'stack' }, button, contactsError && el('p', { class: 'note error' }, `✕ ${contactsError}`));
 }
 
-function info() {
-  const facts = [
-    fact(t('room.fact.free'), t('feed.places', { free: room.free_places, total: room.capacity })),
-    fact(t('room.fact.for'), genderLabel(room.gender)),
-    room.sunlight && fact(t('room.fact.sun'), t(`home.sun.${room.sunlight}`)),
-  ].filter(Boolean);
-  if (room.kind === 'apartment') {
-    facts.push(
-      fact(t('room.fact.rent'), rub(room.rent_rub)),
-      fact(t('room.fact.utilities'), room.utilities_mode === 'included' ? t('home.costs.included') : `≈ ${rub(room.utilities_rub)}`),
-      fact(t('room.fact.internet'), { included: t('home.costs.internetIncluded'), split: t('home.costs.split'), none: t('home.costs.noInternet') }[room.internet_mode]),
-      fact(t('room.fact.district'), room.district));
-  }
-  return el('div', { class: 'box info' },
-    el('span', { class: 'emoji' }, room.emoji),
-    el('h1', { class: 'title' }, title()),
+/** The summary tiles beside the photo: what it is, the score, the price (a dorm: the free
+ *  places), and the contacts button. */
+function summary() {
+  const sub = [genderLabel(room.gender), room.sunlight && t(`home.sun.${room.sunlight}`)].filter(Boolean).join(' · ');
+  const flat = room.kind === 'apartment';
+  // A dorm's free places are already the pink tile; an apartment's go here, with the internet.
+  const line = flat && `${t('feed.places', { free: room.free_places, total: room.capacity })} · ${t('room.fact.internet')}: ${{ included: t('home.costs.internetIncluded'), split: t('home.costs.split'), none: t('home.costs.noInternet') }[room.internet_mode]}`;
+  return [
+    el('div', { class: 'box pad tile t-title' }, el('span', { class: 'emoji' }, room.emoji), el('h1', { class: 'title' }, title()), el('p', { class: 'meta' }, sub)),
     room.compatibility
-      ? el('div', { class: 'score' }, el('span', { class: 'big-pct' }, `${room.compatibility.percent}%`), el('b', {}, t('room.compatibility')))
-      : !room.is_mine && el('p', { class: 'note' }, `⚠ ${room.can_get_contacts ? t('feed.noScore') : t('room.needQuizScore')}`),
-    el('div', { class: 'facts' }, ...facts),
-    contactPanel());
+      ? el('div', { class: 'box pad tile t-num fill-yellow' }, el('span', { class: 'big-pct' }, `${room.compatibility.percent}%`), el('span', { class: 'meta' }, t('room.compatibility')))
+      : !room.is_mine && el('div', { class: 'box pad tile t-num' }, el('p', { class: 'note' }, `⚠ ${room.can_get_contacts ? t('feed.noScore') : t('room.needQuizScore')}`)),
+    flat
+      ? el('div', { class: 'box pad tile t-num fill-pink' }, el('span', { class: 'big-pct small' }, rub(room.rent_rub)),
+        el('span', { class: 'meta' }, `${t('room.tile.perMonth')} ${room.utilities_mode === 'included' ? t('room.tile.utilitiesIncluded') : t('room.tile.utilities', { sum: rub(room.utilities_rub) })}`))
+      : el('div', { class: 'box pad tile t-num fill-pink' }, el('span', { class: 'big-pct' }, `${room.free_places}/${room.capacity}`), el('span', { class: 'meta' }, t('room.tile.free'))),
+    el('div', { class: 'box pad tile t-cta' }, line && el('p', {}, el('b', {}, line)), contactPanel()),
+  ];
 }
 
 /** How far apart two answers to one question are: 'far', 'near' or 'same'. Every visible question
@@ -152,12 +183,12 @@ function compare(person) {
 
 function resident(person) {
   return el('li', { class: 'box pad resident-card', 'data-private': true },
-    el('div', { class: 'row' },
-      person.avatar_url ? el('img', { class: 'avatar', src: person.avatar_url, alt: '' }) : el('span', { class: 'avatar', 'aria-hidden': 'true' }, person.first_name.slice(0, 1)),
-      el('div', {},
+    el('div', { class: 'row person-head' },
+      person.avatar_url ? el('img', { class: 'avatar sm', src: person.avatar_url, alt: '' }) : el('span', { class: 'avatar sm', 'aria-hidden': 'true' }, person.first_name.slice(0, 1)),
+      el('div', { class: 'person-name' },
         el('h3', {}, `${person.first_name} ${person.last_name}`),
-        room.kind === 'apartment' && el('p', { class: 'meta' }, person.in_this_room ? t('room.inThisRoom') : t('room.inOtherRoom')),
-        person.compatibility && el('p', { class: 'meta' }, t('room.personScore', { n: person.compatibility.percent })))),
+        room.kind === 'apartment' && el('p', { class: 'meta' }, person.in_this_room ? t('room.inThisRoom') : t('room.inOtherRoom'))),
+      person.compatibility && el('span', { class: 'pct person-pct', title: t('room.personScore', { n: person.compatibility.percent }) }, `${person.compatibility.percent}%`)),
     person.bio && el('p', {}, person.bio),
     person.compatibility ? chips(person.compatibility) : !room.is_mine && el('p', { class: 'hint' }, t('room.personNoQuiz')),
     !room.is_mine && compare(person));
@@ -176,28 +207,35 @@ function render() {
   }
   document.title = `${room.emoji} ${title()} — nsusosed`;
   const hasPlace = room.lat != null && room.lon != null;
+  const photo = gallery();
+  const about = room.description && el('section', { class: 'box pad rblock' }, el('h2', {}, t('home.about.title')), el('p', { class: 'prewrap' }, room.description));
+  const where = hasPlace && el('section', { class: 'box pad rblock' },
+    el('h2', {}, t('home.place.title')),
+    el('p', { class: 'hint' }, room.radius_m ? t('room.place.area') : t('room.place.dorm')),
+    el('div', { class: 'map', id: 'room-map' }));
+  const half = about && where ? 'tile t-half' : 'tile t-wide';
   // replaceChildren() would print a `false`/`null` from the `cond && el(...)` items as text.
-  root.replaceChildren(...[
+  root.replaceChildren(
     el('p', {}, el('a', { class: 'linkbtn', href: `/feed?kind=${room.kind}` }, t('room.back'))),
-    el('div', { class: gallery() ? 'listing' : 'listing single' }, gallery(), info()),
-    room.compatibility && el('section', {},
-      breakdown(room.compatibility),
-      el('p', { class: 'hint' }, el('a', { href: '/compatibility' }, t('quiz.how')))),
-    room.description && el('section', { class: 'box pad rblock' }, el('h2', {}, t('home.about.title')), el('p', { class: 'prewrap' }, room.description)),
-    hasPlace && el('section', { class: 'box pad rblock' },
-      el('h2', {}, t('home.place.title')),
-      el('p', { class: 'hint' }, room.radius_m ? t('room.place.area') : t('room.place.dorm')),
-      el('div', { class: 'map', id: 'room-map' })),
-    el('section', { class: 'rblock' },
-      el('h2', { class: 'title' }, t('home.residents.title')),
-      el('p', { class: 'hint' }, room.kind === 'apartment' ? t('room.residents.flat') : t('room.residents.dorm')),
-      el('ul', { class: 'resident-cards' }, ...room.residents.map(resident))),
-    room.other_rooms.length > 0 && el('section', { class: 'box pad rblock' },
-      el('h2', {}, t('room.other.title')),
-      el('ul', { class: 'other-rooms' }, ...room.other_rooms.map((r) => el('li', {},
-        el('a', { href: `/room?id=${r.room_id}` }, `${r.emoji} ${r.room_name || t('home.room.title')}`),
-        ` · ${rub(r.rent_rub)} · ${r.free_places ? t('room.other.free', { n: r.free_places }) : t('room.other.full')}`)))),
-  ].filter(Boolean));
+    el('div', { class: photo ? 'bento' : 'bento no-photo' }, ...[
+      photo,
+      ...summary(),
+      room.compatibility && el('div', { class: 'tile t-wide' },
+        breakdown(room.compatibility),
+        el('p', { class: 'hint' }, el('a', { href: '/compatibility' }, t('quiz.how')))),
+      about && el('div', { class: half }, about),
+      where && el('div', { class: half }, where),
+      el('section', { class: 'tile t-wide rblock' },
+        el('h2', { class: 'title' }, t('home.residents.title')),
+        el('p', { class: 'hint' }, room.kind === 'apartment' ? t('room.residents.flat') : t('room.residents.dorm')),
+        el('ul', { class: 'resident-cards' }, ...room.residents.map(resident))),
+      room.other_rooms.length > 0 && el('section', { class: 'box pad tile t-wide rblock' },
+        el('h2', {}, t('room.other.title')),
+        el('ul', { class: 'other-rooms' }, ...room.other_rooms.map((r) => el('li', {},
+          el('a', { class: 'other-room', href: `/room?id=${r.room_id}` },
+            el('span', { class: 'emoji' }, r.emoji), el('b', {}, r.room_name || t('home.room.title')),
+            el('span', { class: 'meta' }, `${rub(r.rent_rub)} · ${r.free_places ? t('room.other.free', { n: r.free_places }) : t('room.other.full')}`)))))),
+    ].filter(Boolean)));
 
   const host = document.getElementById('room-map');
   if (host) {
