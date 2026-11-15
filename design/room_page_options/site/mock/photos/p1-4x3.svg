@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900" width="1200" height="900">
+<rect width="1200" height="900" fill="#74c0fc"/>
+<rect y="612" width="1200" height="288" fill="#e8c9a0"/><line x1="0" y1="612" x2="1200" y2="612" stroke="#000" stroke-width="8"/>
+<g stroke="#000" stroke-width="8" stroke-linejoin="round">
+<rect x="672" y="126" width="360" height="270" fill="#fef6e4"/>
+<line x1="852" y1="126" x2="852" y2="396"/><line x1="672" y1="261" x2="1032" y2="261"/>
+<rect x="96" y="504" width="504" height="144" rx="14" fill="#fff"/>
+<rect x="96" y="432" width="144" height="90" rx="14" fill="#ffd43b"/>
+<rect x="744" y="594" width="288" height="31" fill="#fff"/>
+<circle cx="240" cy="180" r="54" fill="#fff"/>
+</g>
+<g font-family="Rubik, Arial, sans-serif" font-weight="900">
+<rect x="28" y="788" width="476" height="84" rx="12" fill="#000"/>
+<text x="52" y="846" font-size="52" fill="#ffd43b">1 · Комната · 4:3</text></g>
+</svg>

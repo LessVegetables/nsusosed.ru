@@ -46,6 +46,25 @@ async def test_partial_saves_add_up_to_a_complete_questionnaire(make_client, log
     assert "E2" not in (await save(c, {"E1": [0]})).json()["answers"]
 
 
+async def test_a_draft_replaces_the_stored_answers(make_client, login):
+    """The page autosaves the whole draft after every answer, with replace=true."""
+    c = make_client()
+    await login(c, "s@g.nsu.ru")
+    await c.put("/api/me", json={"is_adult": True}, headers=ORIGIN)
+
+    async def draft(answers):
+        return await c.put("/api/questionnaire", json={"version": 1, "answers": answers, "replace": True}, headers=ORIGIN)
+
+    r = await draft({"A1": 1, "E1": [2], "H1": 0})
+    assert r.status_code == 200 and r.json()["complete"] is False
+    # Coming back later: the draft is there.
+    assert (await c.get("/api/questionnaire")).json()["answers"] == {"A1": 1, "E1": [2], "H1": 0}
+    # An answer taken back (the multi-select emptied) is forgotten; a merge would have kept it.
+    r = await draft({"A1": 3, "H1": 0})
+    assert r.json()["answers"] == {"A1": 3, "H1": 0}
+    assert (await draft(BASE)).json()["complete"] is True
+
+
 async def test_bad_answers_and_an_old_version_are_refused(make_client, login):
     c = make_client()
     await login(c, "s@g.nsu.ru")

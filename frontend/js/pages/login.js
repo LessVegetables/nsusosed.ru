@@ -3,7 +3,6 @@
 
 import { ApiError, get, post } from '../api.js';
 import { currentLang, t } from '../i18n.js';
-import { mountLangSwitch } from '../lang-switch.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
 import { KEYS, local, session } from '../storage.js';
@@ -12,11 +11,12 @@ import { errorText, setBusy } from '../ui.js';
 const RESEND_COOLDOWN = 60; // seconds; the server enforces the same pause
 const $ = (id) => document.getElementById(id);
 
-const { user } = await initPage({ auth: 'optional' });
+// A language pick here lasts for this tab and is saved to the account on login.
+const { user } = await initPage({
+  auth: 'optional',
+  onLangPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); },
+});
 if (user) location.replace(homeFor(user));
-
-// A pick here lasts for this tab and is saved to the account on login.
-mountLangSwitch($('lang'), { onPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); } });
 
 const steps = { email: $('step-email'), name: $('step-name'), code: $('step-code') };
 const cells = [...$('code').querySelectorAll('input')];
@@ -42,6 +42,14 @@ const reason = (code) => {
 };
 
 // ── Step 1: email ───────────────────────────────────────
+
+// A bare name gets the @g.nsu.ru shown at the field's edge. Typing an "@" of your own hides that
+// suffix, and whatever address you typed is sent as is.
+const DEFAULT_DOMAIN = '@g.nsu.ru';
+const fullEmail = (value) => (value && !value.includes('@') ? value + DEFAULT_DOMAIN : value);
+const updateSuffix = () => { $('email-suffix').hidden = $('email').value.includes('@'); };
+$('email').addEventListener('input', updateSuffix);
+updateSuffix();
 
 async function requestCode(button) {
   setBusy(button, true);
@@ -73,7 +81,8 @@ async function requestCode(button) {
 steps.email.addEventListener('submit', async (e) => {
   e.preventDefault();
   $('email-note').hidden = true;
-  state.email = $('email').value.trim().toLowerCase();
+  const previous = state.email;
+  state.email = fullEmail($('email').value.trim().toLowerCase());
   const emailProblem = !state.email ? 'REQUIRED' : !state.email.includes('@') ? 'INVALID_EMAIL' : null;
   fieldError($('email'), $('email-err'), emailProblem && reason(emailProblem));
   const accepted = $('privacy').checked;
@@ -81,7 +90,9 @@ steps.email.addEventListener('submit', async (e) => {
   if (emailProblem) { $('email').focus(); return; }
   if (!accepted) { $('privacy').focus(); return; }
 
-  if (!await requestCode(e.submitter)) return;
+  // Came back with "← Back" and kept the same address: the code already sent still works.
+  const codeStillValid = state.email === previous && Date.now() < state.expiresAt;
+  if (!codeStillValid && !await requestCode(e.submitter)) return;
   clearCode();
   renderCodeStep();
   show(state.isNew ? 'name' : 'code');
@@ -185,7 +196,8 @@ $('resend').addEventListener('click', async () => {
   if (await requestCode($('resend'))) { clearCode(); renderCodeStep(); cells[0].focus(); }
 });
 
-$('change-email').addEventListener('click', () => { clearCode(); show('email'); });
+$('name-back').addEventListener('click', () => show('email'));
+$('code-back').addEventListener('click', () => { clearCode(); show(state.isNew ? 'name' : 'email'); });
 
 // Countdowns: how long the code lives, and when another one can be sent.
 const mmss = (ms) => {

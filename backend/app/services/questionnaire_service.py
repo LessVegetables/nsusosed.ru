@@ -25,7 +25,8 @@ def _out(answers: dict, user: User) -> QuestionnaireOut:
     q = questionnaires.current()
     adult = bool(user.is_adult)
     return QuestionnaireOut(
-        version=q.VERSION, blocks=q.QUESTIONNAIRE["blocks"], questions=q.QUESTIONNAIRE["questions"],
+        version=q.VERSION, blocks=q.QUESTIONNAIRE["blocks"],
+        groups=q.QUESTIONNAIRE.get("groups", []), questions=q.QUESTIONNAIRE["questions"],
         answers=answers, complete=q.is_complete(answers, user.is_adult),
         missing=q.missing_required(answers, adult) if user.is_adult is not None else [],
     )
@@ -43,7 +44,7 @@ async def save_answers(db, user: User, body: AnswersIn) -> QuestionnaireOut:
         raise AppError(409, "ABOUT_REQUIRED", "Сначала ответьте, есть ли вам 18.")
     q = questionnaires.current()
     row = await _row(db, user)
-    merged = {**_current_answers(row), **body.answers}
+    merged = dict(body.answers) if body.replace else {**_current_answers(row), **body.answers}
     answers, errors = q.clean(merged, user.is_adult)
     if errors:
         raise validation_error("Проверьте ответы.", {f"answers.{qid}": reason for qid, reason in errors.items()})

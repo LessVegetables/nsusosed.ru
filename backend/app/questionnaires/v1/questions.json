@@ -1,6 +1,6 @@
 {
  "version": 1,
- "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead.",
+ "_note": "Russian wording is verbatim from the questionnaire spec (questionnaire/*.md). Answers are stored as option indices (a list of indices for type=multi), so never reorder or remove options within a version: ship a new version instead. A question with a \"group\" is drawn as one row of that group (see \"groups\"): the group's text is the shared heading, the question's \"label\" names its row, and each option's \"short\" is what fits in a cell. \"text\" stays a complete question for everywhere else.",
  "blocks": [
   {
    "id": "A",
@@ -42,9 +42,9 @@
     "zh": "尼古丁与气味"
    },
    "note": {
-    "ru": "Этот ответ нужен только для подбора по запахам. Его не видят ни другие студенты, ни университет 🔒. Многие используют вейп или снюс — нам важно, чтобы рядом не оказался человек, которому от запаха плохо.",
-    "en": "This answer is only used to match people by smells. Neither other students nor the university can see it 🔒. Many people vape or use snus — what matters to us is that nobody ends up next to someone the smell makes unwell.",
-    "zh": "这个回答只用于按气味进行匹配，其他学生和学校都看不到 🔒。很多人用电子烟或唇烟——我们只想避免把对气味感到不适的人安排在旁边。"
+    "ru": "Этот ответ нужен только для подбора по запахам. Его не видят ни другие студенты, ни университет 🔒. Многие курят или пользуются вейпом — нам важно, чтобы рядом не оказался человек, которому от запаха плохо.",
+    "en": "This answer is only used to match people by smells. Neither other students nor the university can see it 🔒. Many people smoke or vape — what matters to us is that nobody ends up next to someone the smell makes unwell.",
+    "zh": "这个回答只用于按气味进行匹配，其他学生和学校都看不到 🔒。很多人吸烟或用电子烟——我们只想避免把对气味感到不适的人安排在旁边。"
    }
   },
   {
@@ -72,6 +72,16 @@
    }
   }
  ],
+ "groups": [
+  {
+   "id": "bedtime",
+   "text": {
+    "ru": "Во сколько ты обычно ложишься спать — выключаешь свет и экран?",
+    "en": "What time do you usually go to bed — lights and screen off?",
+    "zh": "你通常几点睡觉（关灯、放下手机）？"
+   }
+  }
+ ],
  "questions": [
   {
    "id": "A1",
@@ -79,36 +89,77 @@
    "type": "single",
    "required": true,
    "hidden": false,
+   "group": "bedtime",
    "text": {
     "ru": "Во сколько ты обычно ложишься спать — выключаешь свет и экран — перед учебным днём?",
     "en": "What time do you usually go to bed — lights and screen off — before a class day?",
     "zh": "上课日的前一晚，你通常几点睡觉（关灯、放下手机）？"
    },
+   "label": {
+    "ru": "Перед учебным днём",
+    "en": "Before a class day",
+    "zh": "上课日前一晚"
+   },
    "options": [
     {
      "ru": "До 23:00",
      "en": "Before 23:00",
-     "zh": "23:00 之前"
+     "zh": "23:00 之前",
+     "short": {
+      "ru": "до 23",
+      "en": "<23",
+      "zh": "23前"
+     }
     },
     {
      "ru": "23:00–23:59",
      "en": "23:00–23:59",
-     "zh": "23:00–23:59"
+     "zh": "23:00–23:59",
+     "short": {
+      "ru": "23–00",
+      "en": "23–00",
+      "zh": "23–00"
+     }
     },
     {
      "ru": "00:00–00:59",
      "en": "00:00–00:59",
-     "zh": "00:00–00:59"
+     "zh": "00:00–00:59",
+     "short": {
+      "ru": "00–01",
+      "en": "00–01",
+      "zh": "00–01"
+     }
     },
     {
      "ru": "01:00–01:59",
      "en": "01:00–01:59",
-     "zh": "01:00–01:59"
+     "zh": "01:00–01:59",
+     "short": {
+      "ru": "01–02",
+      "en": "01–02",
+      "zh": "01–02"
+     }
     },
     {
-     "ru": "02:00 или позже",
-     "en": "02:00 or later",
-     "zh": "02:00 或更晚"
+     "ru": "02:00–02:59",
+     "en": "02:00–02:59",
+     "zh": "02:00–02:59",
+     "short": {
+      "ru": "02–03",
+      "en": "02–03",
+      "zh": "02–03"
+     }
+    },
+    {
+     "ru": "03:00 или позже",
+     "en": "03:00 or later",
+     "zh": "03:00 或更晚",
+     "short": {
+      "ru": "03+",
+      "en": "03+",
+      "zh": "03+"
+     }
     }
    ]
   },
@@ -118,36 +169,77 @@
    "type": "single",
    "required": true,
    "hidden": false,
+   "group": "bedtime",
    "text": {
     "ru": "А перед выходным, когда утром никуда не надо?",
     "en": "And before a day off, when you don't have to be anywhere in the morning?",
     "zh": "那休息日的前一晚、早上不用出门的时候呢？"
    },
+   "label": {
+    "ru": "Перед выходным",
+    "en": "Before a day off",
+    "zh": "休息日前一晚"
+   },
    "options": [
     {
-     "ru": "До 00:00",
-     "en": "Before 00:00",
-     "zh": "00:00 之前"
+     "ru": "До 23:00",
+     "en": "Before 23:00",
+     "zh": "23:00 之前",
+     "short": {
+      "ru": "до 23",
+      "en": "<23",
+      "zh": "23前"
+     }
+    },
+    {
+     "ru": "23:00–23:59",
+     "en": "23:00–23:59",
+     "zh": "23:00–23:59",
+     "short": {
+      "ru": "23–00",
+      "en": "23–00",
+      "zh": "23–00"
+     }
     },
     {
      "ru": "00:00–00:59",
      "en": "00:00–00:59",
-     "zh": "00:00–00:59"
+     "zh": "00:00–00:59",
+     "short": {
+      "ru": "00–01",
+      "en": "00–01",
+      "zh": "00–01"
+     }
     },
     {
      "ru": "01:00–01:59",
      "en": "01:00–01:59",
-     "zh": "01:00–01:59"
+     "zh": "01:00–01:59",
+     "short": {
+      "ru": "01–02",
+      "en": "01–02",
+      "zh": "01–02"
+     }
     },
     {
      "ru": "02:00–02:59",
      "en": "02:00–02:59",
-     "zh": "02:00–02:59"
+     "zh": "02:00–02:59",
+     "short": {
+      "ru": "02–03",
+      "en": "02–03",
+      "zh": "02–03"
+     }
     },
     {
      "ru": "03:00 или позже",
      "en": "03:00 or later",
-     "zh": "03:00 或更晚"
+     "zh": "03:00 或更晚",
+     "short": {
+      "ru": "03+",
+      "en": "03+",
+      "zh": "03+"
+     }
     }
    ]
   },
@@ -519,11 +611,6 @@
      "zh": "加热烟草（烟弹）"
     },
     {
-     "ru": "Снюс или никотиновые паучи",
-     "en": "Snus or nicotine pouches",
-     "zh": "唇烟或尼古丁袋"
-    },
-    {
      "ru": "Кальян — только в кальянной или в гостях",
      "en": "Hookah — only at a hookah bar or at someone's place",
      "zh": "水烟——只在水烟馆或别人家"
@@ -537,7 +624,7 @@
    "adult_only": true,
    "exclusive": [
     0,
-    6
+    5
    ],
    "hint": {
     "ru": "Можно выбрать несколько. Если выберешь «Не хочу отвечать», мы не будем предлагать тебя тем, кому от запахов плохо.",
@@ -552,9 +639,9 @@
    "required": true,
    "hidden": true,
    "text": {
-    "ru": "Через сколько времени после пробуждения тебе обычно хочется первой затяжки или пакетика?",
-    "en": "How soon after waking up do you usually want your first puff or pouch?",
-    "zh": "醒来后多久，你通常会想吸第一口或用第一袋？"
+    "ru": "Через сколько времени после пробуждения тебе обычно хочется первой затяжки?",
+    "en": "How soon after waking up do you usually want your first puff?",
+    "zh": "醒来后多久，你通常会想吸第一口？"
    },
    "options": [
     {
@@ -590,8 +677,7 @@
      1,
      2,
      3,
-     4,
-     5
+     4
     ]
    }
   },

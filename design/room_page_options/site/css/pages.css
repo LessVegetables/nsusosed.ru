@@ -1,0 +1,267 @@
+/* Page-level layout only. Colors, fonts and sizes come from nsusosed.css tokens
+   (design/README.md, section 15). One file for the whole site: it is small. */
+
+@layer pages {
+  /* Pages are translated by script. Until that's done, keep the Russian defaults out of
+     sight so English and Chinese readers don't see them flash (2s safety net below). */
+  html:not([data-ready]) body { visibility: hidden; animation: reveal 0s 2s forwards; }
+  @keyframes reveal { to { visibility: visible; } }
+
+  /* Footer sits at the bottom even on short pages. */
+  body { min-height: 100dvh; display: flex; flex-direction: column; }
+  main { flex: 1; }
+  .site-footer { margin-top: 0; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); }
+  .site-footer a { font-weight: var(--w-bold); }
+
+  /* Landing */
+  .hero { display: grid; gap: var(--gap); align-content: start; padding-top: var(--gap); }
+  .hero .lead { margin: 0; }
+
+  /* Login: one narrow column; the three steps replace each other. */
+  .login { max-width: 520px; display: grid; gap: var(--gap); }
+  /* The login page's padding takes only the height a screen has to spare (none on a 600px one,
+     the usual --page-y, 32px, from about 730px up), so on a phone the form and the footer both fit and
+     nothing slides. A screen still too short simply scrolls. Not on join.html, which shares
+     the .login layout but has no #step-email. */
+  .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--page-y)); }
+  /* Step headings one size down from a page title, so "С возвращением!" stays on one line in
+     the narrow column (down to a 320px screen). */
+  .login:has(#step-email) .title { font-size: var(--fs-question); }
+  .login form { display: grid; gap: 16px; justify-items: start; }
+  .login form > * { margin: 0; }
+  .login form > :is(.field, .code, .note) { justify-self: stretch; }
+  /* The buttons share the form's full width; with two (← back, go on) they split it evenly. */
+  .login form > .actions { justify-self: stretch; display: flex; gap: 14px; }
+  .login .actions .btn { flex: 1; justify-content: center; }
+  /* Email: the field box holds the input plus a gray "@g.nsu.ru" at its right edge, so a bare
+     name is enough. The suffix hides once the user types an "@" of their own. */
+  .suffix-field {
+    display: flex; align-items: center; margin-top: 8px;
+    border: var(--border); border-radius: var(--r); background: var(--surface); box-shadow: inset 3px 3px 0 var(--inset-shade);
+  }
+  .suffix-field:focus-within { background: var(--field-focus); box-shadow: var(--sh); }
+  .suffix-field:has([aria-invalid="true"]) { background: var(--error-soft); }
+  .field .suffix-field input { flex: 1; min-width: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
+  .suffix-field .suffix {
+    padding-right: 14px; white-space: nowrap; font: var(--w-bold) 18px var(--mono);
+    color: color-mix(in srgb, var(--text) 45%, transparent);
+  }
+  .suffix-field .suffix[hidden] { display: none; }
+  .hint { font-size: var(--fs-small); font-weight: var(--w-body); }
+
+  /* Landing: the "not a student?" box */
+  .about { display: grid; gap: 14px; justify-items: start; }
+  .about > * { margin: 0; }
+  .about p { max-width: 46em; }
+
+  /* Account: boxes in one column on phones, two on wide screens (not one stretched column). */
+  .account { display: grid; gap: var(--gap); }
+  .account .title { margin-top: 10px; }
+  .account-grid { display: grid; gap: var(--gap); align-items: start; }
+  .account-side { display: grid; gap: var(--gap); }
+  @media (min-width: 961px) { .account-grid { grid-template-columns: 1fr 1fr; } }
+  .account-grid .box { display: grid; gap: 16px; justify-items: start; }
+  .account-grid .box > * { margin: 0; }
+  .account-grid .box > :is(.field, .note, fieldset, #contact-fields) { justify-self: stretch; }
+  .account-grid fieldset { border: 0; padding: 0; min-width: 0; display: grid; gap: 10px; }
+  .account-grid legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .account-grid .opts button { padding: 14px; font-size: var(--fs-body); }
+  .account-grid .field .tag { margin-left: 8px; padding: 3px 7px; }
+  .account-grid .field textarea { resize: vertical; }
+
+  /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
+     fieldsets inside them. A strip of question cells sticks under the header; on the first visit
+     a bar with the "Done" button sits after the last block (on phones just a full-width button). */
+  .qpage { max-width: 760px; }
+  .qstrip-bar {
+    position: sticky; top: var(--header-h, 0px); z-index: 25;
+    border-bottom: var(--border);
+    transition: opacity .15s, visibility .15s;
+  }
+  .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }
+  @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
+  @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
+  .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
+  .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
+  .qpage form, .qpage #blocks { display: grid; gap: var(--gap); }
+  .qintro { display: grid; gap: 12px; justify-items: start; }
+  .qintro > * { margin: 0; }
+  .qblock { display: grid; gap: 24px; }
+  .qblock > * { margin: 0; }
+  .qblock > h2 { font-size: var(--fs-panel); }
+  .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
+  .qblock fieldset > * { margin: 0; }
+  .qblock :is(legend, .qgroup-title) { padding: 0; margin-bottom: 4px; font-size: var(--fs-card); font-weight: var(--w-semibold); line-height: 1.25; letter-spacing: -.01em; }
+  .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
+  .qblock .opts { grid-template-columns: 1fr; gap: 8px; }
+  .qblock .opts button { padding: 11px 12px; font-size: var(--fs-body); }
+  .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
+  /* Short answers (counts like "0–1", "2–3") sit side by side. On phones four don't fit
+     ("4 or more" overflows), so four or more go two by two; three still share a row. */
+  .qblock .opts[data-row] { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  @media (max-width: 640px) {
+    .qblock .opts[data-row]:has(> :nth-child(4)) { grid-template-columns: 1fr 1fr; grid-auto-flow: row; }
+  }
+  #intent { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { #intent { grid-template-columns: 1fr; } }
+  /* A group of questions on one axis (the two bedtimes): the label beside its scale, the
+     label column as wide as the longest label so the scales line up; on phones the label goes on top. */
+  .qgroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 14px; align-items: center; }
+  .qgroup > * { margin: 0; }
+  .qgroup-title { grid-column: 1 / -1; }
+  .qrow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 8px; }
+  .qrow > * { margin: 0; }
+  .qrow-label { font-weight: var(--w-bold); }
+  .qrow > .note { grid-column: 1 / -1; }
+  @media (max-width: 640px) {
+    .qgroup { grid-template-columns: minmax(0, 1fr); row-gap: 14px; }
+    .qrow { row-gap: 6px; }
+  }
+  .qbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; }
+  .qbar .qstrip { flex: 1; min-width: 0; }
+  .qbar .btn { white-space: nowrap; }
+  /* Phones: no bar, only the buttons, full width under the last block (a link button goes last). */
+  @media (max-width: 640px) {
+    .qbar { display: contents; }
+    .qbar .qstrip { display: none; }
+    .qbar .linkbtn { order: 1; justify-self: center; min-height: 44px; }
+  }
+  .solo-panel { display: grid; gap: 16px; justify-items: start; }
+  .solo-panel > * { margin: 0; }
+  .solo-panel .opts { justify-self: stretch; }
+  @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
+
+  /* Faculty picker (questionnaire, account; js/faculty.js). On phones the closed select shows
+     only the abbreviation ("ММФ"): its own text is made invisible and a label is laid over it.
+     The open list is the native one, so it keeps the full names. */
+  .short-select { display: grid; margin-top: 8px; }
+  .short-select > * { grid-area: 1 / 1; }
+  .field .short-select select { margin-top: 0; }
+  .short-select-label { display: none; }
+  @media (max-width: 640px) {
+    .field .short-select select { -webkit-text-fill-color: transparent; }
+    .short-select option { -webkit-text-fill-color: currentColor; }
+    .short-select-label {
+      display: block; align-self: center; min-width: 0; pointer-events: none;
+      padding: 0 40px 0 calc(14px + var(--line-w)); /* the select's padding + border; 40px clears the arrow */
+      font: var(--w-bold) 18px var(--mono); /* same as .field select */
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+  }
+
+  /* My home: same single column as the questionnaire. */
+  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
+  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
+  .hpage #status { gap: 10px; }
+  .hpage #status:empty { display: none; }
+  .hblock { display: grid; gap: 18px; }
+  .hblock > * { margin: 0; }
+  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
+  .hblock fieldset > * { margin: 0; }
+  .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
+  .hblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .hblock .opts.results { grid-template-columns: 1fr; }
+  .hblock .field textarea { resize: vertical; }
+  .hblock .note[data-error] { margin-top: 8px; }
+  /* Dorm room: the number, then the letter button (?, Б, М, blank) on its right. */
+  .room-field { display: flex; gap: 10px; margin-top: 8px; }
+  .field .room-field input { flex: 1; min-width: 0; margin-top: 0; }
+  .room-field .room-letter {
+    flex: 0 0 3.2em; padding: 0; cursor: pointer;
+    border: var(--border); border-radius: var(--r); background: var(--surface); color: var(--text);
+    font: var(--w-bold) 18px var(--mono); box-shadow: var(--sh);
+  }
+  .room-field .room-letter:focus-visible { background: var(--field-focus); }
+  .room-field .room-letter:disabled { cursor: default; box-shadow: none; }
+  /* Three emojis: the field and the dice button share the row equally. */
+  .emoji-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+  .field .emoji-field input { margin-top: 0; }
+  .emoji-field .btn { padding-inline: 14px; white-space: nowrap; }
+  .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
+  .row.spread { justify-content: space-between; }
+  .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+  .resident { display: grid; gap: 10px; padding: 14px; border: var(--border-thin); border-radius: var(--r-sm); }
+  .resident > * { margin: 0; }
+  .resident .tag { margin-left: 8px; padding: 3px 7px; }
+  .rights { display: grid; gap: 8px; }
+  .invite-fresh { display: grid; gap: 10px; }
+  .invite-fresh > * { margin: 0; }
+  .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .hblock .opts.three { grid-template-columns: repeat(3, 1fr); }  /* a scale reads in one row */
+  /* Phones: one answer per row; a .slim scale becomes three slim rows. */
+  @media (max-width: 640px) {
+    .hblock .opts, .hblock .opts.three { grid-template-columns: 1fr; }
+    .hblock .opts.slim { gap: 8px; }
+    .hblock .opts.slim button { padding: 9px 14px; }
+  }
+
+  /* Feed */
+  /* Phones: the two tabs get a row of their own under the heading and share it equally. */
+  @media (max-width: 640px) {
+    .shead > .tabs { flex: 0 0 100%; flex-wrap: nowrap; }
+    .shead > .tabs [role="tab"] { flex: 1; }
+  }
+  .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
+  .feed-more:empty { display: none; }
+  .card .top { overflow: hidden; }
+  .card .cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .card .top > :not(.cover) { position: relative; }
+  .card .emoji { font-size: var(--fs-card); }
+  .card .body > * { margin: 0; }
+  .empty { display: grid; gap: 10px; }
+  .empty > * { margin: 0; }
+
+  /* Room page */
+  .rpage { display: grid; gap: var(--gap); }
+  .rpage > * { margin: 0; min-width: 0; }
+  .listing.single { grid-template-columns: minmax(0, 640px); }
+  .info { display: grid; gap: 14px; justify-items: start; }
+  .info > * { margin: 0; }
+  .info > :is(.facts, .contact-box, .note, .stack) { justify-self: stretch; }
+  .info .title { font-size: var(--fs-panel); }
+  .info .facts b { font-size: var(--fs-body); }
+  .rpage .breakdown { margin-top: 0; }
+  .rblock { display: grid; gap: 12px; }
+  .rblock > * { margin: 0; }
+  .rblock > h2:not(.title) { font-size: var(--fs-panel); }
+  .prewrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .resident-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+  .resident-card { display: grid; gap: 12px; align-content: start; }
+  .resident-card > * { margin: 0; }
+  .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
+  .resident-card .meta { margin: 0; }
+  /* Answers compared with the viewer's own (js/pages/room.js, compare()). A row is the question,
+     a strip with one cell per answer option (theirs blue, mine yellow, so the distance between
+     the two is visible at a glance), then both answers with a tag in the same color. */
+  .cmp-wrap, .cmp-group { display: grid; gap: 10px; }
+  .cmp-wrap > *, .cmp-group > * { margin: 0; }
+  .more[open] > .cmp-group { margin-top: 12px; }
+  .cmp-head { display: flex; align-items: center; gap: 8px; }
+  .cmp { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .cmp-row { display: grid; gap: 6px; padding-top: 12px; border-top: var(--border-thin); }
+  .cmp-row > * { margin: 0; font-size: var(--fs-small); }
+  .cmp-q { font-weight: var(--w-heavy); }
+  .cmp-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: var(--border-thin); border-radius: var(--r-xs); overflow: hidden; }
+  .cmp-track i { height: 12px; background: var(--surface); }
+  .cmp-track i + i { border-left: var(--border-thin); }
+  .cmp-a { display: flex; gap: 8px; align-items: baseline; }
+  .cmp-who { flex: none; padding: 2px 6px; border: var(--border-thin); border-radius: var(--r-xs); color: var(--on-fill); font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  .cmp [data-who="them"] { background: var(--info); }
+  .cmp [data-who="me"] { background: var(--primary); }
+  /* The button that reveals the contacts fills the panel's width. */
+  .info .stack > .btn { display: flex; width: 100%; }
+  .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  .contact-box > div + div { margin-top: 10px; }
+
+  /* Privacy and other documents */
+  .doc { max-width: 760px; }
+  .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }
+  .doc li { margin-bottom: 8px; }
+
+  /* 404 and other one-box pages */
+  .solo { max-width: 560px; margin: 0 auto; }
+  .solo .box { display: grid; gap: 16px; justify-items: start; }
+  .solo h1 { margin: 0; }
+  .solo p { margin: 0; }
+}

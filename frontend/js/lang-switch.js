@@ -1,4 +1,5 @@
-// The RU / EN / 中文 switch. It appears on three pages only: landing, login, account.
+// The RU / EN / 中文 switch. It appears on three pages only: in the header of the landing and login
+// pages (layout.js), and on the account page.
 // What a pick does besides re-translating the page is up to the page (onPick):
 // the landing and login pages remember it for this tab, the account page saves it to the account.
 

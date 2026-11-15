@@ -22,6 +22,7 @@ class Home(Base):
     __tablename__ = "homes"
     __table_args__ = (
         CheckConstraint("kind IN ('dorm', 'apartment')", name="ck_homes_kind"),
+        CheckConstraint("sunlight IN ('sunny', 'partial', 'shady')", name="ck_homes_sunlight"),
         # A dorm room can be listed once. room_label never leaves the server.
         Index("uq_homes_dorm_room", "building", "room_label", unique=True, postgresql_where=text("kind = 'dorm'")),
     )
@@ -29,10 +30,13 @@ class Home(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # How much sun gets in: sunny | partial | shady. Required in the form; NULL only for homes
+    # listed before the question existed.
+    sunlight: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
-    # Dorm: building id from config/dorms.json (shown) and the room as residents say it,
-    # "200", "100б", "100м" (hidden; only for the duplicate check).
+    # Dorm: building id from config/dorms.json (shown) and the room: "200", "100b" (Б), "100m" (М)
+    # (hidden; only for the duplicate check).
     building: Mapped[str | None] = mapped_column(String(20), nullable=True)
     room_label: Mapped[str | None] = mapped_column(String(10), nullable=True)
 

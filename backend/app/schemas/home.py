@@ -15,12 +15,14 @@ MAX_ROOMS = 6
 # the server only checks the result is plausible and inside the Novosibirsk area.
 RADIUS_MIN_M, RADIUS_MAX_M = 300, 500
 LAT_RANGE, LON_RANGE = (54.5, 55.4), (82.3, 83.9)
-_ROOM_LABEL = re.compile(r"^[0-9a-zа-яё/\-]{1,10}$")
+# A dorm room: a number from 100 to 999, then the block letter Б or М, if any. Stored with a
+# Latin b/m ("100", "100b", "100m"); those are the only forms there are.
+_ROOM_LABEL = re.compile(r"^[1-9][0-9]{2}[bm]?$")
 
 
 def normalize_room_label(value: str) -> str:
-    """ "100 Б" → "100б": one spelling per room, so the duplicate check works."""
-    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", value)).lower()
+    """ "100 Б" → "100b": one spelling per room, so the duplicate check works."""
+    return re.sub(r"\s+", "", unicodedata.normalize("NFKC", value)).lower().translate(str.maketrans("бм", "bm"))
 
 
 class RoomIn(BaseModel):
@@ -52,6 +54,8 @@ class RoomIn(BaseModel):
 class HomeIn(BaseModel):
     kind: Literal["dorm", "apartment"]
     description: str = Field(default="", max_length=1000)
+    # How much sun gets in. Optional in the type so a missing answer gets the usual REQUIRED.
+    sunlight: Optional[Literal["sunny", "partial", "shady"]] = None
     rooms: list[RoomIn] = Field(..., min_length=1, max_length=MAX_ROOMS)
 
     # Dorm. room_label may be left out when editing: the stored one is kept.
@@ -75,6 +79,10 @@ class HomeIn(BaseModel):
     @model_validator(mode="after")
     def check(self) -> "HomeIn":
         errors: dict[str, str] = {}
+        if self.sunlight is None:
+            errors["sunlight"] = "REQUIRED"
+        if not self.description:
+            errors["description"] = "REQUIRED"
         if self.kind == "dorm":
             if self.building not in DORM_IDS:
                 errors["building"] = "UNKNOWN_DORM" if self.building else "REQUIRED"
@@ -114,6 +122,8 @@ class HomeIn(BaseModel):
             for i, room in enumerate(self.rooms):
                 if room.rent_rub is None:
                     errors[f"rooms.{i}.rent_rub"] = "REQUIRED"
+                if not room.name:
+                    errors[f"rooms.{i}.name"] = "REQUIRED"
             self.building = self.room_label = None
         keys = [emoji_util.normalize(r.emoji)[1] for r in self.rooms]
         for i, key in enumerate(keys):
@@ -209,6 +219,7 @@ class HomeOut(BaseModel):
     id: UUID
     kind: str
     description: str
+    sunlight: Optional[str] = None
     building: Optional[str] = None
     district: Optional[str] = None
     # Dorm: the building's exact point, radius 0 (None until the building list has coordinates).
@@ -226,6 +237,7 @@ class HomeOut(BaseModel):
     # What still keeps seekers from seeing this home.
     needs_contact: bool      # no host has a phone, Telegram or VK yet
     needs_free_place: bool   # every room is full
+    needs_photo: bool        # no photos yet
     visible: bool
 
 

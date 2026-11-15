@@ -8,4 +8,4 @@ All UI work follows the design system in [`design/`](design/README.md). Before w
 - Page-specific CSS goes in `@layer pages { … }`. No inline styles or scripts (strict CSP).
 - Check light and dark (dark = "Dark 3 · light cards") and a 375px-wide screen.
 
-The current `frontend/` is going to be deleted and rewritten from scratch. Don't adapt the design to it. The new site has Russian, English and Chinese, and light and dark themes.
+`frontend/` is the site, built on this design system (see `frontend/README.md` for its structure and rules). It has Russian, English and Chinese, and light and dark themes.

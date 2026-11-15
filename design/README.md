@@ -7,6 +7,7 @@ The visual language for the rewritten nsusosed.ru: thick black outlines, hard sh
 | `README.md` | This spec: the rules and the reasons behind them |
 | [`nsusosed.css`](nsusosed.css) | **The one stylesheet.** Tokens at the top, then base styles, components and utilities |
 | [`specimen.html`](specimen.html) | Every token and component on one page, with theme and RU/EN/中文 switches |
+| [`logo-icon.svg`](logo-icon.svg) | The logo icon for the phone header (a copy of `frontend/img/logo-icon.svg`) |
 | `specimen.css`, `specimen.js` | Layout and behavior for the specimen page only (not part of the system) |
 
 To view the specimen, serve this folder and open `specimen.html` (opening the file directly won't run its script):
@@ -38,7 +39,7 @@ Everything that defines the look lives in **section 1 of `nsusosed.css`** as CSS
 | Shadow depth | `--depth-sm`, `--depth`, `--depth-lg` |
 | The playful tilts | `--tilt-logo`, `--tilt-highlight`, `--tilt-badge`, `--tilt-unfit`, `--tilt-toast` (0deg = straight) |
 | Button movement | `--hover-lift` (0px = buttons don't move), `--press-depth`, `--press` (speed) |
-| Page width, gutters, section spacing | `--wrap`, `--gutter`, `--section-y`, `--gap` |
+| Page width, gutters, section spacing | `--wrap`, `--gutter`, `--section-y`, `--page-y`, `--gap` |
 
 Component internals (a card's 16px padding, a chip's 3px × 8px) are deliberately not tokens: they are details of one component, not design decisions, and making everything a token would make the file harder to read than the 30-stylesheet setup it's meant to replace.
 
@@ -53,7 +54,7 @@ Component internals (a card's 16px padding, a chip's 3px × 8px) are deliberatel
 
 Loud, friendly and very clear. Blocks look like stickers cut from colored paper and stuck on graph paper. It should feel like a student project done with confidence, not like a bank or a startup dashboard. Decoration never gets in the way of understanding what the service does: when the demo's hero collage of overlapping cards confused people on phones, it was replaced by one clean card.
 
-1. **Every block is a box.** Outline 3px, radius 10px, hard shadow 5px down-right with no blur. No soft shadows, gradients or glass.
+1. **Every block is a box.** Outline 3px, radius 10px, hard shadow 2px down-right with no blur. No soft shadows, gradients or glass.
 2. **Color is a flat fill, and text on a fill is black.** Fill colors are never text colors (red text on white is only 2.8:1).
 3. **Color has fixed meanings.** Green = matches, yellow = partly matches, red = doesn't match / error. Always say it in words too ("совпадает", "немного отличается"), never color alone.
 4. **Heavy type.** Rubik 800–900 for headings and buttons; JetBrains Mono in uppercase for labels, meta lines and anything typed (email, code).
@@ -90,6 +91,7 @@ All pass WCAG AAA (7:1) with black text. Components use the meanings, not the ra
 | `--black` / `--on-black` | `#000` / yellow | Always-black badges: ticker, % badge, timer, slider readout, selected tab |
 | `--soft` | `#fff4c2` | Warning notes |
 | `--unfit` / `--unfit-2` | `#eee` / `#ddd` | Cards that don't fit (striped top) |
+| `--hover-fill` | = `--unfit` | Header nav item under the cursor (the current page stays yellow) |
 | `--field-focus` / `--error-soft` | `#fffbe0` / `#ffe3e3` | Focused / invalid text field |
 
 Splitting "text" from "edge" (and "page text" from "text on surfaces") is what lets a dark theme keep black outlines with cream text, or dark text on light cards over a dark page.
@@ -115,15 +117,16 @@ All three keep the color fills unchanged with black text, and every text pair is
 | Display (hero) | `.display` | `--fs-display` 42–84px | 900 | .95 | Sentence |
 | Section title | `.title` | `--fs-title` 32–54px | 900 | 1 | Sentence |
 | Question | `.question` | `--fs-question` 26–40px | 900 | 1.05 | Sentence |
-| Panel heading | `.auth h3`, `.info h3` | `--fs-panel` 30px | 900 | 1.05 | Sentence |
-| Card title | `.card h3` | `--fs-card` 22px | 900 | 1.1 | Sentence |
+| Panel heading | `.auth h3`, `.info h3` | `--fs-panel` 30px (24px on phones) | 900 | 1.05 | Sentence |
+| Card title | `.card h3` | `--fs-card` 22px (18px on phones) | 900 | 1.1 | Sentence |
 | Lead | `.lead` | `--fs-lead` 19px | 500 | 1.5 | Sentence |
 | Body | (default) | `--fs-body` 16px | 500 | 1.5 | Sentence |
+| Answer option | `.opts button` | 18px (16px in the lifestyle blocks) | 500 | — | Sentence |
 | Button | `.btn` | 16px | 800 | — | UPPERCASE (CSS) |
 | Tag / meta | `.tag`, `.meta` | `--fs-label` 12px mono | 700 | 1 | UPPERCASE (CSS) |
 | Big number | `.big-pct` | `--fs-number` 64px | 900 | 1 | — |
 
-Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels use `--track-caps` (.06em).
+Answers are regular weight on purpose: they are most of the text on the questionnaire, and in bold nothing on screen reads as plain text. Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels use `--track-caps` (.06em).
 
 **Writing.** Write every string in sentence case in HTML and translation files; uppercase comes only from CSS. That keeps translations clean, and Chinese has no case anyway. Russian: «ёлочки» quotes, a non-breaking space before ₽ and between a number and its unit (`14 500 ₽`, `4 этаж`), an em dash with spaces.
 
@@ -132,14 +135,14 @@ Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels u
 | Token | Value | Use |
 |---|---|---|
 | `--line-w` | 3px | Box, button, input, tab, card outlines |
-| `--line-w-thin` | 2px | Tags, chips, notes (dashed), facts dividers, toggle chips |
+| `--line-w-thin` | 2px | Tags, chips, notes (dashed), facts dividers, toggle chips, answer options |
 | `--r-xs` / `--r-sm` / `--r` / `--r-lg` / `--r-pill` | 6 / 8 / 10 / 12 / 999px | Chips & checkboxes / notes, photos, logo / boxes, buttons, inputs / headline highlight / tags |
-| `--sh-sm` / `--sh` / `--sh-lg` | 3 / 5 / 8px down-right | Tabs, pager, toggles / boxes, buttons, options / hovered cards, toast |
+| `--sh-sm` / `--sh` / `--sh-lg` | 1 / 2 / 3px down-right (`--depth-sm` / `--depth` / `--depth-lg`; were 3 / 5 / 8px) | Tabs, pager, toggles / boxes, buttons, options / hovered cards, toast |
 
 ## 6. Layout and spacing
 
 - Container `.wrap`: max `--wrap` 1180px, side padding `--gutter` 20px (16px on phones).
-- Sections: `--section-y` 56px top and bottom. Section header `.shead`: eyebrow tag + title, actions (tabs) on the right.
+- Sections: `--section-y` 56px top and bottom; a page's first block (`main > .section:first-child`) uses `--page-y` 32px instead. Section header `.shead`: eyebrow tag + title, actions (tabs) on the right.
 - Gaps: cards `--gap` 24px · steps 20px · options and button rows 14px · chips 6px · inside a box 16–24px.
 - Breakpoints: **960px** (listing and auth stack; cards 2 columns; steps 2×2) and **640px** (everything single column, header nav hidden).
 
@@ -156,9 +159,9 @@ Headings use tight tracking (`--track-tight`, −.03em); uppercase mono labels u
 | What | How |
 |---|---|
 | Button hover | Lifts `--hover-lift` (2px) up-left; its shadow grows to match. Only on devices with a real pointer (`@media (hover: hover)`), so taps don't leave buttons stuck "lifted" |
-| Button press | Sinks `--press-depth` (5px) into its shadow; shadow disappears. 80ms |
+| Button press | Sinks `--press-depth` (= `--depth`, 2px) into its shadow; shadow disappears. 80ms |
 | Selected option or tab | Stays pressed in |
-| Card hover | Lifts `--card-lift` (3px); shadow grows to 8px |
+| Card hover | Lifts `--card-lift` (3px); shadow grows to `--depth-lg` (3px) |
 | Toast | Pops in with an overshoot, 0.4s |
 | Ticker | Marquee, 26s per loop |
 
@@ -180,7 +183,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Chips | `.chips > .chip.match / .partial / .mismatch` | One per questionnaire topic on a match card |
 | Note | `.note`, `.note.error`, `.note.success` | Dashed. Start with ⚠, ✕ or ✓ |
 | Headline highlight | `<mark class="highlight">` | Yellow tilted block behind a key phrase |
-| Header | `.site-header > .wrap > .logo + .site-nav + .btn` | Sticky. Current page: `aria-current="page"` |
+| Header | `.site-header > .wrap > .logo + .site-nav + .btn` | Sticky. Logo left, nav centered, action right. Current page: `aria-current="page"`. Logged in: `.logo + .logo-icon + .site-nav + .tabbar`, Account is the last nav item |
 | Ticker | `.ticker > div > span…` | Repeat items twice for a seamless loop; `aria-hidden="true"` |
 | Tabs | `.tabs[role=tablist] > [role=tab][aria-selected]` | Selected: black with yellow text, pressed in |
 | Checkbox | `<label class="check"><input type="checkbox"><span>…</span></label>` | Yellow with ✓ when checked |
@@ -195,7 +198,9 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Contacts | `.contact-box` | Green; shown after "Показать контакты" |
 | Breakdown | `.breakdown > div.match / .partial / .mismatch > small` | One tile per topic, with words |
 | Questionnaire | `.box.quiz > .quiz-top + .question + .opts + .sub + .hard + .qnav` | Purple panel; progress `.prog > i.done / i.now / i` |
-| Options | `.opts[data-choice=single] > button[aria-pressed]` | Chosen: yellow, pressed in, black dot |
+| Options | `.opts[data-choice=single] > button[aria-pressed]` | 2px outline, 1px shadow (lighter than the panel around them). Chosen: yellow, pressed in, black dot. Disabled (NEW): 50% opacity |
+| Scale (NEW) | `.scale > button[aria-pressed]` | Options that are steps on one axis (bedtime hours): one outlined bar of equal cells with short mono labels (`до 23`, `23–00`, …); the full text goes in `aria-label` and `title`. Stacked scales line up cell for cell. Chosen: yellow, pressed in |
+| Question strip (NEW, proposal) | `nav.qstrip > button[data-state]` | One square cell per question, no gaps; click jumps to it. Empty = not answered, `done` purple, `off` gray stripes (doesn't apply), `missing` red (required and still empty). Hover: header-nav gray. `.flush`: a full-width band of 21px-tall cells, no outer line |
 | Toggle chips | `.tog > button[aria-pressed]` | Multi-select; on = pink |
 | Slider | `.range > input[type=range] + output` | Script sets `--fill` on input |
 | Hard condition | `.box.hard > .check` | Red panel |
@@ -204,13 +209,13 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Footer | `.site-footer` | Yellow band |
 | Row (NEW) | `.row` | Buttons or controls side by side; wraps |
 | Language switch (NEW, proposal) | `.langsw[role=group] > button[aria-pressed]` | RU / EN / 中文; current = black, like a tab. Landing, login and account pages only |
-| Dialog (NEW, proposal) | `dialog.dialog > h2 + p + .row` | Confirmations; opened with `showModal()` |
+| Dialog (NEW, proposal) | `dialog.dialog > h2 + p + .row` | Confirmations; opened with `showModal()`. On phones the buttons stack, full width |
 | Avatar (NEW, proposal) | `img.avatar` or `span.avatar` (first letter) | Square, outlined; blue when there is no photo |
 | More (NEW, proposal) | `details.more > summary + .note` | Fold-out hint under a field |
 | Map (NEW, proposal) | `.map` (Leaflet inside), `.map-pin` | Outlined map block; pink pin; apartment area as a circle |
 | Emoji label (NEW, proposal) | `span.emoji` | The three emojis that identify a listing |
 | Photo grid (NEW, proposal) | `.photos > figure (img + figcaption > button…) + label.upload` | Square thumbnails, first = cover; dashed upload tile |
-| Tab bar (NEW, proposal) | `nav.tabbar > a[aria-current]` | The phone menu: fixed bottom bar at ≤ 640px, current section yellow |
+| Tab bar (NEW, proposal) | `.site-header nav.tabbar > a[aria-current]` | The phone menu at ≤ 640px: inside the header after the logo icon (`a.logo-icon > img`), current section yellow |
 | Skip link (NEW) | `a.skip.btn` | First element in `<body>`; visible on focus |
 | Fills | `.fill-yellow / pink / blue / green / purple / orange / red` | Background + black text, instead of inline styles |
 
@@ -236,7 +241,7 @@ Not designed yet: loading skeletons, empty states ("Нет подходящег�
 - One column, 16px gutters, nothing wider than the screen (`html, body { overflow-x: clip }` stops tilted elements from causing sideways scrolling).
 - No overlapping decoration; anything with `.decor` is hidden at ≤ 640px. One clear card instead of a pile.
 - Tap targets at least 44px (buttons 48px, tabs 44px, toggles 40px with spacing).
-- The header nav is hidden at ≤ 640px; the sections move to the bottom tab bar (`.tabbar`, a proposal).
+- The header nav is hidden at ≤ 640px; the header becomes the logo icon plus the sections as tabs (`.tabbar`, a proposal).
 - Toasts span the width with 16px margins.
 
 ## 11. Languages (RU / EN / 中文)

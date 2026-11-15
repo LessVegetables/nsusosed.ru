@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import mimetypes
 import re
+import sys
 import urllib.error
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -122,6 +123,14 @@ class Handler(BaseHTTPRequestHandler):
             super().log_message(fmt, *args)
 
 
+class Server(ThreadingHTTPServer):
+    def handle_error(self, request, client_address) -> None:
+        """Browsers reset idle keep-alive connections on reload; that's not an error."""
+        if isinstance(sys.exc_info()[1], (ConnectionResetError, BrokenPipeError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--port", type=int, default=8080)
@@ -134,7 +143,7 @@ def main() -> None:
     print(f"nsusosed dev server: http://localhost:{args.port}  (API → {Handler.api})")
     if not Handler.csp:
         print("warning: CSP not found in deploy/nginx/nsusosed.ru.conf; serving without it")
-    ThreadingHTTPServer((args.host, args.port), Handler).serve_forever()
+    Server((args.host, args.port), Handler).serve_forever()
 
 
 if __name__ == "__main__":

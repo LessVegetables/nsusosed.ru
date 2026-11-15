@@ -10,20 +10,44 @@
   /* Footer sits at the bottom even on short pages. */
   body { min-height: 100dvh; display: flex; flex-direction: column; }
   main { flex: 1; }
-  .site-footer { margin-top: 0; }
+  .site-footer { margin-top: 0; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); }
   .site-footer a { font-weight: var(--w-bold); }
 
   /* Landing */
-  .hero { display: grid; gap: var(--gap); align-content: start; }
+  .hero { display: grid; gap: var(--gap); align-content: start; padding-top: var(--gap); }
   .hero .lead { margin: 0; }
-  .hero-top { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; justify-content: space-between; }
 
   /* Login: one narrow column; the three steps replace each other. */
   .login { max-width: 520px; display: grid; gap: var(--gap); }
+  /* The login page's padding takes only the height a screen has to spare (none on a 600px one,
+     the usual --page-y, 32px, from about 730px up), so on a phone the form and the footer both fit and
+     nothing slides. A screen still too short simply scrolls. Not on join.html, which shares
+     the .login layout but has no #step-email. */
+  .login:has(#step-email) { padding-block: clamp(12px, (100dvh - 600px) / 4, var(--page-y)); }
+  /* Step headings one size down from a page title, so "С возвращением!" stays on one line in
+     the narrow column (down to a 320px screen). */
+  .login:has(#step-email) .title { font-size: var(--fs-question); }
   .login form { display: grid; gap: 16px; justify-items: start; }
   .login form > * { margin: 0; }
   .login form > :is(.field, .code, .note) { justify-self: stretch; }
-  .hint { font-size: var(--fs-small); font-weight: var(--w-semibold); }
+  /* The buttons share the form's full width; with two (← back, go on) they split it evenly. */
+  .login form > .actions { justify-self: stretch; display: flex; gap: 14px; }
+  .login .actions .btn { flex: 1; justify-content: center; }
+  /* Email: the field box holds the input plus a gray "@g.nsu.ru" at its right edge, so a bare
+     name is enough. The suffix hides once the user types an "@" of their own. */
+  .suffix-field {
+    display: flex; align-items: center; margin-top: 8px;
+    border: var(--border); border-radius: var(--r); background: var(--surface); box-shadow: inset 3px 3px 0 var(--inset-shade);
+  }
+  .suffix-field:focus-within { background: var(--field-focus); box-shadow: var(--sh); }
+  .suffix-field:has([aria-invalid="true"]) { background: var(--error-soft); }
+  .field .suffix-field input { flex: 1; min-width: 0; margin: 0; border: 0; background: transparent; box-shadow: none; }
+  .suffix-field .suffix {
+    padding-right: 14px; white-space: nowrap; font: var(--w-bold) 18px var(--mono);
+    color: color-mix(in srgb, var(--text) 45%, transparent);
+  }
+  .suffix-field .suffix[hidden] { display: none; }
+  .hint { font-size: var(--fs-small); font-weight: var(--w-body); }
 
   /* Landing: the "not a student?" box */
   .about { display: grid; gap: 14px; justify-items: start; }
@@ -46,31 +70,84 @@
   .account-grid .field textarea { resize: vertical; }
 
   /* Questionnaire: one readable column on every screen; blocks are boxes, questions are
-     fieldsets inside them. The save bar sticks to the bottom so it is always under the thumb. */
+     fieldsets inside them. A strip of question cells sticks under the header; on the first visit
+     a bar with the "Done" button sits after the last block (on phones just a full-width button). */
   .qpage { max-width: 760px; }
-  .qpage form, .qpage #blocks, .qpage #extra-blocks { display: grid; gap: var(--gap); }
+  .qstrip-bar {
+    position: sticky; top: var(--header-h, 0px); z-index: 25;
+    border-bottom: var(--border);
+    transition: opacity .15s, visibility .15s;
+  }
+  .qstrip-bar + .qpage { padding-top: var(--page-y); padding-bottom: var(--page-y); }
+  @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
+  @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
+  .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
+  .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
+  .qpage form, .qpage #blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
   .qintro > * { margin: 0; }
-  .qblock { display: grid; gap: 28px; }
+  .qblock { display: grid; gap: 24px; }
   .qblock > * { margin: 0; }
   .qblock > h2 { font-size: var(--fs-panel); }
   .qblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 12px; }
   .qblock fieldset > * { margin: 0; }
-  .qblock legend { padding: 0; margin-bottom: 12px; font-size: var(--fs-card); font-weight: var(--w-black); line-height: 1.15; letter-spacing: var(--track-tight); }
+  .qblock :is(legend, .qgroup-title) { padding: 0; margin-bottom: 4px; font-size: var(--fs-card); font-weight: var(--w-semibold); line-height: 1.25; letter-spacing: -.01em; }
   .qblock legend .tag { margin-left: 8px; vertical-align: middle; letter-spacing: var(--track-caps); }
-  .qblock .opts { grid-template-columns: 1fr; gap: 10px; }
-  .qblock .opts button { padding: 14px; font-size: var(--fs-body); }
+  .qblock .opts { grid-template-columns: 1fr; gap: 8px; }
+  .qblock .opts button { padding: 11px 12px; font-size: var(--fs-body); }
   .qblock .opts[data-choice="multi"] button::after { border-radius: var(--r-xs); }
-  #about .opts { grid-template-columns: 1fr 1fr; }
-  .qbar { position: sticky; bottom: 12px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; }
-  .qbar-progress { flex: 1; min-width: 0; display: grid; gap: 6px; }
-  .qbar .prog i { height: 10px; min-width: 0; }
+  /* Short answers (counts like "0–1", "2–3") sit side by side. On phones four don't fit
+     ("4 or more" overflows), so four or more go two by two; three still share a row. */
+  .qblock .opts[data-row] { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); }
+  @media (max-width: 640px) {
+    .qblock .opts[data-row]:has(> :nth-child(4)) { grid-template-columns: 1fr 1fr; grid-auto-flow: row; }
+  }
+  #intent { grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { #intent { grid-template-columns: 1fr; } }
+  /* A group of questions on one axis (the two bedtimes): the label beside its scale, the
+     label column as wide as the longest label so the scales line up; on phones the label goes on top. */
+  .qgroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 14px; align-items: center; }
+  .qgroup > * { margin: 0; }
+  .qgroup-title { grid-column: 1 / -1; }
+  .qrow { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; row-gap: 8px; }
+  .qrow > * { margin: 0; }
+  .qrow-label { font-weight: var(--w-bold); }
+  .qrow > .note { grid-column: 1 / -1; }
+  @media (max-width: 640px) {
+    .qgroup { grid-template-columns: minmax(0, 1fr); row-gap: 14px; }
+    .qrow { row-gap: 6px; }
+  }
+  .qbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; }
+  .qbar .qstrip { flex: 1; min-width: 0; }
   .qbar .btn { white-space: nowrap; }
-  .qbar .prog { max-width: none; }
+  /* Phones: no bar, only the buttons, full width under the last block (a link button goes last). */
+  @media (max-width: 640px) {
+    .qbar { display: contents; }
+    .qbar .qstrip { display: none; }
+    .qbar .linkbtn { order: 1; justify-self: center; min-height: 44px; }
+  }
   .solo-panel { display: grid; gap: 16px; justify-items: start; }
   .solo-panel > * { margin: 0; }
   .solo-panel .opts { justify-self: stretch; }
   @media (max-width: 640px) { .solo-panel .opts button { padding: 14px; font-size: var(--fs-body); } }
+
+  /* Faculty picker (questionnaire, account; js/faculty.js). On phones the closed select shows
+     only the abbreviation ("ММФ"): its own text is made invisible and a label is laid over it.
+     The open list is the native one, so it keeps the full names. */
+  .short-select { display: grid; margin-top: 8px; }
+  .short-select > * { grid-area: 1 / 1; }
+  .field .short-select select { margin-top: 0; }
+  .short-select-label { display: none; }
+  @media (max-width: 640px) {
+    .field .short-select select { -webkit-text-fill-color: transparent; }
+    .short-select option { -webkit-text-fill-color: currentColor; }
+    .short-select-label {
+      display: block; align-self: center; min-width: 0; pointer-events: none;
+      padding: 0 40px 0 calc(14px + var(--line-w)); /* the select's padding + border; 40px clears the arrow */
+      font: var(--w-bold) 18px var(--mono); /* same as .field select */
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+  }
 
   /* My home: same single column as the questionnaire. */
   .hpage { max-width: 760px; display: grid; gap: var(--gap); }
@@ -87,6 +164,20 @@
   .hblock .opts.results { grid-template-columns: 1fr; }
   .hblock .field textarea { resize: vertical; }
   .hblock .note[data-error] { margin-top: 8px; }
+  /* Dorm room: the number, then the letter button (?, Б, М, blank) on its right. */
+  .room-field { display: flex; gap: 10px; margin-top: 8px; }
+  .field .room-field input { flex: 1; min-width: 0; margin-top: 0; }
+  .room-field .room-letter {
+    flex: 0 0 3.2em; padding: 0; cursor: pointer;
+    border: var(--border); border-radius: var(--r); background: var(--surface); color: var(--text);
+    font: var(--w-bold) 18px var(--mono); box-shadow: var(--sh);
+  }
+  .room-field .room-letter:focus-visible { background: var(--field-focus); }
+  .room-field .room-letter:disabled { cursor: default; box-shadow: none; }
+  /* Three emojis: the field and the dice button share the row equally. */
+  .emoji-field { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; margin-top: 8px; }
+  .field .emoji-field input { margin-top: 0; }
+  .emoji-field .btn { padding-inline: 14px; white-space: nowrap; }
   .hblock .emoji-input { font-size: var(--fs-badge); letter-spacing: .08em; }
   .row.spread { justify-content: space-between; }
   .residents { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
@@ -97,12 +188,20 @@
   .invite-fresh { display: grid; gap: 10px; }
   .invite-fresh > * { margin: 0; }
   .two-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-  @media (max-width: 640px) { .hblock .opts { grid-template-columns: 1fr; } }
-
-  /* Above the phone tab bar. */
-  @media (max-width: 640px) { body:has(.tabbar) .qbar { bottom: calc(68px + env(safe-area-inset-bottom)); } }
+  .hblock .opts.three { grid-template-columns: repeat(3, 1fr); }  /* a scale reads in one row */
+  /* Phones: one answer per row; a .slim scale becomes three slim rows. */
+  @media (max-width: 640px) {
+    .hblock .opts, .hblock .opts.three { grid-template-columns: 1fr; }
+    .hblock .opts.slim { gap: 8px; }
+    .hblock .opts.slim button { padding: 9px 14px; }
+  }
 
   /* Feed */
+  /* Phones: the two tabs get a row of their own under the heading and share it equally. */
+  @media (max-width: 640px) {
+    .shead > .tabs { flex: 0 0 100%; flex-wrap: nowrap; }
+    .shead > .tabs [role="tab"] { flex: 1; }
+  }
   .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
   .feed-more:empty { display: none; }
   .card .top { overflow: hidden; }
@@ -113,15 +212,42 @@
   .empty { display: grid; gap: 10px; }
   .empty > * { margin: 0; }
 
-  /* Room page */
+  /* Room page: tiles ("bento", design/room_page_options option E). Four columns; the photo tile
+     takes two of them and the three rows of summary tiles beside it. Phones and tablets: two columns. */
   .rpage { display: grid; gap: var(--gap); }
   .rpage > * { margin: 0; min-width: 0; }
-  .listing.single { grid-template-columns: minmax(0, 640px); }
-  .info { display: grid; gap: 14px; justify-items: start; }
-  .info > * { margin: 0; }
-  .info > :is(.facts, .contact-box, .note, .stack) { justify-self: stretch; }
-  .info .title { font-size: var(--fs-panel); }
-  .info .facts b { font-size: var(--fs-body); }
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--gap); }
+  .tile { min-width: 0; display: grid; gap: 12px; align-content: start; }
+  .tile > * { margin: 0; }
+  .t-photo { grid-column: span 2; grid-row: span 3; min-width: 0; align-content: start; }
+  .t-title, .t-cta { grid-column: span 2; justify-items: start; }
+  .t-title .title { font-size: var(--fs-panel); }
+  .t-cta { align-content: space-between; }
+  .t-cta > :is(.stack, .note, .contact-box) { justify-self: stretch; }
+  .t-cta .stack > .btn { display: flex; width: 100%; }
+  .t-num { align-content: center; }
+  .t-num .big-pct.small { font-size: var(--fs-title); }
+  .t-wide { grid-column: 1 / -1; }
+  .t-half { grid-column: span 2; }
+  .t-half > .box { height: 100%; align-content: start; }
+  .bento.no-photo .t-cta { grid-column: 1 / -1; }
+  @media (max-width: 960px) {
+    .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+    .t-photo { grid-row: auto; }
+    .t-half { grid-column: 1 / -1; }
+    .t-num .big-pct { font-size: var(--fs-title); }
+    .t-num .big-pct.small { font-size: var(--fs-panel); }
+  }
+  /* Photo tile: the main photo is a button (opens the viewer) with a counter on it; the
+     thumbnails are one row that scrolls. The padding keeps a lifted thumbnail from being clipped. */
+  .gallery .main-btn { position: relative; display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; }
+  .photo-count { position: absolute; right: 10px; bottom: 10px; padding: 4px 8px; border-radius: var(--r-xs); background: var(--black); color: var(--on-black); font: var(--w-bold) var(--fs-label) var(--mono); }
+  .gallery .thumbs { display: flex; overflow-x: auto; padding: 3px 3px 6px; }
+  .gallery .thumbs button { flex: 0 0 calc((100% - 30px) / 4.4); }
+  .lightbox { width: min(1000px, calc(100vw - 2 * var(--gutter))); padding: 12px; }
+  .lightbox img { display: block; width: 100%; max-height: 72vh; object-fit: contain; margin-bottom: 12px; border: var(--border); border-radius: var(--r-sm); background: var(--unfit); }
+  .lightbox .row { flex-wrap: nowrap; flex-direction: row; align-items: center; }
+  .lightbox .btn { min-width: 48px; padding-inline: 12px; }
   .rpage .breakdown { margin-top: 0; }
   .rblock { display: grid; gap: 12px; }
   .rblock > * { margin: 0; }
@@ -131,13 +257,31 @@
   .resident-card { display: grid; gap: 12px; align-content: start; }
   .resident-card > * { margin: 0; }
   .resident-card h3 { margin: 0 0 4px; font-size: var(--fs-card); }
+  .person-head { flex-wrap: nowrap; }
+  .person-name { flex: 1; min-width: 0; }
+  .person-pct { font-size: var(--fs-card); transform: none; }
   .resident-card .meta { margin: 0; }
-  .compare { display: grid; gap: 12px; }
-  .compare-row { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding-top: 12px; border-top: var(--border-thin); }
-  .compare-row > * { margin: 0; font-size: var(--fs-small); }
-  .compare-q { grid-column: 1 / -1; font-weight: var(--w-heavy); }
-  .compare-row small { display: block; font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
-  .other-rooms { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+  /* Answers compared with the viewer's own (js/pages/room.js, compare()). A row is the question,
+     a strip with one cell per answer option (theirs blue, mine yellow, so the distance between
+     the two is visible at a glance), then both answers with a tag in the same color. */
+  .cmp-wrap, .cmp-group { display: grid; gap: 10px; }
+  .cmp-wrap > *, .cmp-group > * { margin: 0; }
+  .more[open] > .cmp-group { margin-top: 12px; }
+  .cmp-head { display: flex; align-items: center; gap: 8px; }
+  .cmp { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+  .cmp-row { display: grid; gap: 6px; padding-top: 12px; border-top: var(--border-thin); }
+  .cmp-row > * { margin: 0; font-size: var(--fs-small); }
+  .cmp-q { font-weight: var(--w-heavy); }
+  .cmp-track { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: var(--border-thin); border-radius: var(--r-xs); overflow: hidden; }
+  .cmp-track i { height: 12px; background: var(--surface); }
+  .cmp-track i + i { border-left: var(--border-thin); }
+  .cmp-a { display: flex; gap: 8px; align-items: baseline; }
+  .cmp-who { flex: none; padding: 2px 6px; border: var(--border-thin); border-radius: var(--r-xs); color: var(--on-fill); font: var(--w-bold) var(--fs-label) var(--mono); text-transform: uppercase; }
+  .cmp [data-who="them"] { background: var(--info); }
+  .cmp [data-who="me"] { background: var(--primary); }
+  .other-rooms { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  .other-room { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px; border: var(--border-thin); border-radius: var(--r-sm); text-decoration: none; }
+  .other-room .emoji { font-size: var(--fs-card); box-shadow: none; }
   .contact-box > div + div { margin-top: 10px; }
 
   /* Privacy and other documents */

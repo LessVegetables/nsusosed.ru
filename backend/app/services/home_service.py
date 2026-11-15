@@ -59,8 +59,10 @@ def to_out(home: Home, membership: Membership) -> HomeOut:
     dorm = DORM_BY_ID.get(home.building) if home.kind == "dorm" else None
     needs_contact = not any(c.type in PRIMARY_TYPES for m in members for c in m.user.contacts)
     needs_free_place = not any(r.free_places > 0 for r in home.rooms)
+    needs_photo = not home.photos
     return HomeOut(
-        id=home.id, kind=home.kind, description=home.description, building=home.building, district=home.district,
+        id=home.id, kind=home.kind, description=home.description, sunlight=home.sunlight,
+        building=home.building, district=home.district,
         lat=dorm["lat"] if dorm else home.lat, lon=dorm["lon"] if dorm else home.lon,
         radius_m=0 if home.kind == "dorm" else home.radius_m,
         utilities_mode=home.utilities_mode, utilities_rub=home.utilities_rub, internet_mode=home.internet_mode,
@@ -73,8 +75,8 @@ def to_out(home: Home, membership: Membership) -> HomeOut:
                             avatar_url=image_service.avatar_url(m.user.avatar_file), room_id=m.room_id,
                             is_you=m.user_id == membership.user_id, permissions=_permissions(m)) for m in members],
         permissions=_permissions(membership),
-        needs_contact=needs_contact, needs_free_place=needs_free_place,
-        visible=not needs_contact and not needs_free_place,
+        needs_contact=needs_contact, needs_free_place=needs_free_place, needs_photo=needs_photo,
+        visible=not needs_contact and not needs_free_place and not needs_photo,
     )
 
 
@@ -119,6 +121,7 @@ def _apply_room(room: Room, data: RoomIn, position: int) -> None:
 
 def _apply_home(home: Home, body: HomeIn) -> None:
     home.description = body.description
+    home.sunlight = body.sunlight
     home.building = body.building
     if body.room_label is not None:
         home.room_label = body.room_label

@@ -34,6 +34,11 @@ export function toast(title, text = '', { error = false, ms = 6000 } = {}) {
   return node;
 }
 
+/** The pop-up every autosave answers with. */
+export function saved() {
+  return toast(t('account.saved'), '', { ms: 2500 });
+}
+
 /** "45 s" under a minute, otherwise whole minutes rounded up ("19 min"). */
 export function waitText(seconds) {
   if (!seconds) return '';

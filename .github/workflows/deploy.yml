@@ -79,6 +79,19 @@ jobs:
           check deploy/nsusosed-redeploy /usr/local/bin/nsusosed-redeploy
           check deploy/gh-deploy-gate /usr/local/bin/gh-deploy-gate
 
+      # Pages in the repo report errors to Umami as release "dev", environment
+      # "development". Production gets the commit, so Umami's Errors tab can
+      # show which deploy brought an error in and whether a fix worked.
+      - name: Stamp the release for error tracking
+        run: |
+          release="nsusosed@${GITHUB_SHA::7}"
+          for f in frontend/*.html; do
+            grep -q 'data-release="dev" data-environment="development"' "$f" \
+              || { echo "::error::$f has no Umami error-tracking attributes to stamp"; exit 1; }
+          done
+          sed -i "s/data-release=\"dev\" data-environment=\"development\"/data-release=\"$release\" data-environment=\"production\"/" frontend/*.html
+          echo "Stamped $release"
+
       - name: Upload frontend
         # --delay-updates: files appear all at once at the end, so a visitor
         # never gets a new page with an old script.
