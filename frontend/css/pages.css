@@ -203,7 +203,12 @@
     .place-actions .linkbtn { align-self: center; min-height: 44px; }
     .add-room .btn { display: flex; width: 100%; justify-content: center; }
   }
-  .room-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
+  /* Rooms: two to a row on wide screens (one room takes half), one on narrower ones. A card
+     measures itself: when it is too narrow for three answers in a row, they go one under another. */
+  .room-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 961px) { .room-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .room-card { container-type: inline-size; }
+  @container (max-width: 460px) { .room-card.hblock .opts.three { grid-template-columns: minmax(0, 1fr); } }
   .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
   .hblock fieldset > * { margin: 0; }
   .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
