@@ -1,11 +1,18 @@
 // "My home": list a dorm room or an apartment, then edit it.
 //
-// The whole form is rebuilt from `state` on every structural change (kind picked, room added,
-// language switched); typing only writes into `state`. That keeps one source of truth and
-// makes re-translation free.
+// Laid out as tiles like the room page (js/pages/room.js), so the host edits what visitors
+// see: the photos on the left with the title, the status and the free places beside them,
+// then the place, the rooms, the description, the residents and the invites.
+//
+// The page is rebuilt from `state` on every structural change (kind picked, room added,
+// language switched); typing only writes into `state` and refreshes the summary tiles.
 //
 // A new place is sent once, with the "List it" button. After that there is no save button:
-// every change to the form saves itself (see "Autosave") and answers with a "Saved" pop-up.
+// every change saves itself (see "Autosave") and answers with a "Saved" pop-up.
+//
+// Every request that changes the home goes through serial(): the answer to each one is the
+// whole home, so two in flight at once (an autosave and a photo upload) could otherwise
+// overwrite each other's result on the page.
 //
 // Privacy rules this page is responsible for:
 //   - a dorm room's number is sent once and never shown again (the server doesn't return it);
@@ -18,23 +25,41 @@ import { reportBug } from '../errors.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { AKADEMGORODOK, addArea, addPin, createMap, obfuscate } from '../map.js';
+import { preparePhoto } from '../photo.js';
 import { el, errorText, saved, setBusy, toast } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
-// Moved into the form (above the "List it" button) while the place is new; see render().
-const photosSection = $('photos-section');
 const MAX_ROOMS = 6;
+const MAX_PHOTOS = 10;
 
 const { user } = await initPage({ auth: 'required' });
+void user;
 const [meta, mine] = await Promise.all([get('/meta'), get('/homes/mine')]);
 
 let home = mine.home;   // as the server knows it; null until created
 let errors = {};        // { "rooms.0.emoji": "EMOJI_TAKEN", … } from the last save
 let takenRoomId = null; // set when the dorm room turned out to be listed already
 
+const canEdit = () => !home || home.permissions.can_edit;
+const canPhotos = () => !home || home.permissions.can_photos;
+
+/** Run the requests that change the home one at a time, in the order asked. */
+let chain = Promise.resolve();
+function serial(fn) {
+  const run = chain.catch(() => {}).then(fn);
+  chain = run;
+  return run;
+}
+
+function apiFailed(err) {
+  if (!(err instanceof ApiError)) throw err;
+  if (err.status === 401) { location.replace('/login'); return; }
+  toast(t('error.title'), errorText(err), { error: true });
+}
+
 // ── State ───────────────────────────────────────────────
 
-const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2, free_places: 1, rent_rub: '', emoji });
+const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2, free_places: 1, rent_rub: '', emoji, residents: 0 });
 
 function stateFrom(h) {
   if (!h) {
@@ -51,8 +76,7 @@ function stateFrom(h) {
 
 let state = stateFrom(home);
 // The address flow: 'search' → 'pin' (drag to the building) → 'area' (the circle that gets saved).
-const place = { step: state.area ? 'area' : 'search', query: '', results: null, point: null, searching: false };
-const canEdit = !home || home.permissions.can_edit;
+const place = { step: state.area ? 'area' : 'search', query: '', results: null, point: null };
 
 async function rollEmoji(count = 1) {
   try {
@@ -81,16 +105,24 @@ function field(label, input, { hint, path } = {}) {
     path && problem(path));
 }
 
-function textInput(obj, key, attrs = {}) {
-  const input = el('input', { ...attrs, disabled: !canEdit });
+/** A text field bound to obj[key]. `digits`: numbers only. `save: false`: not part of the home. */
+function textInput(obj, key, { digits = false, save = true, ...attrs } = {}) {
+  const input = el('input', { ...attrs, disabled: !canEdit() });
   input.value = obj[key] ?? '';
-  input.addEventListener('input', () => { obj[key] = input.value; changed(); });
-  input.addEventListener('change', () => changed(true));
+  input.addEventListener('input', () => {
+    if (digits) {
+      const clean = input.value.replace(/\D/g, '');
+      if (clean !== input.value) input.value = clean;
+    }
+    obj[key] = input.value;
+    if (save) changed();
+  });
+  if (save) input.addEventListener('change', () => changed(true));
   return input;
 }
 
 function select(obj, key, options, { numeric = false, onchange } = {}) {
-  const node = el('select', { disabled: !canEdit }, ...options.map(([value, label]) => el('option', { value }, label)));
+  const node = el('select', { disabled: !canEdit() }, ...options.map(([value, label]) => el('option', { value }, label)));
   node.value = String(obj[key] ?? '');
   node.addEventListener('change', () => {
     obj[key] = numeric ? Number(node.value) : node.value;
@@ -103,7 +135,7 @@ function select(obj, key, options, { numeric = false, onchange } = {}) {
 /** Single-choice buttons. Changing the answer re-renders only when `rerender` is set. */
 function choice(legend, obj, key, options, { path, hint, rerender = false, cls = '' } = {}) {
   const buttons = options.map(([value, label]) => el('button', {
-    type: 'button', 'aria-pressed': String(obj[key] === value), disabled: !canEdit,
+    type: 'button', 'aria-pressed': String(obj[key] === value), disabled: !canEdit(),
     onclick: () => {
       obj[key] = value;
       if (rerender) render();
@@ -115,34 +147,259 @@ function choice(legend, obj, key, options, { path, hint, rerender = false, cls =
     hint && el('p', { class: 'hint' }, hint), path && problem(path));
 }
 
-// ── Sections of the form ────────────────────────────────
+/** Replace a tile in place (the rest of the page, and the field being typed in, stay). */
+function refresh(id, build) {
+  const node = $(id);
+  if (node) node.replaceWith(build());
+}
+
+// ── Kind picker (a new place, before anything else) ────
 
 function kindPicker() {
-  return el('section', { class: 'box pad hblock' },
+  let picking = false;
+  return el('div', { class: 'box pad solo-panel hkind' },
+    el('h1', { class: 'title' }, t('home.title.new')),
+    el('p', { class: 'lead' }, t('home.lead.new')),
     el('h2', {}, t('home.kind.title')),
     el('div', { class: 'opts' },
       ...[['dorm', t('home.kind.dorm')], ['apartment', t('home.kind.apartment')]].map(([kind, label]) => el('button', {
         type: 'button', onclick: async () => {
-          state.kind = kind;
+          if (picking) return;
+          picking = true;
           const [emoji] = await rollEmoji();
+          state.kind = kind;
           state.rooms = [blankRoom(emoji ?? '')];
           render();
         },
       }, label))));
 }
 
-function dormSection() {
-  const lang = currentLang();
-  const buildings = meta.dorms.map((d) => [d.id, d.address ? `${t('home.dorm.n', { name: d.name })} · ${d.address}` : t('home.dorm.n', { name: d.name })]);
-  void lang;
-  const taken = takenRoomId && el('p', { class: 'note error', role: 'alert' },
-    `✕ ${t('home.dorm.taken')} `, el('a', { href: `/room?id=${takenRoomId}` }, t('home.dorm.takenLink')));
-  return el('section', { class: 'box pad hblock' },
-    el('h2', {}, t('home.dorm.title')),
-    field(t('home.dorm.building'), select(state, 'building', [['', t('home.choose')], ...buildings]), { path: 'building' }),
-    roomField(),
-    taken);
+// ── Summary tiles (beside the photos, as on the room page) ──
+
+function titleText() {
+  if (state.kind === 'dorm') {
+    const dorm = meta.dorms.find((d) => d.id === state.building);
+    return dorm ? t('home.dorm.n', { name: dorm.name }) : t('home.kind.dorm');
+  }
+  const district = state.district.trim();
+  return district ? t('join.confirm.apartment', { district }) : t('home.kind.apartment');
 }
+
+function titleTile() {
+  const emoji = state.rooms.map((r) => r.emoji.trim()).filter(Boolean);
+  return el('div', { class: 'box pad tile t-title', id: 'tile-title' },
+    emoji.length > 0 && el('div', { class: 'emoji-row' }, ...emoji.map((e) => el('span', { class: 'emoji' }, e))),
+    el('h1', { class: 'title' }, titleText()),
+    el('p', { class: 'meta' }, home ? t('home.title.edit') : t('home.title.new')));
+}
+
+function statusTile() {
+  const [fill, word] = !home ? ['fill-yellow', t('home.tile.draft')]
+    : home.visible ? ['fill-green', t('home.tile.visible')] : ['fill-red', t('home.tile.hidden')];
+  return el('div', { class: `box pad tile t-num ${fill}`, id: 'tile-status' },
+    el('span', { class: 'big-pct small' }, word), el('span', { class: 'meta' }, t('home.tile.status')));
+}
+
+function placesTile() {
+  const free = state.rooms.reduce((sum, r) => sum + (Number(r.free_places) || 0), 0);
+  const total = state.rooms.reduce((sum, r) => sum + (Number(r.capacity) || 0), 0);
+  return el('div', { class: 'box pad tile t-num fill-pink', id: 'tile-places' },
+    el('span', { class: 'big-pct' }, `${free}/${total}`), el('span', { class: 'meta' }, t('room.tile.free')));
+}
+
+/** What still keeps the listing hidden, with a link to fix each. */
+function statusNotes() {
+  if (!home) return [el('p', {}, t('home.cta.new'))];
+  const notes = [];
+  // Autosave sends nothing while a field is missing or wrong; the field may be far below.
+  if (Object.keys(errors).length || takenRoomId) {
+    notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.unsaved')} `,
+      el('a', { href: '#home-form', onclick: (e) => {
+        e.preventDefault();
+        const target = document.querySelector('#home-form [data-error], #home-form .note.error[role="alert"]:not(#tile-cta *)');
+        target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      } }, t('home.status.showUnsaved'))));
+  }
+  if (home.visible) notes.push(el('p', { class: 'note success' }, `✓ ${t('home.status.visible')}`));
+  if (home.needs_contact) {
+    notes.push(el('p', { class: 'note error' }, `✕ ${t('home.status.needsContact')} `,
+      el('a', { href: '/account' }, t('home.status.addContact'))));
+  }
+  if (home.needs_photo) {
+    notes.push(el('p', { class: 'note error' }, `✕ ${t('home.status.needsPhoto')} `,
+      el('a', { href: '#tile-photos' }, t('home.status.addPhoto'))));
+  }
+  if (home.needs_free_place) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsFreePlace')}`));
+  if (!canEdit()) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.readOnly')}`));
+  return notes;
+}
+
+function ctaTile() {
+  return el('div', { class: 'box pad tile t-cta', id: 'tile-cta' },
+    el('div', { class: 'stack' }, ...statusNotes()),
+    home
+      ? el('a', { class: 'btn secondary', href: `/room?id=${home.rooms[0].id}` }, t('home.preview'))
+      : el('button', { class: 'btn', type: 'submit' }, t('home.publish')));
+}
+
+function refreshSummary() {
+  refresh('tile-title', titleTile);
+  refresh('tile-status', statusTile);
+  refresh('tile-places', placesTile);
+  refresh('tile-cta', ctaTile);
+}
+
+// ── Photos ──────────────────────────────────────────────
+
+let pendingPhotos = []; // picked before the place is listed: [{ blob, url }], uploaded right after
+let uploading = 0;      // photos on their way to the server
+let photoBusy = false;  // a delete or a reorder is being sent
+let shown = 0;          // the photo shown large
+
+const photoList = () => (home ? home.photos.map((p) => ({ id: p.id, url: p.url })) : pendingPhotos);
+
+function photoError(err) {
+  if (err instanceof ApiError || err?.code) return errorText(err);
+  reportBug(err, { where: 'photo' });
+  return t('error.generic');
+}
+
+/** Files picked or dropped. Before listing they wait here; after, they go up one by one. */
+async function addPhotos(files) {
+  const images = files.filter((f) => !f.type || f.type.startsWith('image/'));
+  if (!images.length) return;
+  const room = MAX_PHOTOS - photoList().length - uploading;
+  if (images.length > room) toast(t('error.title'), t('error.TOO_MANY_PHOTOS'), { error: true });
+  const take = images.slice(0, Math.max(0, room));
+  if (!take.length) return;
+
+  if (!home) {
+    uploading += take.length;
+    renderPhotos();
+    const failed = [];
+    for (const file of take) {
+      try {
+        const blob = await preparePhoto(file);
+        pendingPhotos.push({ blob, url: URL.createObjectURL(blob) });
+      } catch (err) { failed.push(photoError(err)); }
+      uploading -= 1;
+    }
+    if (pendingPhotos.length) delete errors.photos;
+    renderPhotos();
+    if (failed.length) toast(t('home.photos.failed', { n: failed.length }), failed[0], { error: true });
+    return;
+  }
+  await uploadAll(take.map((file) => () => preparePhoto(file)));
+}
+
+/** Upload one by one, in order. A failed one doesn't stop the rest; the failures are told at the end. */
+async function uploadAll(jobs) {
+  uploading += jobs.length;
+  renderPhotos();
+  const failed = [];
+  for (const job of jobs) {
+    try {
+      const blob = await job();
+      const body = new FormData();
+      body.append('file', blob, 'photo.jpg');
+      await serial(async () => { home = await post(`/homes/${home.id}/photos`, body); });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) { location.replace('/login'); return; }
+      failed.push(photoError(err));
+    }
+    uploading -= 1;
+    renderPhotos();
+    refreshSummary();
+  }
+  if (failed.length) toast(t('home.photos.failed', { n: failed.length }), failed[0], { error: true });
+  else saved();
+}
+
+async function photoAction(action) {
+  if (photoBusy) return;
+  photoBusy = true;
+  renderPhotos();
+  try {
+    await serial(async () => { home = await action(); });
+    saved();
+  } catch (err) { apiFailed(err); }
+  photoBusy = false;
+  renderPhotos();
+  refreshSummary();
+}
+
+function makeCover(i) {
+  const list = photoList();
+  shown = 0;
+  if (!home) { pendingPhotos.unshift(...pendingPhotos.splice(i, 1)); renderPhotos(); return; }
+  photoAction(() => put(`/homes/${home.id}/photos/order`, { photo_ids: [list[i].id, ...list.filter((_, j) => j !== i).map((p) => p.id)] }));
+}
+
+function removePhoto(i) {
+  const list = photoList();
+  if (shown >= i && shown > 0) shown -= 1;
+  if (!home) { URL.revokeObjectURL(pendingPhotos[i].url); pendingPhotos.splice(i, 1); renderPhotos(); return; }
+  photoAction(() => del(`/homes/${home.id}/photos/${list[i].id}`));
+}
+
+/** The "add photos" control: a label around a hidden file input. `big` fills the empty tile. */
+function picker(big) {
+  const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/*', multiple: true });
+  input.addEventListener('change', () => addPhotos([...input.files]));
+  return el('label', { class: big ? 'upload upload-big' : 'upload', title: big ? null : t('home.photos.add') }, input,
+    big ? el('span', {}, el('b', {}, `+ ${t('home.photos.add')}`), el('small', {}, t('home.photos.drop')))
+      : el('span', {}, el('span', { 'aria-hidden': 'true' }, '+'), el('span', { class: 'sr-only' }, t('home.photos.add'))));
+}
+
+function photosTile() {
+  const list = photoList();
+  const can = canPhotos();
+  shown = Math.min(shown, Math.max(0, list.length - 1));
+  const room = can && list.length + uploading < MAX_PHOTOS;
+  const status = uploading > 0 && el('p', { class: 'note', role: 'status' }, `⏳ ${t('home.photos.uploading', { n: uploading })}`);
+  const tile = el('section', { class: 'box gallery tile t-photo hphotos', id: 'tile-photos', 'aria-busy': String(uploading > 0 || photoBusy) },
+    el('div', { class: 'row spread' },
+      el('h2', {}, t('home.photos.title')),
+      el('span', { class: 'meta' }, `${list.length} / ${MAX_PHOTOS}`)));
+
+  if (!list.length) {
+    tile.append(...[
+      room ? picker(true) : el('div', { class: 'photo-empty' }, t('home.photos.none')),
+      status,
+      el('p', { class: 'hint' }, t('home.photos.hint')),
+      problem('photos'),
+    ].filter(Boolean));
+  } else {
+    const current = list[shown];
+    const thumbs = el('div', { class: 'thumbs' }, ...list.map((p, i) => el('button', {
+      type: 'button', 'aria-pressed': String(i === shown), 'aria-label': t('home.photos.alt', { n: i + 1 }),
+      onclick: () => { shown = i; renderPhotos(); },
+    }, el('img', { src: p.url, alt: '', loading: 'lazy' }))), room && picker(false));
+    tile.append(...[
+      el('div', { class: 'main-wrap' },
+        el('img', { class: 'main', src: current.url, alt: t('home.photos.alt', { n: shown + 1 }) }),
+        shown === 0 && el('span', { class: 'photo-count' }, t('home.photos.cover'))),
+      can && el('div', { class: 'row photo-actions' },
+        shown > 0 && el('button', { class: 'btn secondary', type: 'button', disabled: photoBusy, onclick: () => makeCover(shown) }, `★ ${t('home.photos.first')}`),
+        el('button', { class: 'btn secondary', type: 'button', disabled: photoBusy, onclick: () => removePhoto(shown) }, `✕ ${t('home.photos.delete')}`)),
+      thumbs,
+      status,
+      !home && el('p', { class: 'note' }, `⚠ ${t('home.photos.pending')}`),
+      el('p', { class: 'hint' }, t('home.photos.hint')),
+    ].filter(Boolean));
+  }
+
+  if (room) {
+    tile.addEventListener('dragover', (e) => { e.preventDefault(); tile.dataset.drop = ''; });
+    tile.addEventListener('dragleave', () => delete tile.dataset.drop);
+    tile.addEventListener('drop', (e) => { e.preventDefault(); delete tile.dataset.drop; addPhotos([...e.dataTransfer.files]); });
+  }
+  return tile;
+}
+
+const renderPhotos = () => refresh('tile-photos', photosTile);
+
+// ── Where it is ─────────────────────────────────────────
 
 // A dorm room is a number from 100 to 999 plus the block letter: Б, М or none, read "100Б".
 // The letter button right of the number starts at "?" (not chosen yet); each click moves it
@@ -155,10 +412,10 @@ const ROOM_NUMBER = /^[1-9][0-9]{2}$/;
 const roomLabel = () => (ROOM_NUMBER.test(state.room_number) && state.room_letter != null ? state.room_number + state.room_letter : null);
 const roomTouched = () => state.room_number !== '' || state.room_letter != null;
 
-function roomField() {
+function roomNumberField() {
   const letterName = () => (state.room_letter == null ? t('home.dorm.letterUnset')
     : state.room_letter === '' ? t('home.dorm.letterNone') : LETTER_TEXT[state.room_letter]);
-  const letter = el('button', { type: 'button', class: 'room-letter', disabled: !canEdit });
+  const letter = el('button', { type: 'button', class: 'room-letter', disabled: !canEdit() });
   const showLetter = () => {
     letter.textContent = state.room_letter == null ? '?' : LETTER_TEXT[state.room_letter];
     letter.setAttribute('aria-label', t('home.dorm.letter', { letter: letterName() }));
@@ -173,7 +430,7 @@ function roomField() {
 
   const number = el('input', {
     id: 'room-number', maxlength: 3, inputmode: 'numeric', pattern: '[0-9]*', autocomplete: 'off',
-    placeholder: home ? t('home.dorm.roomSaved') : '100', disabled: !canEdit,
+    placeholder: home ? t('home.dorm.roomSaved') : '100', disabled: !canEdit(),
   });
   number.value = state.room_number;
   number.addEventListener('input', () => {
@@ -194,14 +451,27 @@ function roomField() {
     problem('room_label'));
 }
 
-let mapHandle = null; // { map, layer } of the map currently on the page
+function dormTile() {
+  const buildings = meta.dorms.map((d) => [d.id, d.address ? `${t('home.dorm.n', { name: d.name })} · ${d.address}` : t('home.dorm.n', { name: d.name })]);
+  const taken = takenRoomId && el('p', { class: 'note error', role: 'alert' },
+    `✕ ${t('home.dorm.taken')} `, el('a', { href: `/room?id=${takenRoomId}` }, t('home.dorm.takenLink')));
+  return el('section', { class: 'box pad tile t-half hblock' },
+    el('h2', {}, t('home.place.title')),
+    field(t('home.dorm.building'), select(state, 'building', [['', t('home.choose')], ...buildings], { onchange: () => rerender() }), { path: 'building' }),
+    state.building && el('div', { class: 'map', id: 'place-map' }),
+    roomNumberField(),
+    taken);
+}
 
-function placeSection() {
+let mapHandle = null; // the Leaflet map currently on the page
+
+function apartmentTile() {
   const host = el('div', { class: 'map', id: 'place-map' });
   const body = [];
+  const edit = canEdit();
 
-  if (place.step === 'search') {
-    const input = textInput(place, 'query', { type: 'search', placeholder: t('home.place.placeholder'), autocomplete: 'off', enterkeyhint: 'search' });
+  if (place.step === 'search' && edit) {
+    const input = textInput(place, 'query', { type: 'search', placeholder: t('home.place.placeholder'), autocomplete: 'off', enterkeyhint: 'search', save: false });
     const go = el('button', { class: 'btn secondary', type: 'button', onclick: () => search(go) }, t('home.place.find'));
     input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); search(go); } });
     body.push(
@@ -214,26 +484,26 @@ function placeSection() {
           type: 'button', onclick: () => { place.point = { lat: r.lat, lon: r.lon }; if (r.district && !state.district) state.district = r.district; place.step = 'pin'; render(); },
         }, r.label)))
         : el('p', { class: 'note' }, `⚠ ${t('home.place.none')}`)));
-  } else if (place.step === 'pin') {
+  } else if (place.step === 'pin' && edit) {
     body.push(
       el('p', { class: 'hint' }, t('home.place.pinHint')),
       host,
       el('div', { class: 'row' },
         el('button', { class: 'btn', type: 'button', onclick: () => { state.area = obfuscate(place.point); place.step = 'area'; render(); changed(true); } }, t('home.place.hide')),
-        el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; render(); } }, t('home.place.back'))));
-  } else {
+        el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = state.area ? 'area' : 'search'; render(); } }, t('home.place.back'))));
+  } else if (state.area) {
     body.push(
       el('p', { class: 'note success' }, `✓ ${t('home.place.areaHint')}`),
       host,
-      canEdit && el('div', { class: 'row' },
+      edit && el('div', { class: 'row' },
         place.point && el('button', { class: 'btn secondary', type: 'button', onclick: () => { state.area = obfuscate(place.point); render(); changed(true); } }, t('home.place.reroll')),
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; place.results = null; render(); } }, t('home.place.again'))));
   }
 
   // data-private: the address search results and the exact pin are the real address.
-  return el('section', { class: 'box pad hblock', 'data-private': true },
+  return el('section', { class: 'box pad tile t-half hblock', 'data-private': true },
     el('h2', {}, t('home.place.title')),
-    ...body,
+    ...body.filter(Boolean),
     problem('location'),
     field(t('home.place.district'), textInput(state, 'district', { maxlength: 60, placeholder: t('home.place.districtPlaceholder') }),
       { path: 'district', hint: t('home.place.districtHint') }));
@@ -241,18 +511,21 @@ function placeSection() {
 
 /** Leaflet needs its element in the document, so maps are attached after render(). */
 function mountMap() {
-  mapHandle?.map.remove();
+  mapHandle?.remove();
   mapHandle = null;
   const host = $('place-map');
   if (!host) return;
-  if (place.step === 'pin') {
-    const map = createMap(host, { ...place.point, zoom: 17 });
-    addPin(map, place.point, (p) => { place.point = p; });
-    mapHandle = { map };
+  if (state.kind === 'dorm') {
+    const dorm = meta.dorms.find((d) => d.id === state.building);
+    if (!dorm) return;
+    mapHandle = createMap(host, { lat: dorm.lat, lon: dorm.lon, zoom: 16 });
+    addPin(mapHandle, dorm);
+  } else if (place.step === 'pin') {
+    mapHandle = createMap(host, { ...place.point, zoom: 17 });
+    addPin(mapHandle, place.point, (p) => { place.point = p; });
   } else if (state.area) {
-    const map = createMap(host, { lat: state.area.lat, lon: state.area.lon, zoom: 15 });
-    addArea(map, state.area);
-    mapHandle = { map };
+    mapHandle = createMap(host, { lat: state.area.lat, lon: state.area.lon, zoom: 15 });
+    addArea(mapHandle, state.area);
   }
 }
 
@@ -263,45 +536,44 @@ async function search(button) {
   try {
     place.results = (await post('/geo/search', { query })).results;
   } catch (err) {
-    if (!(err instanceof ApiError)) throw err;
-    toast(t('error.title'), errorText(err), { error: true });
     setBusy(button, false);
+    apiFailed(err);
     return;
   }
   render();
 }
 
-function costsSection() {
-  return el('section', { class: 'box pad hblock' },
+// ── Costs, rooms, description ───────────────────────────
+
+function costsTile() {
+  return el('section', { class: 'box pad tile t-half hblock' },
     el('h2', {}, t('home.costs.title')),
     choice(t('home.costs.utilities'), state, 'utilities_mode',
       [['included', t('home.costs.included')], ['split', t('home.costs.split')]], { path: 'utilities_mode', rerender: true }),
     state.utilities_mode === 'split' && field(t('home.costs.utilitiesRub'),
-      textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500' }),
+      textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500', digits: true }),
       { path: 'utilities_rub', hint: t('home.costs.utilitiesHint') }),
     choice(t('home.costs.internet'), state, 'internet_mode',
       [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'three slim' }));
 }
 
-function roomSection(room, index) {
+function roomFields(room, index) {
   const apartment = state.kind === 'apartment';
   const genders = [['f', t('home.room.f')], ['m', t('home.room.m')], ...(apartment ? [['any', t('home.room.any')]] : [])];
   const places = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
   const emojiInput = textInput(room, 'emoji', { maxlength: 40, autocomplete: 'off', class: 'emoji-input', 'aria-describedby': `emoji-hint-${index}` });
   let rolling = false;
-  const roll = el('button', { class: 'btn secondary', type: 'button', disabled: !canEdit, onclick: async () => {
+  const roll = el('button', { class: 'btn secondary', type: 'button', disabled: !canEdit(), onclick: async () => {
     if (rolling) return; // no spinner or dimming: the answer comes at once
     rolling = true;
     const [emoji] = await rollEmoji();
     rolling = false;
     if (emoji) { room.emoji = emoji; emojiInput.value = emoji; changed(true); }
   } }, t('home.room.roll'));
+  const free = select(room, 'free_places', places(0, room.capacity), { numeric: true });
+  free.id = `free-${index}`;
 
-  return el('section', { class: 'box pad hblock' },
-    el('div', { class: 'row spread' },
-      el('h2', {}, apartment ? t('home.room.titleN', { n: index + 1 }) : t('home.room.title')),
-      apartment && canEdit && state.rooms.length > 1 && el('button', { class: 'linkbtn', type: 'button',
-        onclick: () => { state.rooms.splice(index, 1); render(); changed(true); } }, t('home.room.remove'))),
+  return [
     problem(`rooms.${index}`),
     home && !room.id && el('p', { class: 'note' }, `⚠ ${t('home.room.unsaved')}`),
     apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') }), { path: `rooms.${index}.name` }),
@@ -309,121 +581,58 @@ function roomSection(room, index) {
     el('div', { class: 'two-fields' },
       field(t('home.room.capacity'), select(room, 'capacity', places(1, 6), { numeric: true, onchange: () => {
         if (room.free_places > room.capacity) room.free_places = room.capacity;
-        render();
+        rerender();
       } })),
-      field(t('home.room.free'), Object.assign(select(room, 'free_places', places(0, room.capacity), { numeric: true }), { id: `free-${index}` }),
-        { path: `rooms.${index}.free_places` })),
-    apartment && field(t('home.room.rent'), textInput(room, 'rent_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '14000' }),
+      field(t('home.room.free'), free, { path: `rooms.${index}.free_places` })),
+    apartment && field(t('home.room.rent'), textInput(room, 'rent_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '14000', digits: true }),
       { path: `rooms.${index}.rent_rub`, hint: t('home.room.rentHint') }),
     el('div', {},
       el('label', { class: 'field' }, el('span', {}, t('home.room.emoji')),
         el('div', { class: 'emoji-field' }, emojiInput, roll),
         el('small', { id: `emoji-hint-${index}` }, t('home.room.emojiHint'))),
-      problem(`rooms.${index}.emoji`)));
+      problem(`rooms.${index}.emoji`)),
+  ].filter(Boolean);
 }
 
-function aboutSection() {
-  const area = el('textarea', { rows: 5, maxlength: 1000, placeholder: t('home.about.hint'), disabled: !canEdit });
-  area.value = state.description;
-  area.addEventListener('input', () => { state.description = area.value; changed(); });
-  area.addEventListener('change', () => changed(true));
-  return el('section', { class: 'box pad hblock' },
-    el('h2', {}, t('home.about.title')),
-    field(t('home.about.label'), area, { path: 'description' }),
-    choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
-      { path: 'sunlight', cls: 'three slim' }));
+/** A dorm has one room: a half tile beside "Where it is". */
+function dormRoomTile() {
+  return el('section', { class: 'box pad tile t-half hblock' }, el('h2', {}, t('home.room.title')), ...roomFields(state.rooms[0], 0));
+}
+
+/** An apartment's rooms: one card each, side by side on wide screens. */
+function apartmentRoomsTile() {
+  const many = state.rooms.length > 1;
+  const cards = state.rooms.map((room, index) => el('li', { class: 'box pad hblock room-card' },
+    el('div', { class: 'row spread' },
+      el('h3', {}, t('home.room.titleN', { n: index + 1 })),
+      // A room someone lives in can't be removed (the server refuses: ROOM_OCCUPIED).
+      canEdit() && many && !room.residents && el('button', { class: 'linkbtn', type: 'button',
+        onclick: () => { state.rooms.splice(index, 1); render(); changed(true); } }, t('home.room.remove'))),
+    ...roomFields(room, index)));
+  return el('section', { class: 'tile t-wide rblock' },
+    el('div', { class: 'row spread' },
+      el('h2', { class: 'title' }, t('home.rooms.title')),
+      canEdit() && state.rooms.length < MAX_ROOMS && el('button', { class: 'btn secondary', type: 'button', onclick: async () => {
+        const [emoji] = await rollEmoji();
+        state.rooms.push(blankRoom(emoji ?? ''));
+        render();
+        changed(true);
+      } }, `+ ${t('home.room.add')}`)),
+    el('ul', { class: 'room-cards' }, ...cards));
 }
 
 const SUNLIGHT = ['sunny', 'partial', 'shady'];
 
-// ── Status, photos, leaving ─────────────────────────────
-
-function renderStatus() {
-  if (!home) { $('status').replaceChildren(); return; }
-  const notes = [];
-  if (home.visible) notes.push(el('p', { class: 'note success' }, `✓ ${t('home.status.visible')}`));
-  // Red: the listing is hidden until this is fixed.
-  if (home.needs_contact) {
-    notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.needsContact')} `,
-      el('a', { href: '/account' }, t('home.status.addContact'))));
-  }
-  if (home.needs_free_place) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.needsFreePlace')}`));
-  if (home.needs_photo) {
-    notes.push(el('p', { class: 'note error', role: 'alert' }, `✕ ${t('home.status.needsPhoto')} `,
-      el('a', { href: '#photos-section' }, t('home.status.addPhoto'))));
-  }
-  if (!canEdit) notes.push(el('p', { class: 'note' }, `⚠ ${t('home.status.readOnly')}`));
-  $('status').replaceChildren(...notes);
-}
-
-// Photos picked before the place is listed wait here and are uploaded right after it is.
-let pendingPhotos = []; // [{ file, url }]
-const MAX_PHOTOS = 10;
-
-function renderPhotos() {
-  const section = photosSection;
-  section.hidden = !home && !state.kind;
-  if (section.hidden) return;
-  const canPhotos = home ? home.permissions.can_photos : true;
-  const act = async (action) => {
-    try { home = await action(); renderPhotos(); renderStatus(); saved(); } catch (err) {
-      if (!(err instanceof ApiError)) throw err;
-      toast(t('error.title'), errorText(err), { error: true });
-    }
-  };
-  // The same tiles for both: on the server (home) or still in the browser (pending).
-  const list = home ? home.photos.map((p) => ({ id: p.id, url: p.url })) : pendingPhotos;
-  const makeFirst = (i) => (home
-    ? act(() => put(`/homes/${home.id}/photos/order`, { photo_ids: [list[i].id, ...list.filter((_, j) => j !== i).map((x) => x.id)] }))
-    : (pendingPhotos.unshift(...pendingPhotos.splice(i, 1)), renderPhotos()));
-  const remove = (i) => {
-    if (home) { act(() => del(`/homes/${home.id}/photos/${list[i].id}`)); return; }
-    URL.revokeObjectURL(pendingPhotos[i].url);
-    pendingPhotos.splice(i, 1);
-    renderPhotos();
-  };
-  const tiles = list.map((p, i) => el('figure', {},
-    el('img', { src: p.url, alt: t('home.photos.alt', { n: i + 1 }), loading: 'lazy' }),
-    canPhotos && el('figcaption', {},
-      i > 0 ? el('button', { type: 'button', 'aria-label': t('home.photos.first'), title: t('home.photos.first'), onclick: () => makeFirst(i) }, '★') : el('span', {}),
-      el('button', { type: 'button', 'aria-label': t('home.photos.delete'), title: t('home.photos.delete'), onclick: () => remove(i) }, '×'))));
-  let upload = null;
-  if (canPhotos && list.length < MAX_PHOTOS) {
-    const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/jpeg,image/png,image/webp', multiple: true });
-    upload = el('label', { class: 'upload' }, input, `+ ${t('home.photos.add')}`);
-    input.addEventListener('change', async () => {
-      const files = [...input.files].slice(0, MAX_PHOTOS - list.length);
-      if (!home) {
-        pendingPhotos.push(...files.map((file) => ({ file, url: URL.createObjectURL(file) })));
-        if (errors.photos) { delete errors.photos; }
-        renderPhotos();
-        return;
-      }
-      upload.setAttribute('aria-busy', 'true');
-      await uploadPhotos(files);
-      renderPhotos();
-      renderStatus();
-    });
-  }
-  section.replaceChildren(el('div', { class: 'box pad hblock' },
-    el('h2', {}, t('home.photos.title')),
-    el('p', { class: 'hint' }, t('home.photos.hint')),
-    !home && pendingPhotos.length > 0 && el('p', { class: 'note' }, `⚠ ${t('home.photos.pending')}`),
-    el('div', { class: 'photos' }, ...tiles, upload),
-    problem('photos')));
-}
-
-/** Upload one by one, in order; stop at the first that fails. */
-async function uploadPhotos(files) {
-  for (const file of files) {
-    const body = new FormData();
-    body.append('file', file);
-    try { home = await post(`/homes/${home.id}/photos`, body); saved(); } catch (err) {
-      if (!(err instanceof ApiError)) throw err;
-      toast(t('error.title'), errorText(err), { error: true });
-      return;
-    }
-  }
+function aboutTile() {
+  const area = el('textarea', { rows: 5, maxlength: 1000, placeholder: t('home.about.hint'), disabled: !canEdit() });
+  area.value = state.description;
+  area.addEventListener('input', () => { state.description = area.value; changed(); });
+  area.addEventListener('change', () => changed(true));
+  return el('section', { class: 'box pad tile t-wide hblock' },
+    el('h2', {}, t('home.about.title')),
+    field(t('home.about.label'), area, { path: 'description' }),
+    choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
+      { path: 'sunlight', cls: 'three slim' }));
 }
 
 // ── Residents and rights ────────────────────────────────
@@ -434,13 +643,17 @@ const rightLabel = (name) => ({
   can_invites: t('home.rights.can_invites'), can_residents: t('home.rights.can_residents'),
 }[name]);
 
+const roomName = (id) => {
+  const index = home.rooms.findIndex((r) => r.id === id);
+  return index < 0 ? '' : `${home.rooms[index].emoji} ${home.rooms[index].name || t('home.room.titleN', { n: index + 1 })}`;
+};
+
 async function homeAction(action) {
   try {
-    home = await action();
+    await serial(async () => { home = await action(); });
     return true;
   } catch (err) {
-    if (!(err instanceof ApiError)) throw err;
-    toast(t('error.title'), errorText(err), { error: true });
+    apiFailed(err);
     return false;
   }
 }
@@ -451,81 +664,75 @@ function avatar(person) {
     : el('span', { class: 'avatar sm', 'aria-hidden': 'true' }, person.first_name.slice(0, 1));
 }
 
-function renderResidents() {
-  const section = $('residents-section');
-  section.hidden = !home;
-  if (!home) return;
+function residentCard(person) {
   const manage = home.permissions.can_residents;
-  const roomName = (id) => {
-    const index = home.rooms.findIndex((r) => r.id === id);
-    return index < 0 ? '' : `${home.rooms[index].emoji} ${home.rooms[index].name || t('home.room.titleN', { n: index + 1 })}`;
-  };
-  const rows = home.residents.map((person) => {
-    const url = `/homes/${home.id}/residents/${person.user_id}`;
-    const update = async (change) => { if (await homeAction(() => put(url, change))) saved(); renderResidents(); renderInvites(); };
-    const rights = manage
-      ? el('div', { class: 'rights' }, ...RIGHTS.map((name) => {
-        const box = el('input', { type: 'checkbox' });
-        box.checked = person.permissions[name];
-        box.addEventListener('change', () => update({ [name]: box.checked }));
-        return el('label', { class: 'check' }, box, el('span', {}, rightLabel(name)));
-      }))
-      : el('p', { class: 'hint' }, RIGHTS.filter((name) => person.permissions[name]).map(rightLabel).join(' · ') || t('home.rights.none'));
-    let room = null;
-    if (home.kind === 'apartment' && home.rooms.length > 1) {
-      if (manage || person.is_you) {
-        const picker = el('select', { 'aria-label': t('home.residents.room') }, ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
-        picker.value = person.room_id ?? '';
-        picker.addEventListener('change', () => update({ room_id: picker.value }));
-        room = el('label', { class: 'field' }, el('span', {}, t('home.residents.room')), picker);
-      } else {
-        room = el('p', { class: 'hint' }, roomName(person.room_id));
-      }
+  const url = `/homes/${home.id}/residents/${person.user_id}`;
+  // Rights decide what this page lets you do, so a change to your own redraws everything.
+  const update = async (change) => { if (await homeAction(() => put(url, change))) saved(); rerender(); };
+  const rights = manage
+    ? el('div', { class: 'rights' }, ...RIGHTS.map((name) => {
+      const box = el('input', { type: 'checkbox' });
+      box.checked = person.permissions[name];
+      box.addEventListener('change', () => update({ [name]: box.checked }));
+      return el('label', { class: 'check' }, box, el('span', {}, rightLabel(name)));
+    }))
+    : el('p', { class: 'hint' }, RIGHTS.filter((name) => person.permissions[name]).map(rightLabel).join(' · ') || t('home.rights.none'));
+  let room = null;
+  if (home.kind === 'apartment' && home.rooms.length > 1) {
+    if (manage || person.is_you) {
+      const picker = el('select', { 'aria-label': t('home.residents.room') }, ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
+      picker.value = person.room_id ?? '';
+      picker.addEventListener('change', () => update({ room_id: picker.value }));
+      room = el('label', { class: 'field' }, el('span', {}, t('home.residents.room')), picker);
+    } else {
+      room = el('p', { class: 'meta' }, roomName(person.room_id));
     }
-    return el('li', { class: 'resident' },
-      el('div', { class: 'row' }, avatar(person),
-        el('div', {}, el('b', {}, `${person.first_name} ${person.last_name}`),
-          person.is_you && el('span', { class: 'tag fill-yellow' }, t('home.residents.you')))),
-      room, rights,
-      manage && !person.is_you && el('div', {}, el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
-        if (!window.confirm(t('home.residents.removeConfirm', { name: person.first_name }))) return;
-        await homeAction(() => del(url));
-        render();
-      } }, t('home.residents.remove'))));
-  });
-  section.replaceChildren(el('div', { class: 'box pad hblock' },
-    el('h2', {}, t('home.residents.title')),
-    el('p', { class: 'hint' }, manage ? t('home.residents.hintManage') : t('home.residents.hint')),
-    el('ul', { class: 'residents' }, ...rows)));
+  }
+  return el('li', { class: 'box pad resident-card' },
+    el('div', { class: 'row person-head' }, avatar(person),
+      el('div', { class: 'person-name' },
+        el('h3', {}, `${person.first_name} ${person.last_name}`),
+        person.is_you && el('span', { class: 'tag fill-yellow' }, t('home.residents.you')))),
+    room, rights,
+    manage && !person.is_you && el('div', {}, el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
+      if (!window.confirm(t('home.residents.removeConfirm', { name: person.first_name }))) return;
+      if (await homeAction(() => del(url))) saved();
+      render();
+    } }, t('home.residents.remove'))));
+}
+
+function residentsTile() {
+  return el('section', { class: 'tile t-wide rblock', id: 'tile-residents', 'data-private': true },
+    el('h2', { class: 'title' }, t('home.residents.title')),
+    el('p', { class: 'hint' }, home.permissions.can_residents ? t('home.residents.hintManage') : t('home.residents.hint')),
+    el('ul', { class: 'resident-cards' }, ...home.residents.map(residentCard)));
 }
 
 // ── Invites ─────────────────────────────────────────────
 
 let invites = null;     // active invites, loaded once the person may see them
+let invitesLoading = null;
 let freshInvite = null; // the one just created: its link is shown once
 
 async function loadInvites() {
-  invites = null;
-  if (home?.permissions.can_invites) {
-    try { invites = await get(`/homes/${home.id}/invites`); } catch (err) { reportBug(err, { where: 'invites' }); invites = []; }
-  }
+  try { invites = await get(`/homes/${home.id}/invites`); } catch (err) { reportBug(err, { where: 'invites' }); invites = []; }
 }
 
-function renderInvites() {
-  const section = $('invites-section');
-  section.hidden = !home;
-  if (!home) return;
-  if (!home.permissions.can_invites) {
-    section.replaceChildren(el('div', { class: 'box pad hblock' },
-      el('h2', {}, t('home.invites.title')), el('p', { class: 'hint' }, t('home.invites.noRight'))));
-    return;
-  }
-  if (invites === null) { loadInvites().then(renderInvites); return; }
+function ensureInvites() {
+  if (invites !== null || invitesLoading) return;
+  invitesLoading = loadInvites().then(() => { invitesLoading = null; refresh('tile-invites', invitesTile); });
+}
+
+function invitesTile() {
+  const box = (...children) => el('section', { class: 'box pad tile t-half hblock', id: 'tile-invites', 'data-private': true },
+    el('h2', {}, t('home.invites.title')), ...children.filter(Boolean));
+  if (!home.permissions.can_invites) return box(el('p', { class: 'hint' }, t('home.invites.noRight')));
+  if (invites === null) { ensureInvites(); return box(el('p', { class: 'hint' }, t('home.invites.hint'))); }
   const date = (iso) => new Date(iso).toLocaleDateString(currentLang() === 'zh' ? 'zh-CN' : currentLang(), { day: 'numeric', month: 'long' });
 
   let roomPicker = null;
   if (home.kind === 'apartment' && home.rooms.length > 1) {
-    roomPicker = el('select', {}, ...home.rooms.map((r, i) => el('option', { value: r.id }, `${r.emoji} ${r.name || t('home.room.titleN', { n: i + 1 })}`)));
+    roomPicker = el('select', {}, ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
   }
   const create = el('button', { class: 'btn', type: 'button', onclick: async () => {
     setBusy(create, true);
@@ -533,10 +740,11 @@ function renderInvites() {
       freshInvite = await post(`/homes/${home.id}/invites`, { room_id: roomPicker?.value ?? null });
       await loadInvites();
     } catch (err) {
-      if (!(err instanceof ApiError)) throw err;
-      toast(t('error.title'), errorText(err), { error: true });
+      setBusy(create, false);
+      apiFailed(err);
+      return;
     }
-    renderInvites();
+    refresh('tile-invites', invitesTile);
   } }, t('home.invites.create'));
 
   let fresh = null;
@@ -558,25 +766,24 @@ function renderInvites() {
     ? el('ul', { class: 'residents' }, ...invites.map((inv) => el('li', { class: 'resident' },
       el('p', {}, t('home.invites.item', { name: inv.created_by_name ?? '—', date: date(inv.expires_at), uses: inv.uses })),
       el('div', {}, el('button', { class: 'linkbtn', type: 'button', onclick: async () => {
-        try { await del(`/homes/${home.id}/invites/${inv.id}`); } catch (err) { if (!(err instanceof ApiError)) throw err; }
+        try { await del(`/homes/${home.id}/invites/${inv.id}`); } catch (err) { apiFailed(err); }
         if (freshInvite?.id === inv.id) freshInvite = null;
         await loadInvites();
-        renderInvites();
+        refresh('tile-invites', invitesTile);
       } }, t('home.invites.revoke'))))))
     : el('p', { class: 'hint' }, t('home.invites.empty'));
 
-  section.replaceChildren(el('div', { class: 'box pad hblock' },
-    el('h2', {}, t('home.invites.title')),
+  return box(
     el('p', { class: 'hint' }, t('home.invites.hint')),
     roomPicker && el('label', { class: 'field' }, el('span', {}, t('home.invites.room')), roomPicker),
     el('div', {}, create),
-    fresh, list));
+    fresh, list);
 }
 
-function renderDanger() {
-  $('danger').hidden = !home;
-  if (!home) return;
-  $('danger').replaceChildren(el('div', { class: 'box pad hblock' },
+// ── Leaving ─────────────────────────────────────────────
+
+function leaveTile() {
+  return el('section', { class: 'box pad tile t-half hblock' },
     el('h2', {}, t('home.leave.heading')),
     el('p', { class: 'hint' }, t('home.leave.hint'), ' ',
       el('a', { href: '#free-0', onclick: (e) => {
@@ -586,64 +793,75 @@ function renderDanger() {
         target?.focus({ preventScroll: true });
         target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
       } }, t('home.leave.setZero'))),
-    el('div', {}, el('button', { class: 'btn secondary', type: 'button', onclick: () => $('leave-dialog').showModal() }, t('home.leave.button')))));
+    el('div', {}, el('button', { class: 'btn secondary', type: 'button', onclick: () => $('leave-dialog').showModal() }, t('home.leave.button'))));
 }
 
 $('leave-cancel').addEventListener('click', () => $('leave-dialog').close());
 $('leave-confirm').addEventListener('click', async () => {
   setBusy($('leave-confirm'), true);
   try {
-    await del('/homes/mine/membership');
+    await serial(() => del('/homes/mine/membership'));
     location.reload();
   } catch (err) {
-    if (!(err instanceof ApiError)) throw err;
     setBusy($('leave-confirm'), false);
     $('leave-dialog').close();
-    toast(t('error.title'), errorText(err), { error: true });
+    apiFailed(err);
   }
 });
 
-// ── Render and save ─────────────────────────────────────
+// ── Render ──────────────────────────────────────────────
 
 function render() {
-  $('page-title').textContent = home ? t('home.title.edit') : t('home.title.new');
-  $('page-lead').textContent = home ? t('home.lead.edit') : t('home.lead.new');
-  renderStatus();
-
+  mapHandle?.remove();
+  mapHandle = null;
   const form = $('home-form');
   if (!state.kind) {
     form.replaceChildren(kindPicker());
-  } else {
-    const apartment = state.kind === 'apartment';
-    // replaceChildren() would print a `false` from the `cond && el(...)` items as text.
-    form.replaceChildren(...[
-      apartment ? placeSection() : dormSection(),
-      ...state.rooms.map(roomSection),
-      apartment && canEdit && state.rooms.length < MAX_ROOMS && el('div', {},
-        el('button', { class: 'btn secondary', type: 'button', onclick: async () => {
-          const [emoji] = await rollEmoji();
-          state.rooms.push(blankRoom(emoji ?? ''));
-          render();
-          changed(true);
-        } }, `+ ${t('home.room.add')}`)),
-      apartment && costsSection(),
-      aboutSection(),
-      !home && el('div', { class: 'qbar box' },
-        el('button', { class: 'linkbtn', type: 'button', onclick: () => { state = stateFrom(null); errors = {}; takenRoomId = null; render(); } }, t('home.changeKind')),
-        el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
-    ].filter(Boolean));
+    return;
   }
-  // A new place needs a photo before it's listed, so the photos go above the button.
-  const bar = form.querySelector('.qbar');
-  if (bar) form.insertBefore(photosSection, bar); else form.after(photosSection);
+  const apartment = state.kind === 'apartment';
+  // replaceChildren() would print a `false` from the `cond && el(...)` items as text.
+  form.replaceChildren(el('div', { class: 'bento' }, ...[
+    photosTile(),
+    titleTile(),
+    statusTile(),
+    placesTile(),
+    ctaTile(),
+    apartment ? apartmentTile() : dormTile(),
+    apartment ? costsTile() : dormRoomTile(),
+    apartment && apartmentRoomsTile(),
+    aboutTile(),
+    home && residentsTile(),
+    home && invitesTile(),
+    home && leaveTile(),
+    !home && el('div', { class: 'box qbar tile t-wide' },
+      el('button', { class: 'linkbtn', type: 'button', onclick: () => {
+        pendingPhotos.forEach((p) => URL.revokeObjectURL(p.url));
+        pendingPhotos = [];
+        state = stateFrom(null); errors = {}; takenRoomId = null; render();
+      } }, t('home.changeKind')),
+      el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
+  ].filter(Boolean)));
   mountMap();
-  renderPhotos();
-  renderResidents();
-  renderInvites();
-  renderDanger();
 }
 
-const number = (value) => (value === '' || value == null ? null : Number(String(value).replace(/\s/g, '')));
+/** Rebuild the page without losing the field being typed in. */
+function rerender() {
+  const controls = () => [...$('home-form').querySelectorAll('input, select, textarea, button')];
+  const active = document.activeElement;
+  const at = controls().indexOf(active);
+  let range = null;
+  try { if (at >= 0 && active.selectionStart != null) range = [active.selectionStart, active.selectionEnd]; } catch { /* not a text field */ }
+  render();
+  const node = at >= 0 ? controls()[at] : null;
+  if (!node) return;
+  node.focus({ preventScroll: true });
+  try { if (range) node.setSelectionRange(...range); } catch { /* not a text field */ }
+}
+
+// ── Save ────────────────────────────────────────────────
+
+const number = (value) => (value === '' || value == null ? null : Number(String(value).replace(/\D/g, '')));
 
 function payload() {
   const apartment = state.kind === 'apartment';
@@ -698,7 +916,7 @@ function missing() {
   return out;
 }
 
-const FORM_ERROR = '#home-form .note.error, #photos-section .note.error';
+const FORM_ERROR = '#home-form .note.error[data-error], #home-form .note.error[role="alert"]';
 
 function showErrors() {
   render();
@@ -706,60 +924,50 @@ function showErrors() {
 }
 
 // A new place: sent once, by the button.
+let creating = false;
 $('home-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   if (home) { changed(true); return; } // Enter in a field
+  if (creating) return;
   const button = e.submitter;
+  // Photos still being read: wait for them, or the listing would go without.
+  if (uploading) { toast(t('home.photos.wait'), '', { ms: 3000 }); return; }
   takenRoomId = null;
   errors = missing();
   if (Object.keys(errors).length) { showErrors(); return; }
-  setBusy(button, true);
+  creating = true;
+  if (button) setBusy(button, true);
   try {
-    home = await post('/homes', payload());
-    state = stateFrom(home);
-    savedKey = JSON.stringify(payload());
-    place.step = state.area ? 'area' : 'search';
-    place.point = null;
-    render();
-    toast(t('home.created'), t('home.createdText'));
-    window.scrollTo(0, 0);
-    if (pendingPhotos.length) {
-      const queued = pendingPhotos;
-      pendingPhotos = [];
-      photosSection.setAttribute('aria-busy', 'true');
-      await uploadPhotos(queued.map((p) => p.file));
-      queued.forEach((p) => URL.revokeObjectURL(p.url));
-      photosSection.removeAttribute('aria-busy');
-      renderPhotos();
-      renderStatus();
-    }
+    home = await serial(() => post('/homes', payload()));
   } catch (err) {
+    creating = false;
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
     errors = err.fields ?? {};
     if (err.code === 'ROOM_TAKEN') takenRoomId = err.data?.room_id ?? null;
     showErrors();
     if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
+    return;
+  }
+  state = stateFrom(home);
+  savedKey = JSON.stringify(payload());
+  place.step = state.area ? 'area' : 'search';
+  place.point = null;
+  const queued = pendingPhotos;
+  pendingPhotos = [];
+  shown = 0;
+  render();
+  toast(t('home.created'), t('home.createdText'));
+  window.scrollTo(0, 0);
+  if (queued.length) {
+    await uploadAll(queued.map((p) => () => p.blob));
+    queued.forEach((p) => URL.revokeObjectURL(p.url));
   }
 });
 
 // ── Autosave (once the place is listed) ─────────────────
 
 let savedKey = home ? JSON.stringify(payload()) : null; // the form as the server has it
-
-/** Rebuild the form without losing the field being typed in. */
-function rerender() {
-  const controls = () => [...$('home-form').querySelectorAll('input, select, textarea, button')];
-  const active = document.activeElement;
-  const at = controls().indexOf(active);
-  let range = null;
-  try { if (at >= 0 && active.selectionStart != null) range = [active.selectionStart, active.selectionEnd]; } catch { /* not a text field */ }
-  render();
-  const node = at >= 0 ? controls()[at] : null;
-  if (!node) return;
-  node.focus({ preventScroll: true });
-  try { if (range) node.setSelectionRange(...range); } catch { /* not a text field */ }
-}
 
 function setErrors(next, taken = null) {
   if (JSON.stringify(next) === JSON.stringify(errors) && taken === takenRoomId) return;
@@ -779,12 +987,14 @@ async function saveHome() {
     // ("not saved yet") instead of turning red before anyone had a chance to fill it in.
     setErrors(Object.fromEntries(Object.entries(gaps).filter(([path]) => {
       const room = path.match(/^rooms\.(\d+)\./);
-      return !room || state.rooms[room[1]].id;
+      return !room || state.rooms[room[1]]?.id;
     })));
     return;
   }
+  // The room objects as sent: rooms may be added or removed while the request is on its way.
+  const sentRooms = state.rooms.slice();
   try {
-    home = await put(`/homes/${home.id}`, body);
+    await serial(async () => { home = await put(`/homes/${home.id}`, body); });
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
@@ -792,10 +1002,13 @@ async function saveHome() {
     if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
     return;
   }
-  // Take over what only the server knows: the ids of new rooms (it keeps their order).
-  // The rest of `state` stays as it is: the person may have typed on while this was sent.
+  // Take over what only the server knows: the ids of new rooms (it keeps their order) and
+  // how many live in each. The rest of `state` stays: the person may have typed on meanwhile.
   const added = body.rooms.some((room) => !room.id);
-  state.rooms.forEach((room, i) => { if (i < body.rooms.length) room.id = home.rooms[i]?.id ?? room.id; });
+  sentRooms.forEach((room, i) => {
+    const out = home.rooms[i];
+    if (out) { room.id = out.id; room.residents = out.residents; }
+  });
   // The dorm room number is sent once and not shown again.
   const sentLabel = body.room_label;
   if (sentLabel && roomLabel() === sentLabel) { state.room_number = ''; state.room_letter = null; }
@@ -805,9 +1018,7 @@ async function saveHome() {
     takenRoomId = null;
     rerender();
   } else {
-    renderStatus();
-    renderResidents();
-    renderInvites();
+    refreshSummary();
   }
   saved();
 }
@@ -816,10 +1027,10 @@ const saveSoon = autosaver(saveHome, 1200);
 
 /** The form changed: save after a pause in typing, or at once (`now`) after a click or leaving a field. */
 function changed(now = false) {
-  if (!home || !canEdit) return;
+  refreshSummary();
+  if (!home || !canEdit()) return;
   if (now) saveSoon.now(); else saveSoon();
 }
 
 render();
 document.addEventListener('langchange', render);
-void user;

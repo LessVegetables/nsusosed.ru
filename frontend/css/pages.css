@@ -149,14 +149,44 @@
     }
   }
 
-  /* My home: same single column as the questionnaire. */
-  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
-  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
-  .hpage #status { gap: 10px; }
-  .hpage #status:empty { display: none; }
+  /* My home: the room page's tiles (.rpage, .bento below), with the form inside them.
+     js/pages/home.js. Before the kind is picked, one narrow box. */
+  .hkind { max-width: 760px; }
+  .hkind h2 { font-size: var(--fs-panel); }
   .hblock { display: grid; gap: 18px; }
+  .tile.hblock { gap: 18px; }
   .hblock > * { margin: 0; }
-  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock > h2, .hblock .row h2, .hblock .row h3 { margin: 0; font-size: var(--fs-panel); }
+  .hblock .row h3 { font-size: var(--fs-card); }
+  .hpage .t-title .emoji-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* The status word ("Draft", "Черновик") is longer than a number: one step smaller. */
+  .hpage #tile-status .big-pct { font-size: var(--fs-panel); overflow-wrap: anywhere; }
+  @media (max-width: 960px) { .hpage #tile-status .big-pct { font-size: var(--fs-card); } }
+  .hpage .t-cta > .btn { justify-self: stretch; justify-content: center; }
+  .hpage .t-cta .stack { display: grid; gap: 10px; }
+  .hpage .t-cta .stack > * { margin: 0; }
+  /* Photo tile: the photo shown large, what to do with it, then all of them in one scrolling
+     row ending with "+ Add". Empty: one big "add" area. Files can be dropped anywhere on it. */
+  .hphotos { display: grid; gap: 12px; align-content: start; }
+  .hphotos > * { margin: 0; }
+  .hphotos h2 { margin: 0; font-size: var(--fs-panel); }
+  .hphotos .main-wrap { position: relative; }
+  .hphotos .thumbs { margin-top: 0; }
+  .hphotos .photo-actions { gap: 10px; }
+  .hphotos .photo-actions .btn { flex: 1; justify-content: center; padding-inline: 12px; }
+  .hphotos .thumbs { align-items: start; }
+  .hphotos .thumbs .upload { flex: 0 0 calc((100% - 30px) / 4.4); aspect-ratio: 4 / 3; padding: 0; font-size: var(--fs-panel); line-height: 1; }
+  .upload-big, .photo-empty { aspect-ratio: 4 / 3; }
+  .upload-big span { display: grid; gap: 6px; }
+  .upload-big small { font-weight: var(--w-body); }
+  .photo-empty { display: grid; place-items: center; border: var(--line-w) dashed var(--edge); border-radius: var(--r-sm); }
+  .hphotos[data-drop] { outline: var(--line-w) dashed var(--primary); outline-offset: 4px; }
+  .room-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); align-items: start; }
+  /* The "List it" bar is a tile; on phones its buttons stack, the main one on top. */
+  @media (max-width: 640px) {
+    .hpage .qbar { display: flex; flex-direction: column-reverse; align-items: stretch; }
+    .hpage .qbar .btn { justify-content: center; }
+  }
   .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
   .hblock fieldset > * { margin: 0; }
   .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
