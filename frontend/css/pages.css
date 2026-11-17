@@ -256,6 +256,11 @@
   }
   .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
   .feed-more:empty { display: none; }
+  /* "Show all listings": the rooms that don't fit, under their own heading. */
+  .feed-others { display: grid; gap: 14px; margin-top: 34px; }
+  .feed-others > * { margin: 0; }
+  .feed-others > .cards { margin-top: 10px; }
+  .feed-others:empty { display: none; }
   .card .top { overflow: hidden; }
   .card .cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .card .top > :not(.cover) { position: relative; }

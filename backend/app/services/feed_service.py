@@ -1,8 +1,9 @@
 """The seeker's side: the feed of rooms with free places and a room's page.
 
 Who sees what:
-  - a room appears once its home is reachable (a host with a phone, Telegram or VK), has at
-    least one photo and a free place;
+  - a room appears once its home is reachable (a host with a phone, Telegram or VK) and has at
+    least one photo; rooms the seeker can't move into (full, another gender, a dorm outside
+    their faculty) go to a second list the page shows on request;
   - a hard block between the viewer and anyone living there hides the room completely, as if
     it did not exist (a 0% would give a hidden answer away);
   - scores go out only as a rounded percent and coarse badges; residents' hidden answers never.
@@ -101,13 +102,16 @@ def _visible(answers: dict | None) -> dict[str, int]:
     return {k: v for k, v in (answers or {}).items() if k in q.QUESTIONS and not q.QUESTIONS[k]["hidden"]}
 
 
-async def get_feed(db, user: User, kind: str, whole_campus: bool, any_gender: bool) -> Feed:
+async def get_feed(db, user: User, kind: str) -> Feed:
+    """Two lists, best match first: rooms this person could move into, and everything else a
+    seeker may see (another gender, a dorm outside their faculty, no free place), which the page
+    keeps behind "show all listings". Hard-blocked rooms are in neither."""
     mine = await _viewer_answers(db, user)
     homes = list((await db.execute(select(Home).where(Home.kind == kind))).scalars().all())
     answers = await _answers_by_user(db, [m.user_id for h in homes for m in h.memberships])
 
     items: list[tuple[float, FeedItem]] = []
-    hidden_by_faculty = hidden_by_gender = 0
+    others: list[tuple[float, FeedItem]] = []
     for home in homes:
         members = _active(home)
         if any(m.user_id == user.id for m in members) or not _shown(home):
@@ -121,24 +125,19 @@ async def get_feed(db, user: User, kind: str, whole_campus: bool, any_gender: bo
             # A building with no faculty list (or a person with no faculty) is not filtered.
             outside = bool(faculties and user.faculty and user.faculty not in faculties)
         for room in home.rooms:
-            if room.free_places <= 0:
-                continue
             wrong_gender = room.gender != "any" and user.gender is not None and room.gender != user.gender
-            if wrong_gender and not any_gender:
-                hidden_by_gender += 0 if (outside and not whole_campus) else 1
-                continue
-            if outside and not whole_campus:
-                hidden_by_faculty += 1
-                continue
             item = FeedItem(
                 room_id=room.id, kind=home.kind, building=home.building, district=home.district, emoji=room.emoji,
                 room_name=room.name, gender=room.gender, capacity=room.capacity, free_places=room.free_places,
                 rent_rub=room.rent_rub,
                 cover_url=image_service.home_photo_url(home.id, _room_photos(home, room)[0].file_name) if home.photos else None,
-                residents=len(members), compatibility=scored.public, outside_faculty=outside)
-            items.append((scored.room if scored.room is not None else -1.0, item))
+                residents=len(members), compatibility=scored.public, outside_faculty=outside, wrong_gender=wrong_gender)
+            fits = room.free_places > 0 and not wrong_gender and not outside
+            (items if fits else others).append((scored.room if scored.room is not None else -1.0, item))
     items.sort(key=lambda pair: -pair[0])
-    return Feed(items=[item for _, item in items], hidden_by_faculty=hidden_by_faculty, hidden_by_gender=hidden_by_gender)
+    # Rooms with a free place before full ones, then by compatibility.
+    others.sort(key=lambda pair: (pair[1].free_places <= 0, -pair[0]))
+    return Feed(items=[item for _, item in items], others=[item for _, item in others])
 
 
 async def _room_for(db, user: User, room_id) -> tuple[Home, Room, bool, _Scored, dict, dict]:

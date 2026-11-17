@@ -1,6 +1,6 @@
-// The feed: rooms with free places, best match first. Two tabs above the list: dorm rooms
-// and apartments. Dorm rooms are limited to the buildings of the person's faculty, and every
-// list to rooms they could move into by gender, until they ask to see more.
+// The feed: rooms this person could move into, best match first. Two tabs above the list: dorm
+// rooms and apartments. Every other listing (full, for another gender, a dorm outside their
+// faculty) waits at the bottom behind "show all listings".
 
 import { ApiError, get } from '../api.js';
 import { chips } from '../compat.js';
@@ -22,33 +22,48 @@ const dormName = (id) => t('home.dorm.n', { name: meta.dorms.find((d) => d.id ==
 const params = new URLSearchParams(location.search);
 const state = {
   kind: ['dorm', 'apartment'].includes(params.get('kind')) ? params.get('kind') : user.intent === 'seek_apt' ? 'apartment' : 'dorm',
-  wholeCampus: false, anyGender: false, feed: null, error: null,
+  showAll: false, feed: null, error: null,
 };
 
 const genderLabel = (g) => ({ f: t('feed.gender.f'), m: t('feed.gender.m'), any: t('feed.gender.any') }[g]);
 const rub = (n) => `${n.toLocaleString('ru-RU')} ₽`;
 
-function card(item, index) {
+// Why a room from the bottom list doesn't fit, as notes on its card.
+function unfitNotes(item) {
+  return [
+    item.free_places <= 0 && t('feed.full'),
+    item.wrong_gender && t('feed.wrongGender'),
+    item.outside_faculty && t('feed.outside'),
+  ].filter(Boolean).map((text) => el('p', { class: 'note' }, `⚠ ${text}`));
+}
+
+function card(item, index, unfit = false) {
   const title = item.kind === 'dorm' ? dormName(item.building) : (item.room_name || t('feed.apartment'));
   const meta1 = item.kind === 'dorm'
     ? t('feed.places', { free: item.free_places, total: item.capacity })
     : `${item.district} · ${t('feed.places', { free: item.free_places, total: item.capacity })}`;
-  return el('a', { class: 'card box', href: `/room?id=${item.room_id}` },
-    el('div', { class: `top ${FILLS[index % FILLS.length]}` },
+  const pct = item.compatibility && t('feed.percentLabel', { n: item.compatibility.percent });
+  return el('a', { class: unfit ? 'card box unfit' : 'card box', href: `/room?id=${item.room_id}` },
+    el('div', { class: unfit ? 'top' : `top ${FILLS[index % FILLS.length]}` },
       item.cover_url && el('img', { class: 'cover', src: item.cover_url, alt: '', loading: 'lazy' }),
       el('span', { class: 'emoji' }, item.emoji),
-      item.compatibility && el('span', { class: 'pct', 'aria-label': t('feed.percentLabel', { n: item.compatibility.percent }) }, `${item.compatibility.percent}%`)),
+      // A room that doesn't fit says so in the badge; its percent moves into the text.
+      unfit
+        ? el('span', { class: 'pct' }, item.free_places <= 0 ? t('feed.unfit.full') : t('feed.unfit.other'))
+        : item.compatibility && el('span', { class: 'pct', 'aria-label': pct }, `${item.compatibility.percent}%`)),
     el('div', { class: 'body' },
       el('h3', {}, title),
       el('p', { class: 'meta' }, meta1),
       el('p', { class: 'meta' }, [genderLabel(item.gender), item.rent_rub != null && rub(item.rent_rub), t('feed.residents', { n: item.residents })].filter(Boolean).join(' · ')),
+      unfit && pct && el('p', { class: 'meta' }, pct),
       item.compatibility ? chips(item.compatibility) : el('p', { class: 'note' }, `⚠ ${t('feed.noScore')}`),
-      item.outside_faculty && el('p', { class: 'note' }, `⚠ ${t('feed.outside')}`)));
+      ...(unfit ? unfitNotes(item) : [item.outside_faculty && el('p', { class: 'note' }, `⚠ ${t('feed.outside')}`)])));
 }
 
 function render() {
   for (const tab of document.querySelectorAll('[role=tab]')) tab.setAttribute('aria-selected', String(tab.dataset.kind === state.kind));
   $('list').setAttribute('aria-labelledby', `tab-${state.kind}`);
+  if (state.error || !state.feed) $('others').replaceChildren();
   if (state.error) {
     $('count').textContent = '';
     $('list').replaceChildren(el('p', { class: 'note error' }, `✕ ${state.error}`));
@@ -61,24 +76,28 @@ function render() {
     $('more').replaceChildren();
     return;
   }
-  const { items, hidden_by_faculty: byFaculty, hidden_by_gender: byGender } = state.feed;
+  const { items, others } = state.feed;
   $('count').textContent = items.length ? t('feed.count', { n: items.length }) : '';
   $('list').replaceChildren(items.length
-    ? el('div', { class: 'cards' }, ...items.map(card))
+    ? el('div', { class: 'cards' }, ...items.map((item, i) => card(item, i)))
     : el('div', { class: 'box pad empty' },
       el('h2', {}, t('feed.empty.title')),
-      el('p', {}, state.kind === 'dorm' && byFaculty ? t('feed.empty.faculty') : t('feed.empty.text'))));
+      el('p', {}, others.length ? t('feed.empty.others') : t('feed.empty.text'))));
 
-  const more = [];
-  if (state.kind === 'dorm' && !state.wholeCampus) {
-    more.push(el('button', { class: 'btn secondary', type: 'button', onclick: () => $('campus-dialog').showModal() },
-      byFaculty ? t('feed.more.campusN', { n: byFaculty }) : t('feed.more.campus')));
+  if (!others.length) {
+    $('more').replaceChildren();
+    $('others').replaceChildren();
+    return;
   }
-  if (!state.anyGender && byGender) {
-    more.push(el('button', { class: 'btn secondary', type: 'button', onclick: () => { state.anyGender = true; load(); } },
-      t('feed.more.gender', { n: byGender })));
-  }
-  $('more').replaceChildren(...more);
+  $('more').replaceChildren(el('button', {
+    class: 'btn secondary', type: 'button', 'aria-expanded': String(state.showAll), 'aria-controls': 'others',
+    onclick: () => { state.showAll = !state.showAll; render(); },
+  }, state.showAll ? t('feed.more.hide') : t('feed.more.show', { n: others.length })));
+  $('others').replaceChildren(...(state.showAll ? [
+    el('h2', { class: 'title' }, t('feed.others.title')),
+    el('p', { class: 'note' }, t('feed.others.text')),
+    el('div', { class: 'cards' }, ...others.map((item, i) => card(item, i, true))),
+  ] : []));
 }
 
 async function load() {
@@ -87,8 +106,7 @@ async function load() {
   render();
   const kind = state.kind;
   try {
-    const query = new URLSearchParams({ kind, whole_campus: state.wholeCampus, any_gender: state.anyGender });
-    const feed = await get(`/feed?${query}`);
+    const feed = await get(`/feed?${new URLSearchParams({ kind })}`);
     if (kind !== state.kind) return; // the tab changed while this was loading
     state.feed = feed;
   } catch (err) {
@@ -115,9 +133,6 @@ tabs.forEach((tab, i) => {
     next.click();
   });
 });
-
-$('campus-no').addEventListener('click', () => $('campus-dialog').close());
-$('campus-yes').addEventListener('click', () => { $('campus-dialog').close(); state.wholeCampus = true; load(); });
 
 document.addEventListener('langchange', render);
 load();

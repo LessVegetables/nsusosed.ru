@@ -13,12 +13,10 @@ router = APIRouter(prefix="/api", tags=["feed"])
 
 
 @router.get("/feed", response_model=Feed)
-async def api_feed(kind: Literal["dorm", "apartment"], whole_campus: bool = False, any_gender: bool = False,
-                   user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
-    """Rooms with free places, best match first. Dorm rooms are limited to the buildings of
-    the person's faculty unless whole_campus is set; rooms for another gender are left out
-    unless any_gender is set."""
-    return await feed_service.get_feed(db, user, kind, whole_campus, any_gender)
+async def api_feed(kind: Literal["dorm", "apartment"], user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+    """Rooms this person could move into, best match first, and every other visible listing
+    (full, another gender, a dorm outside their faculty) in a separate list."""
+    return await feed_service.get_feed(db, user, kind)
 
 
 @router.get("/rooms/{room_id}", response_model=RoomPage)
