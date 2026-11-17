@@ -54,5 +54,12 @@ Things we decided to do later. Not ordered. Remove an item when it's done.
 - **Hidden-answer retention.** The questionnaire research says to delete hidden raw answers after a
   matching season; that conflicts with re-fitting the weights. Decide together with the stale-data rules.
 - **Self-hosted Chinese font.** Chinese text uses the device's own font; Noto Sans SC is not shipped.
+- **Search together ("Ищем вместе").** People who compare by link (`compare_groups`) are already a
+  group without a home. Next step: let such a group look for an apartment together, with the feed
+  scored against the whole group (as a room is scored against its residents). Decided on 2026-11-18,
+  not built.
+- **Dorm swaps.** A dorm resident offering their place in exchange for another ("only swap" on a
+  listing). Needs two-sided matching (each person against the other room's residents). Parked
+  until pilot users ask for it.
 - **Dorm bank.** Long term: every dorm building with room layouts and photos, so listing a room (or
   managing a dorm) starts from known data.

@@ -21,4 +21,7 @@ export const KEYS = {
   seenLogin: 'seenLogin', // local: this browser has logged in before → "/" skips the landing page
   invite: 'invite',       // session: an invite code waiting for the person to log in
   flash: 'flash',         // session: i18n key prefix of a toast to show on the next page
+  compare: 'compare',     // session: a compare code waiting for the person to log in
+  compared: 'compared',   // session: came by a friend's compare link (the friend's first name)
+  together: 'together',   // session: "take it together" was picked on the landing page
 };

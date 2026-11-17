@@ -26,4 +26,6 @@ if (go) {
 } else {
   // A guest's pick lasts for this tab; the login page passes it on to the account.
   await initPage({ auth: 'none', onLangPick: (code) => session.set(KEYS.lang, code) });
+  // "Take it together": the questionnaire opens with the link for a friend ready.
+  document.getElementById('together').addEventListener('click', () => session.set(KEYS.together, '1'));
 }

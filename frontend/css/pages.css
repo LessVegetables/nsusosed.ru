@@ -355,4 +355,24 @@
   .solo .box { display: grid; gap: 16px; justify-items: start; }
   .solo h1 { margin: 0; }
   .solo p { margin: 0; }
+
+  /* Comparing with friends (/compare, and the link at the top of the questionnaire). */
+  .cpage { display: grid; gap: var(--gap); max-width: 900px; }
+  .cgroups { display: grid; gap: var(--gap); }
+  .cgroup, .cshare { display: grid; gap: 16px; }
+  .cgroup > *, .cshare > * { margin: 0; }
+  .cgroup-head { justify-content: space-between; align-items: baseline; }
+  .cgroup-head h2 { margin: 0; font-size: var(--fs-panel); overflow-wrap: anywhere; }
+  .cgroup .breakdown { margin-top: 0; }
+  .coverall { align-items: center; }
+  .cshare h2 { margin: 0; font-size: var(--fs-panel); }
+  .cshare-link { display: flex; gap: 12px; width: 100%; max-width: 640px; }
+  .cshare-link .field { flex: 1; min-width: 0; }
+  .cshare-link .btn { white-space: nowrap; align-self: end; }
+  @media (max-width: 640px) {
+    .cshare-link { flex-direction: column; }
+    .cshare-link .btn { align-self: stretch; justify-content: center; }
+  }
+  .together { margin: 0; }
+  #intent > .intent-compare { grid-column: -2 / -1; } /* under the options, like the invite field */
 }

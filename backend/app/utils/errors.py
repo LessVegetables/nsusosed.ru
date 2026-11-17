@@ -117,3 +117,15 @@ def invite_invalid() -> AppError:
 
 def last_manager() -> AppError:
     return AppError(409, "LAST_MANAGER", "Хотя бы у одного жителя должно остаться право управлять жителями.")
+
+
+def compare_invalid() -> AppError:
+    return AppError(404, "COMPARE_INVALID", "Ссылка на сравнение не найдена или больше не работает.")
+
+
+def compare_full() -> AppError:
+    return AppError(409, "COMPARE_FULL", "В этом сравнении уже максимум участников.")
+
+
+def too_many_compares() -> AppError:
+    return AppError(409, "TOO_MANY_COMPARES", "Слишком много сравнений. Выйдите из старых.")

@@ -6,11 +6,14 @@
 // First visit:  a "Done" button under the last block checks nothing required is missing, then
 //               "what are you looking for?" → their page.
 // Later visits: no button at all; a required question left empty is marked right away.
+// At the top: "taking it together?" makes a link for a friend (/compare), before any answer.
+// Someone who came by a friend's link isn't asked "what are you looking for?": they go back
+// to the compare page.
 //
 // Question texts come from the server in all three languages (GET /api/questionnaire), so a
 // new questionnaire version needs no change here.
 
-import { ApiError, get, put } from '../api.js';
+import { ApiError, get, post, put } from '../api.js';
 import { autosaver } from '../autosave.js';
 import { reportBug } from '../errors.js';
 import { renderFacultyPicker } from '../faculty.js';
@@ -24,7 +27,7 @@ import { el, errorText, setBusy, toast } from '../ui.js';
 const $ = (id) => document.getElementById(id);
 
 let { user } = await initPage({ auth: 'required' });
-const [quiz, meta] = await Promise.all([get('/questionnaire'), get('/meta')]);
+const [quiz, meta, compares] = await Promise.all([get('/questionnaire'), get('/meta'), get('/compare')]);
 
 // Still on the way in: the questionnaire isn't complete, or "what are you looking for?" wasn't answered.
 const onboarding = !quiz.complete || !user.intent;
@@ -347,6 +350,13 @@ function show(id) {
 
 /** After the questionnaire: ask what they came for (once), then go to their page. */
 async function finish() {
+  // Came by a friend's compare link: the result is what they came for.
+  if (!user.intent && session.get(KEYS.compared) != null) {
+    try { user = await put('/me', { intent: 'compare' }); } catch (err) { reportBug(err, { where: 'intent' }); }
+    session.remove(KEYS.compared);
+    location.assign('/compare');
+    return;
+  }
   // Someone who came by invite link doesn't need to be asked what they are here for.
   if (!user.intent && session.get(KEYS.invite)) {
     try { user = await put('/me', { intent: 'join' }); } catch (err) { reportBug(err, { where: 'intent' }); /* the join page works without it */ }
@@ -370,7 +380,7 @@ $('quiz').addEventListener('submit', async (e) => {
   if (ok) finish();
 });
 
-for (const button of $('intent-opts').querySelectorAll('button')) {
+for (const button of [...$('intent-opts').querySelectorAll('button'), $('intent-compare')]) {
   button.addEventListener('click', async () => {
     if (button.dataset.value === 'join') { openInvite(button); return; }
     setBusy(button, true);
@@ -414,3 +424,54 @@ $('invite-form').addEventListener('submit', async (e) => {
   session.set(KEYS.invite, code); // picked up by the join page
   location.assign('/join');
 });
+
+// ── Taking it together ──────────────────────────────────
+// The same link as on the compare page (one nobody has opened yet is reused), so it can go
+// out before anyone has answered and the friend's progress shows up there.
+
+const invitedBy = session.get(KEYS.compared);
+function drawInvitedBy() {
+  if (invitedBy == null) return;
+  $('together').hidden = true;
+  $('together-joined').hidden = false;
+  $('together-joined').textContent = invitedBy
+    ? t('compare.quiz.joined', { name: invitedBy }) : t('compare.quiz.joinedNoName');
+}
+drawInvitedBy();
+document.addEventListener('langchange', drawInvitedBy);
+$('together-mine').hidden = !compares.some((g) => g.members.length > 1);
+
+async function openTogether(copy) {
+  const button = $('together-open');
+  setBusy(button, true);
+  try {
+    const link = await post('/compare');
+    $('together-url').value = link.url;
+    $('together-link').hidden = false;
+    $('together-mine').hidden = false;
+    if (copy) await copyLink();
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    toast(t('error.title'), errorText(err), { error: true });
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+async function copyLink() {
+  try {
+    await navigator.clipboard.writeText($('together-url').value);
+    toast(t('compare.share.copied'), t('compare.quiz.copiedText'), { ms: 4000 });
+  } catch {
+    $('together-url').select();
+  }
+}
+
+$('together-open').addEventListener('click', () => openTogether(true));
+$('together-copy').addEventListener('click', copyLink);
+// Picked "take it together" on the landing page: the link is ready (copying needs a click).
+if (session.get(KEYS.together)) {
+  session.remove(KEYS.together);
+  if (invitedBy == null) openTogether(false);
+}
+$('together-url').addEventListener('focus', (e) => e.target.select());

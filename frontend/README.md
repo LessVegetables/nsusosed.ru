@@ -76,11 +76,12 @@ for f in frontend/js/*.js frontend/js/pages/*.js; do node --input-type=module --
 |---|---|---|
 | `/` | everyone | Landing for new visitors; logged-in people go to their page; an expired session goes to `/login` |
 | `/login` | guests | Email → name (first login) → code |
-| `/questionnaire` | logged in | Facts, all 20 questions (a draft saved after every answer), "what are you looking for?" |
+| `/questionnaire` | logged in | Facts, all 20 questions (a draft saved after every answer), "what are you looking for?". At the top, "taking it together?" gives a link for a friend; people who came by a friend's link skip the last question |
 | `/feed` | logged in | Rooms with free places; dorm and apartment tabs |
 | `/room?id=…` | logged in | One room: photos, map, residents, compatibility, contacts |
 | `/home` | logged in | List or edit your place; residents, invites, photos |
 | `/join` | logged in | Join a place by invite link or code |
+| `/compare` | logged in | Compare with friends by link: progress while they answer, then the result. Opening a link joins before the questionnaire |
 | `/account` | logged in | Profile, contacts, language, logout, delete |
 | `/compatibility`, `/privacy`, `/support` | everyone | How the score works; personal data; how to reach us |
 
