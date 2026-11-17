@@ -8,10 +8,10 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from app.config import DORMS, settings
-from app.models.home import Home, HomePhoto, Invite, Membership, Room
+from app.models.home import Home, HomePhoto, Invite, Membership, Room, StagedPhoto
 from app.models.user import User
 from app.schemas.home import (HomeIn, HomeOut, InviteOut, InvitePreview, Permissions, PhotoOut, Resident, ResidentUpdate,
-                              RoomIn, RoomOut)
+                              RoomIn, RoomOut, StagedPhotoOut)
 from app.services import image_service
 from app.utils import emoji as emoji_util
 from app.utils.contact import PRIMARY_TYPES
@@ -61,13 +61,14 @@ def to_out(home: Home, membership: Membership) -> HomeOut:
     needs_free_place = not any(r.free_places > 0 for r in home.rooms)
     needs_photo = not home.photos
     return HomeOut(
-        id=home.id, kind=home.kind, description=home.description, sunlight=home.sunlight,
+        id=home.id, kind=home.kind, description=home.description,
         building=home.building, district=home.district,
         lat=dorm["lat"] if dorm else home.lat, lon=dorm["lon"] if dorm else home.lon,
         radius_m=0 if home.kind == "dorm" else home.radius_m,
         utilities_mode=home.utilities_mode, utilities_rub=home.utilities_rub, internet_mode=home.internet_mode,
         rooms=[RoomOut(id=r.id, name=r.name, gender=r.gender, capacity=r.capacity, free_places=r.free_places,
-                       rent_rub=r.rent_rub, emoji=r.emoji,
+                       rent_rub=r.rent_rub, emoji=r.emoji, area_m2=r.area_m2, description=r.description,
+                       sunlight=r.sunlight, photo_ids=[p.id for p in r.photos],
                        residents=sum(1 for m in members if m.room_id == r.id)) for r in home.rooms],
         photos=[PhotoOut(id=p.id, url=image_service.home_photo_url(home.id, p.file_name), width=p.width, height=p.height)
                 for p in home.photos],
@@ -113,15 +114,20 @@ async def roll_emojis(db, count: int) -> list[str]:
     return out
 
 
-def _apply_room(room: Room, data: RoomIn, position: int) -> None:
+def _apply_room(room: Room, data: RoomIn, position: int, photos: dict, index: int) -> None:
     room.position, room.name, room.gender = position, data.name, data.gender
     room.capacity, room.free_places, room.rent_rub = data.capacity, data.free_places, data.rent_rub
     room.emoji, room.emoji_key = emoji_util.normalize(data.emoji)
+    room.area_m2, room.description, room.sunlight = data.area_m2, data.description, data.sunlight
+    unknown = [pid for pid in data.photo_ids if pid not in photos]
+    if unknown:
+        raise validation_error("Фото не найдено.", {f"rooms.{index}.photo_ids": "UNKNOWN_PHOTO"})
+    # Always in the home's order, as the database returns them.
+    room.photos = sorted((photos[pid] for pid in dict.fromkeys(data.photo_ids)), key=lambda p: p.position)
 
 
 def _apply_home(home: Home, body: HomeIn) -> None:
     home.description = body.description
-    home.sunlight = body.sunlight
     home.building = body.building
     if body.room_label is not None:
         home.room_label = body.room_label
@@ -154,13 +160,20 @@ async def create_home(db, user: User, body: HomeIn) -> HomeOut:
             raise validation_error("Укажите комнату.", {"room_label": "REQUIRED"})
         await _check_dorm_room_free(db, body.building, body.room_label)
     await _check_emojis_free(db, body.rooms)
+    staged = await _claim_staged(db, user, body.photo_ids)
 
     # Collections are set here so that nothing has to be lazily loaded later (async sessions can't).
     home = Home(id=uuid.uuid4(), kind=body.kind, rooms=[], photos=[], memberships=[])
     _apply_home(home, body)
+    # Photos uploaded while the form was filled in: same ids, files moved into the home's folder.
+    for position, photo in enumerate(staged):
+        file_name = image_service.claim_staged(db, photo.file_name, image_service.home_dir(home.id))
+        home.photos.append(HomePhoto(id=photo.id, position=position, file_name=file_name, width=photo.width, height=photo.height))
+        await db.delete(photo)
+    photos = {p.id: p for p in home.photos}
     for position, data in enumerate(body.rooms):
-        room = Room(id=uuid.uuid4())
-        _apply_room(room, data, position)
+        room = Room(id=uuid.uuid4(), photos=[])
+        _apply_room(room, data, position, photos, position)
         home.rooms.append(room)
     db.add(home)
     await db.flush()  # rooms first: the membership points at one
@@ -194,12 +207,13 @@ async def update_home(db, user: User, home_id, body: HomeIn) -> HomeOut:
     await db.flush()  # removed rooms release their emojis before new ones claim them
 
     _apply_home(home, body)
+    photos = {p.id: p for p in home.photos}
     for position, data in enumerate(body.rooms):
         room = existing.get(data.id)
         if room is None:
-            room = Room(id=uuid.uuid4())
+            room = Room(id=uuid.uuid4(), photos=[])
             home.rooms.append(room)
-        _apply_room(room, data, position)
+        _apply_room(room, data, position, photos, position)
     home.rooms.sort(key=lambda r: r.position)
     await db.flush()
     return to_out(home, membership)
@@ -254,6 +268,9 @@ async def delete_photo(db, user: User, home_id, photo_id) -> HomeOut:
     if photo is None:
         raise not_found("Фото не найдено.")
     home.photos.remove(photo)
+    for room in home.rooms:
+        if photo in room.photos:
+            room.photos.remove(photo)
     for position, p in enumerate(home.photos):
         p.position = position
     await db.flush()
@@ -269,8 +286,55 @@ async def reorder_photos(db, user: User, home_id, photo_ids: list) -> HomeOut:
     for position, photo_id in enumerate(photo_ids):
         photos[photo_id].position = position
     home.photos.sort(key=lambda p: p.position)
+    for room in home.rooms:
+        room.photos.sort(key=lambda p: p.position)
     await db.flush()
     return to_out(home, membership)
+
+
+# ── Photos uploaded before the home exists ──────────────
+
+def _staged_out(photo: StagedPhoto) -> StagedPhotoOut:
+    return StagedPhotoOut(id=photo.id, url=image_service.staged_photo_url(photo.file_name), width=photo.width, height=photo.height)
+
+
+async def _staged(db, user: User) -> list[StagedPhoto]:
+    rows = await db.execute(select(StagedPhoto).where(StagedPhoto.user_id == user.id).order_by(StagedPhoto.created_at))
+    return list(rows.scalars().all())
+
+
+async def list_staged(db, user: User) -> list[StagedPhotoOut]:
+    return [_staged_out(p) for p in await _staged(db, user)]
+
+
+async def add_staged(db, user: User, data: bytes) -> StagedPhotoOut:
+    if len(await _staged(db, user)) >= image_service.MAX_HOME_PHOTOS:
+        raise too_many_photos()
+    jpeg, width, height = await image_service.encode_home_photo(data)
+    photo = StagedPhoto(id=uuid.uuid4(), user_id=user.id, file_name=image_service.store(db, image_service.staged_dir(), jpeg),
+                        width=width, height=height)
+    db.add(photo)
+    await db.flush()
+    return _staged_out(photo)
+
+
+async def delete_staged(db, user: User, photo_id) -> None:
+    photo = next((p for p in await _staged(db, user) if p.id == photo_id), None)
+    if photo is None:
+        raise not_found("Фото не найдено.")
+    await db.delete(photo)
+    await db.flush()
+    image_service.remove_after_commit(db, image_service.staged_dir() / photo.file_name)
+
+
+async def _claim_staged(db, user: User, photo_ids: list) -> list[StagedPhoto]:
+    """This person's staged photos, in the order asked for. Any other id is an error."""
+    if not photo_ids:
+        return []
+    mine = {p.id: p for p in await _staged(db, user)}
+    if any(pid not in mine for pid in photo_ids):
+        raise validation_error("Фото не найдено.", {"photo_ids": "UNKNOWN_PHOTO"})
+    return [mine[pid] for pid in dict.fromkeys(photo_ids)]
 
 
 # ── Residents and their rights ──────────────────────────

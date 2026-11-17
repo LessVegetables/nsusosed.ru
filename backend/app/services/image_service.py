@@ -10,6 +10,7 @@ import shutil
 import time
 import uuid
 import warnings
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from PIL import Image, ImageOps
 from starlette.concurrency import run_in_threadpool
@@ -96,6 +97,28 @@ async def encode_home_photo(data: bytes) -> tuple[bytes, int, int]:
     return await run_in_threadpool(reencode, data, max_side=HOME_PHOTO_SIDE)
 
 
+# Photos uploaded before their home exists (home_service.add_staged) wait in one folder and
+# are moved into the home's folder when it is created.
+STAGED_MAX_AGE_S = 7 * 24 * 3600
+
+
+def staged_dir() -> Path:
+    return Path(settings.media_dir) / "staged"
+
+
+def staged_photo_url(file_name: str) -> str:
+    return f"{settings.media_url}/staged/{file_name}"
+
+
+def claim_staged(db, file_name: str, folder: Path) -> str:
+    """Move a staged file into a home's folder (moved back if the transaction rolls back)."""
+    folder.mkdir(parents=True, exist_ok=True)
+    source, target = staged_dir() / file_name, folder / file_name
+    source.replace(target)
+    on_rollback(db, lambda: target.exists() and target.replace(source))
+    return file_name
+
+
 def remove_home_files(db, home_id) -> None:
     """Delete a home's photo folder once the home is really gone (after commit)."""
     folder = home_dir(home_id)
@@ -107,9 +130,19 @@ async def sweep_orphans(db) -> None:
     avatar files nobody points at (left behind if the process died mid-request). Recent files
     are left alone: their upload may still be running in another worker."""
     from sqlalchemy import select
-    from app.models.home import Home, HomePhoto
+    from sqlalchemy import delete
+    from app.models.home import Home, HomePhoto, StagedPhoto
     from app.models.user import User
     cutoff = time.time() - 3600
+    # Staged photos nobody listed within a week, then staged files the database doesn't know.
+    stale = datetime.now(timezone.utc) - timedelta(seconds=STAGED_MAX_AGE_S)
+    await db.execute(delete(StagedPhoto).where(StagedPhoto.created_at < stale))
+    await db.commit()
+    if staged_dir().is_dir():
+        staged = {row[0] for row in (await db.execute(select(StagedPhoto.file_name))).all()}
+        for file in staged_dir().iterdir():
+            if file.name not in staged and file.stat().st_mtime < cutoff:
+                file.unlink(missing_ok=True)
     homes_root = Path(settings.media_dir) / "homes"
     if homes_root.is_dir():
         existing = {str(row[0]) for row in (await db.execute(select(Home.id))).all()}

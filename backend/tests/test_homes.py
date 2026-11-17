@@ -14,16 +14,16 @@ ORIGIN = {"Origin": "https://testserver"}
 
 
 def dorm(**changes) -> dict:
-    base = {"kind": "dorm", "building": "6", "room_label": "100б", "description": "Тихая комната", "sunlight": "sunny",
-            "rooms": [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🐶🍕🚀"}]}
+    base = {"kind": "dorm", "building": "6", "room_label": "100б", "description": "Тихая комната",
+            "rooms": [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🐶🍕🚀", "sunlight": "sunny"}]}
     return base | changes
 
 
 def apartment(**changes) -> dict:
-    base = {"kind": "apartment", "district": "Верхняя зона", "description": "Двушка у леса", "sunlight": "partial", "lat": 54.84512, "lon": 83.09876, "radius_m": 420,
+    base = {"kind": "apartment", "district": "Верхняя зона", "description": "Двушка у леса", "lat": 54.84512, "lon": 83.09876, "radius_m": 420,
             "utilities_mode": "split", "utilities_rub": 2500, "internet_mode": "included",
-            "rooms": [{"name": "Большая", "gender": "any", "capacity": 2, "free_places": 1, "rent_rub": 14000, "emoji": "🦊🌵🎸"},
-                      {"name": "Маленькая", "gender": "f", "capacity": 1, "free_places": 1, "rent_rub": 11000, "emoji": "🐙🍋🎲"}]}
+            "rooms": [{"name": "Большая", "gender": "any", "capacity": 2, "free_places": 1, "rent_rub": 14000, "emoji": "🦊🌵🎸", "sunlight": "partial"},
+                      {"name": "Маленькая", "gender": "f", "capacity": 1, "free_places": 1, "rent_rub": 11000, "emoji": "🐙🍋🎲", "sunlight": "shady"}]}
     return base | changes
 
 
@@ -49,7 +49,8 @@ async def test_dorm_room_is_created_and_its_number_never_comes_back(db, make_cli
     home = r.json()
     assert home["kind"] == "dorm" and home["building"] == "6" and home["radius_m"] == 0
     assert home["rooms"][0] | {"id": 0} == {"id": 0, "name": "", "gender": "f", "capacity": 2, "free_places": 1,
-                                            "rent_rub": None, "emoji": "🐶🍕🚀", "residents": 1}
+                                            "rent_rub": None, "emoji": "🐶🍕🚀", "residents": 1, "area_m2": None,
+                                            "description": "", "sunlight": "sunny", "photo_ids": []}
     assert home["permissions"] == {"can_edit": True, "can_photos": True, "can_invites": True, "can_residents": True}
     # Stored normalized for the duplicate check, and absent from everything the API returns.
     async with db.connect() as conn:
@@ -63,18 +64,18 @@ async def test_a_dorm_room_cannot_be_listed_twice(make_client, login):
     a, b = await host(make_client, login, "a@g.nsu.ru"), await host(make_client, login, "b@g.nsu.ru")
     first = (await a.post("/api/homes", json=dorm(), headers=ORIGIN)).json()
 
-    r = await b.post("/api/homes", json=dorm(room_label="100Б", rooms=[{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🍎🍐🍊"}]),
+    r = await b.post("/api/homes", json=dorm(room_label="100Б", rooms=[{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🍎🍐🍊", "sunlight": "sunny"}]),
                      headers=ORIGIN)
     assert r.status_code == 409 and r.json()["error"]["code"] == "ROOM_TAKEN"
     # The page uses this to send the person to the existing listing and its hosts.
     assert r.json()["error"]["data"] == {"room_id": first["rooms"][0]["id"]}
 
     # The other room of the same block and the same number in another building are different rooms.
-    r = await b.post("/api/homes", json=dorm(room_label="100м", rooms=[{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🍎🍐🍊"}]),
+    r = await b.post("/api/homes", json=dorm(room_label="100м", rooms=[{"gender": "f", "capacity": 2, "free_places": 1, "emoji": "🍎🍐🍊", "sunlight": "sunny"}]),
                      headers=ORIGIN)
     assert r.status_code == 201, r.text
     c = await host(make_client, login, "c@g.nsu.ru")
-    r = await c.post("/api/homes", json=dorm(building="5", rooms=[{"gender": "m", "capacity": 2, "free_places": 1, "emoji": "🍇🍓🍒"}]),
+    r = await c.post("/api/homes", json=dorm(building="5", rooms=[{"gender": "m", "capacity": 2, "free_places": 1, "emoji": "🍇🍓🍒", "sunlight": "sunny"}]),
                      headers=ORIGIN)
     assert r.status_code == 201, r.text
 
@@ -86,8 +87,8 @@ async def test_dorm_validation(make_client, login):
     for bad in ("к. 100!", "99", "1000", "099", "100а", "б100", "100бм"):
         assert await fields(await c.post("/api/homes", json=dorm(room_label=bad), headers=ORIGIN)) == {"room_label": "INVALID_ROOM"}, bad
     assert await fields(await c.post("/api/homes", json=dorm(room_label=None), headers=ORIGIN)) == {"room_label": "REQUIRED"}
-    assert await fields(await c.post("/api/homes", json=dorm(sunlight=None), headers=ORIGIN)) == {"sunlight": "REQUIRED"}
-    assert "sunlight" in await fields(await c.post("/api/homes", json=dorm(sunlight="north"), headers=ORIGIN))
+    assert await fields(await c.post("/api/homes", json=dorm(rooms=[room | {"sunlight": None}]), headers=ORIGIN)) == {"rooms.0.sunlight": "REQUIRED"}
+    assert "rooms.0.sunlight" in await fields(await c.post("/api/homes", json=dorm(rooms=[room | {"sunlight": "north"}]), headers=ORIGIN))
     assert await fields(await c.post("/api/homes", json=dorm(rooms=[room | {"gender": "any"}]), headers=ORIGIN)) == \
         {"rooms.0.gender": "DORM_ROOM_NEEDS_GENDER"}
     assert await fields(await c.post("/api/homes", json=dorm(rooms=[room, room | {"emoji": "🍎🍐🍊"}]), headers=ORIGIN)) == \
@@ -146,8 +147,8 @@ async def test_editing_rooms_adds_changes_and_removes(make_client, login):
     assert (big["residents"], small["residents"]) == (1, 0)   # the creator lives in the first room
 
     body = apartment(rooms=[
-        {"id": big["id"], "name": "Большая", "gender": "any", "capacity": 2, "free_places": 0, "rent_rub": 15000, "emoji": "🦊🌵🎸"},
-        {"name": "Новая", "gender": "m", "capacity": 1, "free_places": 1, "rent_rub": 9000, "emoji": "🐙🍋🎲"},  # the removed room's emojis
+        {"id": big["id"], "name": "Большая", "gender": "any", "capacity": 2, "free_places": 0, "rent_rub": 15000, "emoji": "🦊🌵🎸", "sunlight": "sunny"},
+        {"name": "Новая", "gender": "m", "capacity": 1, "free_places": 1, "rent_rub": 9000, "emoji": "🐙🍋🎲", "sunlight": "sunny"},  # the removed room's emojis
     ])
     r = await c.put(f"/api/homes/{home['id']}", json=body, headers=ORIGIN)
     assert r.status_code == 200, r.text
@@ -179,7 +180,7 @@ async def test_dorm_edit_keeps_the_room_number_unless_a_new_one_is_given(db, mak
     home = (await c.post("/api/homes", json=dorm(), headers=ORIGIN)).json()
     room = home["rooms"][0]
     body = dorm(room_label=None, description="Новое описание",
-                rooms=[{"id": room["id"], "gender": "f", "capacity": 3, "free_places": 2, "emoji": "🐶🍕🚀"}])
+                rooms=[{"id": room["id"], "gender": "f", "capacity": 3, "free_places": 2, "emoji": "🐶🍕🚀", "sunlight": "sunny"}])
     r = await c.put(f"/api/homes/{home['id']}", json=body, headers=ORIGIN)
     assert r.status_code == 200 and r.json()["rooms"][0]["capacity"] == 3 and r.json()["description"] == "Новое описание"
     async with db.connect() as conn:
@@ -191,7 +192,7 @@ async def test_dorm_edit_keeps_the_room_number_unless_a_new_one_is_given(db, mak
 async def test_a_home_is_visible_once_a_host_is_reachable_with_a_photo_and_a_free_place(make_client, login):
     c = await host(make_client, login)
     home = (await c.post("/api/homes", json=dorm(), headers=ORIGIN)).json()
-    assert home["sunlight"] == "sunny"
+    assert home["rooms"][0]["sunlight"] == "sunny"
     assert (home["needs_contact"], home["needs_free_place"], home["needs_photo"], home["visible"]) == (True, False, True, False)
     await c.put("/api/me/contacts", json={"contacts": [{"type": "telegram", "value": "@host_one"}]}, headers=ORIGIN)
     home = (await c.get("/api/homes/mine")).json()["home"]
@@ -219,7 +220,7 @@ def test_typed_emojis_can_be_anything_else_and_order_does_not_matter():
 async def test_emojis_are_unique_across_listings_and_the_roll_avoids_taken_ones(make_client, login, monkeypatch):
     a, b = await host(make_client, login, "a@g.nsu.ru"), await host(make_client, login, "b@g.nsu.ru")
     await a.post("/api/homes", json=dorm(), headers=ORIGIN)
-    r = await b.post("/api/homes", json=dorm(room_label="200", rooms=[{"gender": "f", "capacity": 1, "free_places": 1, "emoji": "🚀🐶🍕"}]),
+    r = await b.post("/api/homes", json=dorm(room_label="200", rooms=[{"gender": "f", "capacity": 1, "free_places": 1, "emoji": "🚀🐶🍕", "sunlight": "sunny"}]),
                      headers=ORIGIN)
     assert r.status_code == 409 and r.json()["error"]["code"] == "EMOJI_TAKEN"
     assert r.json()["error"]["fields"] == {"rooms.0.emoji": "EMOJI_TAKEN"}
@@ -266,6 +267,54 @@ async def test_photos_upload_reorder_delete_and_go_with_the_home(make_client, lo
     assert (await c.request("DELETE", "/api/homes/mine/membership", headers=ORIGIN)).status_code == 204
     assert (await c.get("/api/homes/mine")).json() == {"home": None} and not folder.exists()
     assert (await c.post("/api/homes", json=dorm(), headers=ORIGIN)).status_code == 201   # the room is free again
+
+
+async def test_photos_uploaded_before_listing_become_the_homes_and_rooms_pick_theirs(make_client, login):
+    c = await host(make_client, login)
+    other = await host(make_client, login, "other@g.nsu.ru")
+    staged = []
+    for _ in range(3):
+        r = await c.post("/api/homes/new/photos", headers=ORIGIN, files={"file": ("p.png", picture(), "image/png")})
+        assert r.status_code == 201, r.text
+        staged.append(r.json())
+    assert "/staged/" in staged[0]["url"] and (staged[0]["width"], staged[0]["height"]) == (1600, 800)
+    assert [p["id"] for p in (await c.get("/api/homes/new/photos")).json()] == [p["id"] for p in staged]
+    assert (await other.get("/api/homes/new/photos")).json() == []
+    # Nobody can delete, or list a home with, someone else's staged photo.
+    assert (await other.request("DELETE", f"/api/homes/new/photos/{staged[2]['id']}", headers=ORIGIN)).status_code == 404
+    assert await fields(await other.post("/api/homes", json=apartment(photo_ids=[staged[0]["id"]]), headers=ORIGIN)) == \
+        {"photo_ids": "UNKNOWN_PHOTO"}
+    assert (await c.request("DELETE", f"/api/homes/new/photos/{staged[2]['id']}", headers=ORIGIN)).status_code == 204
+    staged_dir = Path(settings.media_dir) / "staged"
+    assert len(list(staged_dir.glob("*.jpg"))) == 2
+
+    a, b = staged[0]["id"], staged[1]["id"]
+    rooms = apartment()["rooms"]
+    body = apartment(photo_ids=[b, a], rooms=[rooms[0] | {"photo_ids": [a], "area_m2": 14, "description": " Балкон "},
+                                              rooms[1] | {"photo_ids": [a, b]}])
+    r = await c.post("/api/homes", json=body, headers=ORIGIN)
+    assert r.status_code == 201, r.text
+    home = r.json()
+    assert [p["id"] for p in home["photos"]] == [b, a]                        # same ids, the order asked for
+    assert home["rooms"][0] | {"id": 0} == home["rooms"][0] | {"id": 0, "photo_ids": [a], "area_m2": 14,
+                                                               "description": "Балкон", "sunlight": "partial"}
+    assert home["rooms"][1]["photo_ids"] == [b, a]                           # always in the home's order
+    assert (await c.get("/api/homes/new/photos")).json() == []
+    assert not list(staged_dir.glob("*.jpg"))
+    assert len(list((Path(settings.media_dir) / "homes" / home["id"]).glob("*.jpg"))) == 2
+
+    # Editing: a room's photos must be the home's; a deleted photo leaves the rooms too.
+    put_rooms = [{**r, "rent_rub": r["rent_rub"]} for r in home["rooms"]]
+    for r in put_rooms:
+        r.pop("residents")
+    edit = apartment(rooms=[put_rooms[0] | {"photo_ids": [staged[2]["id"]]}, put_rooms[1]])
+    assert await fields(await c.put(f"/api/homes/{home['id']}", json=edit, headers=ORIGIN)) == {"rooms.0.photo_ids": "UNKNOWN_PHOTO"}
+    edit = apartment(rooms=[put_rooms[0] | {"photo_ids": [a, b], "area_m2": None}, put_rooms[1]])
+    r = await c.put(f"/api/homes/{home['id']}", json=edit, headers=ORIGIN)
+    assert r.status_code == 200, r.text
+    assert r.json()["rooms"][0]["photo_ids"] == [b, a] and r.json()["rooms"][0]["area_m2"] is None
+    r = await c.request("DELETE", f"/api/homes/{home['id']}/photos/{b}", headers=ORIGIN)
+    assert [room["photo_ids"] for room in r.json()["rooms"]] == [[a], [a]]
 
 
 # ── Address search ──────────────────────────────────────

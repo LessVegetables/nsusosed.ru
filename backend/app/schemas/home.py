@@ -33,11 +33,22 @@ class RoomIn(BaseModel):
     free_places: int = Field(..., ge=0, le=6)
     rent_rub: Optional[int] = Field(default=None, ge=0, le=300_000)
     emoji: str = Field(..., max_length=60)
+    area_m2: Optional[int] = Field(default=None, ge=3, le=200)
+    description: str = Field(default="", max_length=1000)
+    # How much sun gets in. Optional in the type so a missing answer gets the usual REQUIRED.
+    sunlight: Optional[Literal["sunny", "partial", "shady"]] = None
+    # Which of the home's photos show this room (when creating: ids from the staged uploads).
+    photo_ids: list[UUID] = Field(default_factory=list, max_length=10)
 
     @field_validator("name")
     @classmethod
     def clean_name(cls, v: str) -> str:
         return " ".join(v.split())
+
+    @field_validator("description")
+    @classmethod
+    def strip_description(cls, v: str) -> str:
+        return v.strip()
 
     @model_validator(mode="after")
     def check(self) -> "RoomIn":
@@ -54,8 +65,6 @@ class RoomIn(BaseModel):
 class HomeIn(BaseModel):
     kind: Literal["dorm", "apartment"]
     description: str = Field(default="", max_length=1000)
-    # How much sun gets in. Optional in the type so a missing answer gets the usual REQUIRED.
-    sunlight: Optional[Literal["sunny", "partial", "shady"]] = None
     rooms: list[RoomIn] = Field(..., min_length=1, max_length=MAX_ROOMS)
 
     # Dorm. room_label may be left out when editing: the stored one is kept.
@@ -71,6 +80,9 @@ class HomeIn(BaseModel):
     utilities_rub: Optional[int] = Field(default=None, ge=0, le=50_000)
     internet_mode: Optional[Literal["included", "split", "none"]] = None
 
+    # Creating only: photos uploaded beforehand (POST /api/homes/new/photos), cover first.
+    photo_ids: list[UUID] = Field(default_factory=list, max_length=10)
+
     @field_validator("description")
     @classmethod
     def strip_description(cls, v: str) -> str:
@@ -79,8 +91,9 @@ class HomeIn(BaseModel):
     @model_validator(mode="after")
     def check(self) -> "HomeIn":
         errors: dict[str, str] = {}
-        if self.sunlight is None:
-            errors["sunlight"] = "REQUIRED"
+        for i, room in enumerate(self.rooms):
+            if room.sunlight is None:
+                errors[f"rooms.{i}.sunlight"] = "REQUIRED"
         if not self.description:
             errors["description"] = "REQUIRED"
         if self.kind == "dorm":
@@ -95,7 +108,8 @@ class HomeIn(BaseModel):
             for i, room in enumerate(self.rooms):
                 if room.gender == "any":
                     errors[f"rooms.{i}.gender"] = "DORM_ROOM_NEEDS_GENDER"
-                room.rent_rub, room.name = None, ""
+                # A dorm home is its one room: its description and photos are the home's.
+                room.rent_rub, room.name, room.description, room.photo_ids = None, "", "", []
             self.district = self.lat = self.lon = self.radius_m = None
             self.utilities_mode = self.utilities_rub = self.internet_mode = None
         else:
@@ -142,6 +156,10 @@ class RoomOut(BaseModel):
     free_places: int
     rent_rub: Optional[int] = None
     emoji: str
+    area_m2: Optional[int] = None
+    description: str
+    sunlight: Optional[str] = None
+    photo_ids: list[UUID]
     residents: int  # hosts on the site who live in this room
 
 
@@ -219,7 +237,6 @@ class HomeOut(BaseModel):
     id: UUID
     kind: str
     description: str
-    sunlight: Optional[str] = None
     building: Optional[str] = None
     district: Optional[str] = None
     # Dorm: the building's exact point, radius 0 (None until the building list has coordinates).
@@ -247,3 +264,12 @@ class EmojiRoll(BaseModel):
 
 class PhotoOrder(BaseModel):
     photo_ids: list[UUID] = Field(..., max_length=20)
+
+
+class StagedPhotoOut(BaseModel):
+    """A photo uploaded before the home exists."""
+
+    id: UUID
+    url: str
+    width: int
+    height: int

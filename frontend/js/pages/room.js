@@ -113,7 +113,7 @@ function contactPanel() {
 /** The summary tiles beside the photo: what it is, the score, the price (a dorm: the free
  *  places), and the contacts button. */
 function summary() {
-  const sub = [genderLabel(room.gender), room.sunlight && t(`home.sun.${room.sunlight}`)].filter(Boolean).join(' · ');
+  const sub = [genderLabel(room.gender), room.area_m2 && t('room.area', { n: room.area_m2 }), room.sunlight && t(`home.sun.${room.sunlight}`)].filter(Boolean).join(' · ');
   const flat = room.kind === 'apartment';
   // A dorm's free places are already the pink tile; an apartment's go here, with the internet.
   const line = flat && `${t('feed.places', { free: room.free_places, total: room.capacity })} · ${t('room.fact.internet')}: ${{ included: t('home.costs.internetIncluded'), split: t('home.costs.split'), none: t('home.costs.noInternet') }[room.internet_mode]}`;
@@ -208,7 +208,11 @@ function render() {
   document.title = `${room.emoji} ${title()} — nsusosed`;
   const hasPlace = room.lat != null && room.lon != null;
   const photo = gallery();
-  const about = room.description && el('section', { class: 'box pad rblock' }, el('h2', {}, t('home.about.title')), el('p', { class: 'prewrap' }, room.description));
+  // The room's own description first (an apartment's rooms differ), then the whole home's.
+  const about = (room.room_description || room.description) && el('section', { class: 'box pad rblock' },
+    el('h2', {}, t('home.about.title')),
+    room.room_description && el('p', { class: 'prewrap' }, room.room_description),
+    room.description && el('p', { class: 'prewrap' }, room.description));
   const where = hasPlace && el('section', { class: 'box pad rblock' },
     el('h2', {}, t('home.place.title')),
     el('p', { class: 'hint' }, room.radius_m ? t('room.place.area') : t('room.place.dorm')),

@@ -1,18 +1,24 @@
 // "My home": list a dorm room or an apartment, then edit it.
 //
 // Laid out as tiles like the room page (js/pages/room.js), so the host edits what visitors
-// see: the photos on the left with the title, the status and the free places beside them,
-// then the place, the rooms, the description, the residents and the invites.
+// see: the photos on the left with the title, the status and the places beside them, then
+// the places taken, the location, the rooms, the description, the residents and the invites.
 //
 // The page is rebuilt from `state` on every structural change (kind picked, room added,
 // language switched); typing only writes into `state` and refreshes the summary tiles.
 //
+// Photos go up as soon as they are picked, even for a place that isn't listed yet: those wait
+// on the server as "staged" photos (/homes/new/photos) and become the home's when it is created.
 // A new place is sent once, with the "List it" button. After that there is no save button:
 // every change saves itself (see "Autosave") and answers with a "Saved" pop-up.
 //
 // Every request that changes the home goes through serial(): the answer to each one is the
 // whole home, so two in flight at once (an autosave and a photo upload) could otherwise
 // overwrite each other's result on the page.
+//
+// Places: a room has a capacity (how many people live in it in all); how many of those places
+// are taken is set in the "Places" tile for the whole home. The server keeps free places per
+// room (the feed lists rooms one by one): free = capacity − taken.
 //
 // Privacy rules this page is responsible for:
 //   - a dorm room's number is sent once and never shown again (the server doesn't return it);
@@ -40,6 +46,12 @@ let home = mine.home;   // as the server knows it; null until created
 let errors = {};        // { "rooms.0.emoji": "EMOJI_TAKEN", … } from the last save
 let takenRoomId = null; // set when the dorm room turned out to be listed already
 
+// Photos uploaded for a place that isn't listed yet: [{ id, url }], in the order they'll go.
+let staged = [];
+if (!home) {
+  try { staged = (await get('/homes/new/photos')).map(({ id, url }) => ({ id, url })); } catch (err) { reportBug(err, { where: 'staged' }); }
+}
+
 const canEdit = () => !home || home.permissions.can_edit;
 const canPhotos = () => !home || home.permissions.can_photos;
 
@@ -59,18 +71,19 @@ function apiFailed(err) {
 
 // ── State ───────────────────────────────────────────────
 
-const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2, free_places: 1, rent_rub: '', emoji, residents: 0 });
+const blankRoom = (emoji = '') => ({ id: null, name: '', gender: '', capacity: 2, free_places: 1, rent_rub: '', emoji,
+  area_m2: '', description: '', sunlight: '', photo_ids: [], residents: 0 });
 
 function stateFrom(h) {
   if (!h) {
-    return { kind: null, description: '', sunlight: '', building: '', room_number: '', room_letter: null, district: '', area: null,
+    return { kind: null, description: '', building: '', room_number: '', room_letter: null, district: '', area: null,
       utilities_mode: '', utilities_rub: '', internet_mode: '', rooms: [blankRoom()] };
   }
   return {
-    kind: h.kind, description: h.description, sunlight: h.sunlight ?? '', building: h.building ?? '', room_number: '', room_letter: null,
+    kind: h.kind, description: h.description, building: h.building ?? '', room_number: '', room_letter: null,
     district: h.district ?? '', area: h.kind === 'apartment' ? { lat: h.lat, lon: h.lon, radius_m: h.radius_m } : null,
     utilities_mode: h.utilities_mode ?? '', utilities_rub: h.utilities_rub ?? '', internet_mode: h.internet_mode ?? '',
-    rooms: h.rooms.map((r) => ({ ...r, rent_rub: r.rent_rub ?? '' })),
+    rooms: h.rooms.map((r) => ({ ...r, rent_rub: r.rent_rub ?? '', area_m2: r.area_m2 ?? '', sunlight: r.sunlight ?? '', photo_ids: [...r.photo_ids] })),
   };
 }
 
@@ -86,6 +99,8 @@ async function rollEmoji(count = 1) {
     return [];
   }
 }
+
+const roomTitle = (room, index) => (state.kind === 'apartment' ? room.name.trim() || t('home.room.titleN', { n: index + 1 }) : t('home.room.title'));
 
 // ── Small builders ──────────────────────────────────────
 
@@ -121,14 +136,20 @@ function textInput(obj, key, { digits = false, save = true, ...attrs } = {}) {
   return input;
 }
 
-function select(obj, key, options, { numeric = false, onchange } = {}) {
-  const node = el('select', { disabled: !canEdit() }, ...options.map(([value, label]) => el('option', { value }, label)));
-  node.value = String(obj[key] ?? '');
-  node.addEventListener('change', () => {
-    obj[key] = numeric ? Number(node.value) : node.value;
-    onchange?.();
-    changed(true);
-  });
+function textArea(obj, key, attrs = {}) {
+  const area = el('textarea', { rows: 4, maxlength: 1000, ...attrs, disabled: !canEdit() });
+  area.value = obj[key];
+  area.addEventListener('input', () => { obj[key] = area.value; changed(); });
+  area.addEventListener('change', () => changed(true));
+  return area;
+}
+
+/** A <select> of numbers. `onchange(value)` writes the state itself. */
+function numberSelect(value, from, to, onchange, attrs = {}) {
+  const node = el('select', { ...attrs, disabled: !canEdit() },
+    ...Array.from({ length: to - from + 1 }, (_, i) => el('option', { value: String(from + i) }, String(from + i))));
+  node.value = String(value);
+  node.addEventListener('change', () => { onchange(Number(node.value)); changed(true); });
   return node;
 }
 
@@ -207,9 +228,8 @@ function placesTile() {
     el('span', { class: 'big-pct' }, `${free}/${total}`), el('span', { class: 'meta' }, t('room.tile.free')));
 }
 
-/** What still keeps the listing hidden, with a link to fix each. */
+/** What still keeps the listing hidden, with a link to fix each. Listed homes only. */
 function statusNotes() {
-  if (!home) return [el('p', {}, t('home.cta.new'))];
   const notes = [];
   // Autosave sends nothing while a field is missing or wrong; the field may be far below.
   if (Object.keys(errors).length || takenRoomId) {
@@ -237,26 +257,30 @@ function statusNotes() {
 function ctaTile() {
   return el('div', { class: 'box pad tile t-cta', id: 'tile-cta' },
     el('div', { class: 'stack' }, ...statusNotes()),
-    home
-      ? el('a', { class: 'btn secondary', href: `/room?id=${home.rooms[0].id}` }, t('home.preview'))
-      : el('button', { class: 'btn', type: 'submit' }, t('home.publish')));
+    el('a', { class: 'btn secondary', href: `/room?id=${home.rooms[0].id}` }, t('home.preview')));
 }
 
 function refreshSummary() {
   refresh('tile-title', titleTile);
   refresh('tile-status', statusTile);
   refresh('tile-places', placesTile);
-  refresh('tile-cta', ctaTile);
+  if (home) refresh('tile-cta', ctaTile);
 }
 
 // ── Photos ──────────────────────────────────────────────
 
-let pendingPhotos = []; // picked before the place is listed: [{ blob, url }], uploaded right after
 let uploading = 0;      // photos on their way to the server
 let photoBusy = false;  // a delete or a reorder is being sent
 let shown = 0;          // the photo shown large
 
-const photoList = () => (home ? home.photos.map((p) => ({ id: p.id, url: p.url })) : pendingPhotos);
+const photoList = () => (home ? home.photos.map((p) => ({ id: p.id, url: p.url })) : staged);
+const photoIds = () => new Set(photoList().map((p) => p.id));
+
+/** Rooms keep only photos that still exist (after a delete). */
+function dropMissingPhotos() {
+  const ids = photoIds();
+  state.rooms.forEach((room) => { room.photo_ids = room.photo_ids.filter((id) => ids.has(id)); });
+}
 
 function photoError(err) {
   if (err instanceof ApiError || err?.code) return errorText(err);
@@ -264,55 +288,51 @@ function photoError(err) {
   return t('error.generic');
 }
 
-/** Files picked or dropped. Before listing they wait here; after, they go up one by one. */
-async function addPhotos(files) {
+/** Files picked or dropped: shrunk here, then sent one by one. `room`: also show them in that room. */
+async function addPhotos(files, room = null) {
   const images = files.filter((f) => !f.type || f.type.startsWith('image/'));
   if (!images.length) return;
-  const room = MAX_PHOTOS - photoList().length - uploading;
-  if (images.length > room) toast(t('error.title'), t('error.TOO_MANY_PHOTOS'), { error: true });
-  const take = images.slice(0, Math.max(0, room));
+  const space = MAX_PHOTOS - photoList().length - uploading;
+  if (images.length > space) toast(t('error.title'), t('error.TOO_MANY_PHOTOS'), { error: true });
+  const take = images.slice(0, Math.max(0, space));
   if (!take.length) return;
 
-  if (!home) {
-    uploading += take.length;
-    renderPhotos();
-    const failed = [];
-    for (const file of take) {
-      try {
-        const blob = await preparePhoto(file);
-        pendingPhotos.push({ blob, url: URL.createObjectURL(blob) });
-      } catch (err) { failed.push(photoError(err)); }
-      uploading -= 1;
-    }
-    if (pendingPhotos.length) delete errors.photos;
-    renderPhotos();
-    if (failed.length) toast(t('home.photos.failed', { n: failed.length }), failed[0], { error: true });
-    return;
-  }
-  await uploadAll(take.map((file) => () => preparePhoto(file)));
-}
-
-/** Upload one by one, in order. A failed one doesn't stop the rest; the failures are told at the end. */
-async function uploadAll(jobs) {
-  uploading += jobs.length;
+  uploading += take.length;
   renderPhotos();
   const failed = [];
-  for (const job of jobs) {
+  let added = 0;
+  for (const file of take) {
     try {
-      const blob = await job();
+      const blob = await preparePhoto(file);
       const body = new FormData();
       body.append('file', blob, 'photo.jpg');
-      await serial(async () => { home = await post(`/homes/${home.id}/photos`, body); });
+      let id;
+      await serial(async () => {
+        if (home) {
+          const before = photoIds();
+          home = await post(`/homes/${home.id}/photos`, body);
+          id = home.photos.find((p) => !before.has(p.id))?.id;
+        } else {
+          const photo = await post('/homes/new/photos', body);
+          staged.push({ id: photo.id, url: photo.url });
+          id = photo.id;
+        }
+      });
+      if (room && id) room.photo_ids.push(id);
+      added += 1;
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) { location.replace('/login'); return; }
       failed.push(photoError(err));
     }
     uploading -= 1;
+    if (photoList().length) delete errors.photos;
     renderPhotos();
+    if (room) renderRoomPhotos();
     refreshSummary();
   }
+  if (room && added) changed(true);
   if (failed.length) toast(t('home.photos.failed', { n: failed.length }), failed[0], { error: true });
-  else saved();
+  else if (home) saved();
 }
 
 async function photoAction(action) {
@@ -320,32 +340,38 @@ async function photoAction(action) {
   photoBusy = true;
   renderPhotos();
   try {
-    await serial(async () => { home = await action(); });
-    saved();
+    await serial(action);
+    if (home) saved();
   } catch (err) { apiFailed(err); }
   photoBusy = false;
+  dropMissingPhotos();
   renderPhotos();
+  renderRoomPhotos();
   refreshSummary();
 }
 
 function makeCover(i) {
   const list = photoList();
   shown = 0;
-  if (!home) { pendingPhotos.unshift(...pendingPhotos.splice(i, 1)); renderPhotos(); return; }
-  photoAction(() => put(`/homes/${home.id}/photos/order`, { photo_ids: [list[i].id, ...list.filter((_, j) => j !== i).map((p) => p.id)] }));
+  if (!home) { staged.unshift(...staged.splice(i, 1)); renderPhotos(); return; }
+  photoAction(async () => {
+    home = await put(`/homes/${home.id}/photos/order`, { photo_ids: [list[i].id, ...list.filter((_, j) => j !== i).map((p) => p.id)] });
+  });
 }
 
 function removePhoto(i) {
-  const list = photoList();
+  const { id } = photoList()[i];
   if (shown >= i && shown > 0) shown -= 1;
-  if (!home) { URL.revokeObjectURL(pendingPhotos[i].url); pendingPhotos.splice(i, 1); renderPhotos(); return; }
-  photoAction(() => del(`/homes/${home.id}/photos/${list[i].id}`));
+  photoAction(async () => {
+    if (home) home = await del(`/homes/${home.id}/photos/${id}`);
+    else { await del(`/homes/new/photos/${id}`); staged = staged.filter((p) => p.id !== id); }
+  });
 }
 
 /** The "add photos" control: a label around a hidden file input. `big` fills the empty tile. */
-function picker(big) {
+function picker({ big = false, room = null } = {}) {
   const input = el('input', { class: 'sr-only', type: 'file', accept: 'image/*', multiple: true });
-  input.addEventListener('change', () => addPhotos([...input.files]));
+  input.addEventListener('change', () => addPhotos([...input.files], room));
   return el('label', { class: big ? 'upload upload-big' : 'upload', title: big ? null : t('home.photos.add') }, input,
     big ? el('span', {}, el('b', {}, `+ ${t('home.photos.add')}`), el('small', {}, t('home.photos.drop')))
       : el('span', {}, el('span', { 'aria-hidden': 'true' }, '+'), el('span', { class: 'sr-only' }, t('home.photos.add'))));
@@ -355,7 +381,7 @@ function photosTile() {
   const list = photoList();
   const can = canPhotos();
   shown = Math.min(shown, Math.max(0, list.length - 1));
-  const room = can && list.length + uploading < MAX_PHOTOS;
+  const space = can && list.length + uploading < MAX_PHOTOS;
   const status = uploading > 0 && el('p', { class: 'note', role: 'status' }, `⏳ ${t('home.photos.uploading', { n: uploading })}`);
   const tile = el('section', { class: 'box gallery tile t-photo hphotos', id: 'tile-photos', 'aria-busy': String(uploading > 0 || photoBusy) },
     el('div', { class: 'row spread' },
@@ -364,7 +390,7 @@ function photosTile() {
 
   if (!list.length) {
     tile.append(...[
-      room ? picker(true) : el('div', { class: 'photo-empty' }, t('home.photos.none')),
+      space ? picker({ big: true }) : el('div', { class: 'photo-empty' }, t('home.photos.none')),
       status,
       el('p', { class: 'hint' }, t('home.photos.hint')),
       problem('photos'),
@@ -374,22 +400,24 @@ function photosTile() {
     const thumbs = el('div', { class: 'thumbs' }, ...list.map((p, i) => el('button', {
       type: 'button', 'aria-pressed': String(i === shown), 'aria-label': t('home.photos.alt', { n: i + 1 }),
       onclick: () => { shown = i; renderPhotos(); },
-    }, el('img', { src: p.url, alt: '', loading: 'lazy' }))), room && picker(false));
+    }, el('img', { src: p.url, alt: '', loading: 'lazy' }))), space && picker());
     tile.append(...[
       el('div', { class: 'main-wrap' },
         el('img', { class: 'main', src: current.url, alt: t('home.photos.alt', { n: shown + 1 }) }),
         shown === 0 && el('span', { class: 'photo-count' }, t('home.photos.cover'))),
+      // Always both buttons, so the tile keeps its height whichever photo is shown.
       can && el('div', { class: 'row photo-actions' },
-        shown > 0 && el('button', { class: 'btn secondary', type: 'button', disabled: photoBusy, onclick: () => makeCover(shown) }, `★ ${t('home.photos.first')}`),
+        el('button', { class: 'btn secondary', type: 'button', disabled: photoBusy || shown === 0, onclick: () => makeCover(shown) },
+          `★ ${shown === 0 ? t('home.photos.cover') : t('home.photos.first')}`),
         el('button', { class: 'btn secondary', type: 'button', disabled: photoBusy, onclick: () => removePhoto(shown) }, `✕ ${t('home.photos.delete')}`)),
       thumbs,
       status,
-      !home && el('p', { class: 'note' }, `⚠ ${t('home.photos.pending')}`),
       el('p', { class: 'hint' }, t('home.photos.hint')),
+      problem('photos'),
     ].filter(Boolean));
   }
 
-  if (room) {
+  if (space) {
     tile.addEventListener('dragover', (e) => { e.preventDefault(); tile.dataset.drop = ''; });
     tile.addEventListener('dragleave', () => delete tile.dataset.drop);
     tile.addEventListener('drop', (e) => { e.preventDefault(); delete tile.dataset.drop; addPhotos([...e.dataTransfer.files]); });
@@ -398,6 +426,52 @@ function photosTile() {
 }
 
 const renderPhotos = () => refresh('tile-photos', photosTile);
+
+/** A room's photos: all of the home's as thumbnails, the ones in this room pressed. [+] adds
+ *  new ones straight into the room. */
+function roomPhotos(room, index) {
+  const chosen = new Set(room.photo_ids);
+  const can = canEdit();
+  return el('div', { class: 'field', id: `room-photos-${index}` },
+    el('span', {}, t('home.room.photos')),
+    el('div', { class: 'thumbs room-thumbs' },
+      ...photoList().map((p, i) => el('button', {
+        type: 'button', 'aria-pressed': String(chosen.has(p.id)), disabled: !can,
+        'aria-label': t('home.photos.alt', { n: i + 1 }),
+        onclick: () => {
+          room.photo_ids = chosen.has(p.id) ? room.photo_ids.filter((id) => id !== p.id) : [...room.photo_ids, p.id];
+          renderRoomPhotos();
+          changed(true);
+        },
+      }, el('img', { src: p.url, alt: '', loading: 'lazy' }))),
+      can && canPhotos() && photoList().length + uploading < MAX_PHOTOS && picker({ room })),
+    el('small', {}, t('home.room.photosHint')),
+    problem(`rooms.${index}.photo_ids`));
+}
+
+function renderRoomPhotos() {
+  if (state.kind !== 'apartment') return;
+  state.rooms.forEach((room, i) => refresh(`room-photos-${i}`, () => roomPhotos(room, i)));
+}
+
+// ── Places taken ────────────────────────────────────────
+
+const taken = (room) => room.capacity - room.free_places;
+
+function takenTile() {
+  const total = state.rooms.reduce((sum, r) => sum + r.capacity, 0);
+  const one = state.rooms.length === 1;
+  const rows = state.rooms.map((room, i) => field(
+    one ? t('home.places.taken') : t('home.places.takenIn', { room: `${room.emoji} ${roomTitle(room, i)}`.trim() }),
+    numberSelect(taken(room), 0, room.capacity, (n) => { room.free_places = room.capacity - n; }, { id: `taken-${i}` }),
+    { path: `rooms.${i}.free_places` }));
+  return el('section', { class: 'box pad tile t-wide hblock', id: 'tile-taken' },
+    el('div', { class: 'row spread' },
+      el('h2', {}, t('home.places.title')),
+      el('span', { class: 'meta' }, t('home.places.total', { n: total }))),
+    el('p', { class: 'hint' }, t('home.places.hint')),
+    el('div', { class: 'taken-fields' }, ...rows));
+}
 
 // ── Where it is ─────────────────────────────────────────
 
@@ -453,14 +527,17 @@ function roomNumberField() {
 
 function dormTile() {
   const buildings = meta.dorms.map((d) => [d.id, d.address ? `${t('home.dorm.n', { name: d.name })} · ${d.address}` : t('home.dorm.n', { name: d.name })]);
-  const taken = takenRoomId && el('p', { class: 'note error', role: 'alert' },
+  const building = el('select', { disabled: !canEdit() }, ...[['', t('home.choose')], ...buildings].map(([value, label]) => el('option', { value }, label)));
+  building.value = state.building;
+  building.addEventListener('change', () => { state.building = building.value; rerender(); changed(true); });
+  const takenNote = takenRoomId && el('p', { class: 'note error', role: 'alert' },
     `✕ ${t('home.dorm.taken')} `, el('a', { href: `/room?id=${takenRoomId}` }, t('home.dorm.takenLink')));
   return el('section', { class: 'box pad tile t-half hblock' },
     el('h2', {}, t('home.place.title')),
-    field(t('home.dorm.building'), select(state, 'building', [['', t('home.choose')], ...buildings], { onchange: () => rerender() }), { path: 'building' }),
+    field(t('home.dorm.building'), building, { path: 'building' }),
     state.building && el('div', { class: 'map', id: 'place-map' }),
     roomNumberField(),
-    taken);
+    takenNote);
 }
 
 let mapHandle = null; // the Leaflet map currently on the page
@@ -477,7 +554,7 @@ function apartmentTile() {
     body.push(
       el('p', { class: 'hint' }, t('home.place.why')),
       field(t('home.place.address'), input),
-      el('div', { class: 'row' }, go,
+      el('div', { class: 'row place-actions' }, go,
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.point = { ...AKADEMGORODOK }; place.step = 'pin'; render(); } }, t('home.place.manual'))),
       place.results && (place.results.length
         ? el('div', { class: 'opts results' }, ...place.results.map((r) => el('button', {
@@ -488,14 +565,14 @@ function apartmentTile() {
     body.push(
       el('p', { class: 'hint' }, t('home.place.pinHint')),
       host,
-      el('div', { class: 'row' },
+      el('div', { class: 'row place-actions' },
         el('button', { class: 'btn', type: 'button', onclick: () => { state.area = obfuscate(place.point); place.step = 'area'; render(); changed(true); } }, t('home.place.hide')),
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = state.area ? 'area' : 'search'; render(); } }, t('home.place.back'))));
   } else if (state.area) {
     body.push(
       el('p', { class: 'note success' }, `✓ ${t('home.place.areaHint')}`),
       host,
-      edit && el('div', { class: 'row' },
+      edit && el('div', { class: 'row place-actions' },
         place.point && el('button', { class: 'btn secondary', type: 'button', onclick: () => { state.area = obfuscate(place.point); render(); changed(true); } }, t('home.place.reroll')),
         el('button', { class: 'linkbtn', type: 'button', onclick: () => { place.step = 'search'; place.results = null; render(); } }, t('home.place.again'))));
   }
@@ -549,18 +626,19 @@ function costsTile() {
   return el('section', { class: 'box pad tile t-half hblock' },
     el('h2', {}, t('home.costs.title')),
     choice(t('home.costs.utilities'), state, 'utilities_mode',
-      [['included', t('home.costs.included')], ['split', t('home.costs.split')]], { path: 'utilities_mode', rerender: true }),
+      [['included', t('home.costs.included')], ['split', t('home.costs.split')]], { path: 'utilities_mode', rerender: true, cls: 'list' }),
     state.utilities_mode === 'split' && field(t('home.costs.utilitiesRub'),
       textInput(state, 'utilities_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '2500', digits: true }),
       { path: 'utilities_rub', hint: t('home.costs.utilitiesHint') }),
     choice(t('home.costs.internet'), state, 'internet_mode',
-      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'three slim' }));
+      [['included', t('home.costs.internetIncluded')], ['split', t('home.costs.split')], ['none', t('home.costs.noInternet')]], { path: 'internet_mode', cls: 'list' }));
 }
+
+const SUNLIGHT = ['sunny', 'partial', 'shady'];
 
 function roomFields(room, index) {
   const apartment = state.kind === 'apartment';
   const genders = [['f', t('home.room.f')], ['m', t('home.room.m')], ...(apartment ? [['any', t('home.room.any')]] : [])];
-  const places = (from, to) => Array.from({ length: to - from + 1 }, (_, i) => [String(from + i), String(from + i)]);
   const emojiInput = textInput(room, 'emoji', { maxlength: 40, autocomplete: 'off', class: 'emoji-input', 'aria-describedby': `emoji-hint-${index}` });
   let rolling = false;
   const roll = el('button', { class: 'btn secondary', type: 'button', disabled: !canEdit(), onclick: async () => {
@@ -570,8 +648,12 @@ function roomFields(room, index) {
     rolling = false;
     if (emoji) { room.emoji = emoji; emojiInput.value = emoji; changed(true); }
   } }, t('home.room.roll'));
-  const free = select(room, 'free_places', places(0, room.capacity), { numeric: true });
-  free.id = `free-${index}`;
+  // A smaller room keeps as many places taken as fit.
+  const capacity = numberSelect(room.capacity, 1, 6, (n) => {
+    room.free_places = Math.max(0, n - taken(room));
+    room.capacity = n;
+    refresh('tile-taken', takenTile);
+  });
 
   return [
     problem(`rooms.${index}`),
@@ -579,13 +661,16 @@ function roomFields(room, index) {
     apartment && field(t('home.room.name'), textInput(room, 'name', { maxlength: 40, placeholder: t('home.room.namePlaceholder') }), { path: `rooms.${index}.name` }),
     choice(t('home.room.gender'), room, 'gender', genders, { path: `rooms.${index}.gender`, hint: t('home.room.genderHint'), cls: apartment ? 'three' : '' }),
     el('div', { class: 'two-fields' },
-      field(t('home.room.capacity'), select(room, 'capacity', places(1, 6), { numeric: true, onchange: () => {
-        if (room.free_places > room.capacity) room.free_places = room.capacity;
-        rerender();
-      } })),
-      field(t('home.room.free'), free, { path: `rooms.${index}.free_places` })),
+      field(t('home.room.capacity'), capacity, { hint: t('home.room.capacityHint') }),
+      field(t('home.room.area'), textInput(room, 'area_m2', { inputmode: 'numeric', maxlength: 3, placeholder: '12', digits: true }),
+        { path: `rooms.${index}.area_m2` })),
     apartment && field(t('home.room.rent'), textInput(room, 'rent_rub', { inputmode: 'numeric', maxlength: 6, placeholder: '14000', digits: true }),
       { path: `rooms.${index}.rent_rub`, hint: t('home.room.rentHint') }),
+    apartment && field(t('home.room.description'), textArea(room, 'description', { rows: 3, placeholder: t('home.room.descriptionHint') }),
+      { path: `rooms.${index}.description` }),
+    choice(t('home.sun.legend'), room, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
+      { path: `rooms.${index}.sunlight`, cls: 'list' }),
+    apartment && roomPhotos(room, index),
     el('div', {},
       el('label', { class: 'field' }, el('span', {}, t('home.room.emoji')),
         el('div', { class: 'emoji-field' }, emojiInput, roll),
@@ -594,12 +679,12 @@ function roomFields(room, index) {
   ].filter(Boolean);
 }
 
-/** A dorm has one room: a half tile beside "Where it is". */
+/** A dorm has one room: a half tile beside the location. */
 function dormRoomTile() {
   return el('section', { class: 'box pad tile t-half hblock' }, el('h2', {}, t('home.room.title')), ...roomFields(state.rooms[0], 0));
 }
 
-/** An apartment's rooms: one card each, side by side on wide screens. */
+/** An apartment's rooms: one card each, side by side on wide screens, "+ Add a room" under them. */
 function apartmentRoomsTile() {
   const many = state.rooms.length > 1;
   const cards = state.rooms.map((room, index) => el('li', { class: 'box pad hblock room-card' },
@@ -610,29 +695,20 @@ function apartmentRoomsTile() {
         onclick: () => { state.rooms.splice(index, 1); render(); changed(true); } }, t('home.room.remove'))),
     ...roomFields(room, index)));
   return el('section', { class: 'tile t-wide rblock' },
-    el('div', { class: 'row spread' },
-      el('h2', { class: 'title' }, t('home.rooms.title')),
-      canEdit() && state.rooms.length < MAX_ROOMS && el('button', { class: 'btn secondary', type: 'button', onclick: async () => {
-        const [emoji] = await rollEmoji();
-        state.rooms.push(blankRoom(emoji ?? ''));
-        render();
-        changed(true);
-      } }, `+ ${t('home.room.add')}`)),
-    el('ul', { class: 'room-cards' }, ...cards));
+    el('h2', { class: 'title' }, t('home.rooms.title')),
+    el('ul', { class: 'room-cards' }, ...cards),
+    canEdit() && state.rooms.length < MAX_ROOMS && el('div', { class: 'add-room' }, el('button', { class: 'btn secondary', type: 'button', onclick: async () => {
+      const [emoji] = await rollEmoji();
+      state.rooms.push(blankRoom(emoji ?? ''));
+      render();
+      changed(true);
+    } }, `+ ${t('home.room.add')}`)));
 }
 
-const SUNLIGHT = ['sunny', 'partial', 'shady'];
-
 function aboutTile() {
-  const area = el('textarea', { rows: 5, maxlength: 1000, placeholder: t('home.about.hint'), disabled: !canEdit() });
-  area.value = state.description;
-  area.addEventListener('input', () => { state.description = area.value; changed(); });
-  area.addEventListener('change', () => changed(true));
   return el('section', { class: 'box pad tile t-wide hblock' },
     el('h2', {}, t('home.about.title')),
-    field(t('home.about.label'), area, { path: 'description' }),
-    choice(t('home.sun.legend'), state, 'sunlight', SUNLIGHT.map((v) => [v, t(`home.sun.${v}`)]),
-      { path: 'sunlight', cls: 'three slim' }));
+    field(t('home.about.label'), textArea(state, 'description', { rows: 5, placeholder: t('home.about.hint') }), { path: 'description' }));
 }
 
 // ── Residents and rights ────────────────────────────────
@@ -786,9 +862,9 @@ function leaveTile() {
   return el('section', { class: 'box pad tile t-half hblock' },
     el('h2', {}, t('home.leave.heading')),
     el('p', { class: 'hint' }, t('home.leave.hint'), ' ',
-      el('a', { href: '#free-0', onclick: (e) => {
+      el('a', { href: '#taken-0', onclick: (e) => {
         e.preventDefault();
-        const target = $('free-0');
+        const target = $('taken-0');
         // Focus first: focusing during a smooth scroll stops it in Chromium.
         target?.focus({ preventScroll: true });
         target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -821,12 +897,13 @@ function render() {
   }
   const apartment = state.kind === 'apartment';
   // replaceChildren() would print a `false` from the `cond && el(...)` items as text.
-  form.replaceChildren(el('div', { class: 'bento' }, ...[
+  form.replaceChildren(el('div', { class: home ? 'bento' : 'bento is-new' }, ...[
     photosTile(),
     titleTile(),
     statusTile(),
     placesTile(),
-    ctaTile(),
+    home && ctaTile(),
+    takenTile(),
     apartment ? apartmentTile() : dormTile(),
     apartment ? costsTile() : dormRoomTile(),
     apartment && apartmentRoomsTile(),
@@ -834,13 +911,7 @@ function render() {
     home && residentsTile(),
     home && invitesTile(),
     home && leaveTile(),
-    !home && el('div', { class: 'box qbar tile t-wide' },
-      el('button', { class: 'linkbtn', type: 'button', onclick: () => {
-        pendingPhotos.forEach((p) => URL.revokeObjectURL(p.url));
-        pendingPhotos = [];
-        state = stateFrom(null); errors = {}; takenRoomId = null; render();
-      } }, t('home.changeKind')),
-      el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
+    !home && el('div', { class: 'tile t-wide hpublish' }, el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
   ].filter(Boolean)));
   mountMap();
 }
@@ -868,7 +939,6 @@ function payload() {
   return {
     kind: state.kind,
     description: state.description,
-    sunlight: state.sunlight || null,
     building: apartment ? null : state.building || null,
     room_label: apartment ? null : roomLabel(),
     district: apartment ? state.district : null,
@@ -876,9 +946,12 @@ function payload() {
     utilities_mode: apartment ? state.utilities_mode || null : null,
     utilities_rub: apartment && state.utilities_mode === 'split' ? number(state.utilities_rub) : null,
     internet_mode: apartment ? state.internet_mode || null : null,
+    photo_ids: home ? [] : staged.map((p) => p.id),
     rooms: state.rooms.map((r) => ({
       id: r.id ?? undefined, name: r.name, gender: r.gender || undefined, capacity: r.capacity, free_places: r.free_places,
       rent_rub: apartment ? number(r.rent_rub) : null, emoji: r.emoji,
+      area_m2: number(r.area_m2), description: apartment ? r.description : '', sunlight: r.sunlight || null,
+      photo_ids: apartment ? r.photo_ids : [],
     })),
   };
 }
@@ -903,14 +976,16 @@ function missing() {
     need('internet_mode', state.internet_mode);
   }
   need('description', state.description.trim());
-  need('sunlight', state.sunlight);
-  if (!home && !pendingPhotos.length) out.photos = 'PHOTO_REQUIRED';
+  if (!home && !staged.length) out.photos = 'PHOTO_REQUIRED';
   state.rooms.forEach((room, i) => {
     need(`rooms.${i}.gender`, room.gender);
+    need(`rooms.${i}.sunlight`, room.sunlight);
     if (state.kind === 'apartment') {
       need(`rooms.${i}.name`, room.name.trim());
       need(`rooms.${i}.rent_rub`, String(room.rent_rub).trim());
     }
+    const area = number(room.area_m2);
+    if (area != null && (area < 3 || area > 200)) out[`rooms.${i}.area_m2`] = 'AREA_RANGE';
     need(`rooms.${i}.emoji`, room.emoji.trim());
   });
   return out;
@@ -930,7 +1005,7 @@ $('home-form').addEventListener('submit', async (e) => {
   if (home) { changed(true); return; } // Enter in a field
   if (creating) return;
   const button = e.submitter;
-  // Photos still being read: wait for them, or the listing would go without.
+  // Photos still on their way: wait for them, or the listing would go without.
   if (uploading) { toast(t('home.photos.wait'), '', { ms: 3000 }); return; }
   takenRoomId = null;
   errors = missing();
@@ -949,20 +1024,15 @@ $('home-form').addEventListener('submit', async (e) => {
     if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
     return;
   }
+  staged = [];
   state = stateFrom(home);
   savedKey = JSON.stringify(payload());
   place.step = state.area ? 'area' : 'search';
   place.point = null;
-  const queued = pendingPhotos;
-  pendingPhotos = [];
   shown = 0;
   render();
   toast(t('home.created'), t('home.createdText'));
   window.scrollTo(0, 0);
-  if (queued.length) {
-    await uploadAll(queued.map((p) => () => p.blob));
-    queued.forEach((p) => URL.revokeObjectURL(p.url));
-  }
 });
 
 // ── Autosave (once the place is listed) ─────────────────

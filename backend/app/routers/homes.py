@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models.user import User
 from app.schemas.home import (EmojiRoll, HomeIn, HomeOut, InviteCode, InviteIn, InviteOut, InvitePreview, PhotoOrder,
-                              ResidentUpdate)
+                              ResidentUpdate, StagedPhotoOut)
 from app.services import geo_service, home_service
 from app.services.image_service import read_upload
 from app.utils.deps import check_origin, check_origin_no_body, check_origin_upload, require_user
@@ -18,6 +18,28 @@ router = APIRouter(prefix="/api", tags=["homes"])
 async def api_my_home(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)) -> dict:
     """The home this person lives in, or {"home": null}."""
     return {"home": await home_service.get_mine(db, user)}
+
+
+# Photos for a home that isn't listed yet: uploaded while the form is filled in, claimed by
+# POST /homes (photo_ids). Declared before /homes/{home_id}/...: "new" is not a home id.
+# The path matches nginx's upload location (deploy/nginx), which allows large bodies.
+
+@router.get("/homes/new/photos", response_model=list[StagedPhotoOut])
+async def api_list_staged(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+    return await home_service.list_staged(db, user)
+
+
+@router.post("/homes/new/photos", response_model=StagedPhotoOut, status_code=201)
+async def api_add_staged(file: UploadFile, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+                         _o: None = Depends(check_origin_upload)):
+    return await home_service.add_staged(db, user, await read_upload(file))
+
+
+@router.delete("/homes/new/photos/{photo_id}", status_code=204)
+async def api_delete_staged(photo_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+                            _o: None = Depends(check_origin_no_body)):
+    await home_service.delete_staged(db, user, photo_id)
+    return Response(status_code=204)
 
 
 @router.post("/homes", response_model=HomeOut, status_code=201)

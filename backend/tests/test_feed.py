@@ -34,7 +34,7 @@ async def feed(c, kind="dorm", **params) -> dict:
 
 
 def room(emoji, **changes) -> list[dict]:
-    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji} | changes]
+    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji, "sunlight": "sunny"} | changes]
 
 
 async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_place(make_client, login):
@@ -192,3 +192,22 @@ async def test_a_home_without_photos_stays_out_of_the_feed(make_client, login):
     assert len(items) == 1
     page = (await seeker.get(f"/api/rooms/{items[0]['room_id']}")).json()
     assert page["sunlight"] == "sunny"
+
+
+async def test_a_rooms_own_photos_and_details_come_first(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    host = await person(make_client, login, "h@g.nsu.ru", contact="@flat_nsu")
+    ids = []
+    for _ in range(2):
+        r = await host.post("/api/homes/new/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
+        ids.append(r.json()["id"])
+    rooms = apartment()["rooms"]
+    body = apartment(photo_ids=ids, rooms=[rooms[0], rooms[1] | {"photo_ids": [ids[1]], "area_m2": 9, "description": "Окно во двор"}])
+    home = (await host.post("/api/homes", json=body, headers=ORIGIN)).json()
+    items = {i["room_name"]: i for i in (await feed(seeker, "apartment"))["items"]}
+    assert items["Маленькая"]["cover_url"].endswith(".jpg") and items["Маленькая"]["cover_url"] != items["Большая"]["cover_url"]
+    page = (await seeker.get(f"/api/rooms/{home['rooms'][1]['id']}")).json()
+    assert [p["id"] for p in page["photos"]] == [ids[1], ids[0]]
+    assert (page["area_m2"], page["room_description"], page["sunlight"]) == (9, "Окно во двор", "shady")
+    big = (await seeker.get(f"/api/rooms/{home['rooms'][0]['id']}")).json()
+    assert [p["id"] for p in big["photos"]] == ids and big["area_m2"] is None and big["sunlight"] == "partial"
