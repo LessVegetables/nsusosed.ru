@@ -2,7 +2,7 @@
 //
 // Laid out as tiles like the room page (js/pages/room.js), so the host edits what visitors
 // see: the photos on the left with the title, the status and the places beside them, then
-// the places taken, the location, the rooms, the description, the residents and the invites.
+// the location, the rooms, the places taken, the description, the residents and the invites.
 //
 // The page is rebuilt from `state` on every structural change (kind picked, room added,
 // language switched); typing only writes into `state` and refreshes the summary tiles.
@@ -924,10 +924,11 @@ function render() {
     statusTile(),
     placesTile(),
     home && ctaTile(),
-    takenTile(),
     apartment ? apartmentTile() : dormTile(),
     apartment ? costsTile() : dormRoomTile(),
     apartment && apartmentRoomsTile(),
+    // After the rooms: it lists them.
+    takenTile(),
     aboutTile(),
     home && residentsTile(),
     home && invitesTile(),
