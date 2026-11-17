@@ -373,6 +373,9 @@
     .cshare-link { flex-direction: column; }
     .cshare-link .btn { align-self: stretch; justify-content: center; }
   }
-  .together { margin: 0; }
+  /* "Taking it together?": one row of its own at the top of the questionnaire, not a card. */
+  .together { margin: 4px 0 0; }
+  .together-ask { font-size: var(--fs-lead); font-weight: var(--w-heavy); line-height: 1.2; }
+  .together-mine { font-weight: var(--w-heavy); }
   #intent > .intent-compare { grid-column: -2 / -1; } /* under the options, like the invite field */
 }

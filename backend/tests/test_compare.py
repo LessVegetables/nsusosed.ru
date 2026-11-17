@@ -41,12 +41,13 @@ async def test_a_link_before_the_questionnaire_then_progress_then_the_result(mak
     masha = next(m for m in g["members"] if not m["is_you"])
     assert (masha["first_name"], masha["complete"], masha["answered"]) == ("Маша", False, 5)
     assert masha["total"] == len(v1.missing_required({}, True)) and masha["compatibility"] is None
-    assert "answers" not in str(g) and g["compatibility"] is None
+    assert all(m["answers"] == {} for m in g["members"]) and g["my_answers"] == {} and g["compatibility"] is None
 
-    # One finished: still nothing to show either of them.
+    # One finished: still nothing to show either of them, and none of Маша's answers.
     await me.put("/api/questionnaire", json={"version": 1, "answers": BASE}, headers=ORIGIN)
     [g] = await groups(me)
     assert [m["compatibility"] for m in g["members"]] == [None, None]
+    assert [m["answers"] for m in g["members"]] == [{}, {}]
 
     # Both finished: each sees the other's score, rounded, with badges.
     await wife.put("/api/questionnaire", json={"version": 1, "answers": BASE | {"A1": 4}}, headers=ORIGIN)
@@ -56,6 +57,11 @@ async def test_a_link_before_the_questionnaire_then_progress_then_the_result(mak
         assert them["first_name"] == other and them["complete"]
         assert them["compatibility"]["percent"] % 5 == 0 and set(them["compatibility"]["badges"]) == set(v1.DIMENSIONS)
         assert g["compatibility"] is None                    # one other person: their own result is the result
+        # Visible answers side by side, like on a room page; hidden ones (B1, E1, F1…) never.
+        hidden = {qid for qid, q in v1.QUESTIONS.items() if q["hidden"]}
+        assert them["answers"] and not hidden & them["answers"].keys() and not hidden & g["my_answers"].keys()
+    [g] = await groups(me)
+    assert next(m for m in g["members"] if not m["is_you"])["answers"]["A1"] == 4 and g["my_answers"]["A1"] == BASE["A1"]
     # The link is in use now: asking for a link gives a fresh one.
     assert (await open_link(me))["code"] != link["code"]
 

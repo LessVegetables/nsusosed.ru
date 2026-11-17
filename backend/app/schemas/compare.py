@@ -23,6 +23,9 @@ class CompareMemberOut(BaseModel):
     total: int
     # The viewer against this person, once both have finished. None for yourself.
     compatibility: Optional[Compatibility] = None
+    # Their visible answers ({question id: option index}) for the side-by-side, once both have
+    # finished; hidden ones never leave the server. Empty for yourself.
+    answers: dict[str, int] = {}
 
 
 class CompareGroupOut(BaseModel):
@@ -34,3 +37,5 @@ class CompareGroupOut(BaseModel):
     # The viewer against everyone else who has finished, scored like a room. Only with two or
     # more such people; with one it is the same as their own result.
     compatibility: Optional[Compatibility] = None
+    # The viewer's own visible answers, once they have finished.
+    my_answers: dict[str, int] = {}

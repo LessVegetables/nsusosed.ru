@@ -195,6 +195,8 @@ export default {
   "account.quiz.done": "已完成。你可以随时修改回答。",
   "account.quiz.todo": "尚未完成：没有问卷就无法计算匹配度。",
   "account.quiz.open": "打开问卷",
+  "account.compare.text": "把链接发给朋友，看看你们有多合得来。",
+  "account.compare.open": "打开比较",
   "compat.title": "匹配度如何计算",
   "compat.lead": "我们把你的回答与房间里每位现有住户的回答进行比较，给出一个百分比和五个主题的评价。",
   "compat.topicsTitle": "五个主题",

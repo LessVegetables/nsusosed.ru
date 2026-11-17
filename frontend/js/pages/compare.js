@@ -5,11 +5,12 @@
 // questionnaire and comes back here when done. People who aren't logged in log in first; the
 // code waits in this tab (routes.js sends them back here).
 //
-// Nobody sees anybody's answers here: progress counts while people answer, then the score
-// (rounded percent and topic badges) once both are done.
+// Nobody sees anybody's answers while people answer: only progress counts. Once both are done,
+// the score (rounded percent and topic badges) and the visible answers side by side, the same
+// as on a room page; hidden answers never.
 
 import { ApiError, del, get, post } from '../api.js';
-import { breakdown, chips } from '../compat.js';
+import { answerDiff, breakdown, chips } from '../compat.js';
 import { t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { KEYS, session } from '../storage.js';
@@ -49,6 +50,7 @@ $('housing').hidden = user.intent !== 'compare';
 
 let groups = [];
 let link = null;
+const quiz = await get('/questionnaire'); // question texts for the side-by-side
 
 const avatar = (person) => (person.avatar_url
   ? el('img', { class: 'avatar sm', src: person.avatar_url, alt: '' })
@@ -66,15 +68,18 @@ function personHead(person, mineDone) {
     el('div', { class: 'person-name' }, el('h3', {}, person.first_name), status(person, mineDone)), pct);
 }
 
-/** Two people: the person, then the five topics in words across the whole box. */
-function pairNodes(person, mineDone) {
-  return [personHead(person, mineDone), person.compatibility && breakdown(person.compatibility)];
+/** Where your visible answers and theirs differ, question by question (as on a room page). */
+const answers = (group, person) => person.compatibility && answerDiff(quiz.questions, group.my_answers, person);
+
+/** Two people: the person, the five topics in words across the whole box, then the answers. */
+function pairNodes(group, person, mineDone) {
+  return [personHead(person, mineDone), person.compatibility && breakdown(person.compatibility), answers(group, person)];
 }
 
-/** A bigger company: a card per person with chips. */
-function personCard(person, mineDone) {
+/** A bigger company: a card per person with chips and the answers. */
+function personCard(group, person, mineDone) {
   return el('li', { class: 'box pad resident-card' }, personHead(person, mineDone),
-    person.compatibility && chips(person.compatibility));
+    person.compatibility && chips(person.compatibility), answers(group, person));
 }
 
 function groupNode(group) {
@@ -91,8 +96,8 @@ function groupNode(group) {
       el('span', { class: 'pct' }, `${group.compatibility.percent}%`), el('span', { class: 'meta' }, t('compare.overall'))),
     group.compatibility && breakdown(group.compatibility),
     ...(others.length === 1
-      ? pairNodes(others[0], me.complete)
-      : [el('ul', { class: 'resident-cards' }, ...others.map((p) => personCard(p, me.complete)))]));
+      ? pairNodes(group, others[0], me.complete)
+      : [el('ul', { class: 'resident-cards' }, ...others.map((p) => personCard(group, p, me.complete)))]));
 }
 
 function render() {
@@ -131,8 +136,12 @@ function watch() {
 
 async function refresh() {
   try {
-    groups = await get('/compare');
-    render();
+    const fresh = await get('/compare');
+    // Redraw only on a change, so a fold someone opened stays open.
+    if (JSON.stringify(fresh) !== JSON.stringify(groups)) {
+      groups = fresh;
+      render();
+    }
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
   }

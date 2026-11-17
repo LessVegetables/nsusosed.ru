@@ -4,9 +4,9 @@ match, with no home involved (a couple, friends, people about to rent together).
 Who sees what:
   - members see each other's first name, photo and questionnaire progress as counts
     ("12 of 20"), never any answers;
-  - once both people have finished, each sees their score with the other: the rounded percent
-    and the topic badges, the same as on a room page. Hard blocks don't apply here (see
-    score_pair's ignore_blocks).
+  - once both people have finished, each sees their score with the other (the rounded percent
+    and the topic badges) and the other's visible answers next to their own, the same as on a
+    room page. Hidden answers never. Hard blocks don't apply here (see score_pair's ignore_blocks).
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from app.models.user import User
 from app.schemas.compare import CompareGroupOut, CompareMemberOut
 from app.schemas.feed import Compatibility
 from app.services import image_service
+from app.services.feed_service import _visible
 from app.services.home_service import _CODE_ALPHABET, _CODE_LENGTH, parse_invite_code
 from app.utils.errors import compare_full, compare_invalid, not_found, too_many_compares
 
@@ -67,15 +68,16 @@ async def _out(db, group: CompareGroup, viewer: User) -> CompareGroupOut:
     out, pairs = [], []
     for m in members:
         complete, answered, total = progress[m.user_id]
-        compatibility = None
+        compatibility, shown = None, {}
         if mine is not None and complete and m.user_id != viewer.id:
-            pair = q.score_pair(mine, q.for_scoring(answers[m.user_id], bool(m.user.is_adult)), ignore_blocks=True)
+            theirs = q.for_scoring(answers[m.user_id], bool(m.user.is_adult))
+            pair = q.score_pair(mine, theirs, ignore_blocks=True)
             pairs.append(pair)
-            compatibility = Compatibility(**pair.public())
+            compatibility, shown = Compatibility(**pair.public()), _visible(theirs)
         out.append(CompareMemberOut(
             user_id=m.user_id, first_name=m.user.first_name, avatar_url=image_service.avatar_url(m.user.avatar_file),
             is_you=m.user_id == viewer.id, complete=complete, answered=answered, total=total,
-            compatibility=compatibility))
+            compatibility=compatibility, answers=shown))
 
     overall = None
     if len(pairs) >= 2:
@@ -83,7 +85,7 @@ async def _out(db, group: CompareGroup, viewer: User) -> CompareGroupOut:
                   for name in q.DIMENSIONS}
         overall = Compatibility(percent=q.round_score(q.score_room(pairs)), badges=badges)
     return CompareGroupOut(id=group.id, code=group.code, url=_url(group.code), created_by_you=group.created_by == viewer.id,
-                           members=out, compatibility=overall)
+                           members=out, compatibility=overall, my_answers=_visible(mine) if mine is not None else {})
 
 
 async def _mine(db, user: User) -> list[CompareGroup]:

@@ -195,6 +195,8 @@ export default {
   "account.quiz.done": "Completed. You can change your answers at any time.",
   "account.quiz.todo": "Not completed yet: we can't calculate compatibility without it.",
   "account.quiz.open": "Open the questionnaire",
+  "account.compare.text": "Send a friend a link and find out how well you'd live together.",
+  "account.compare.open": "Open comparisons",
   "compat.title": "How compatibility is calculated",
   "compat.lead": "We compare your answers with those of each person already living in a room, and show one percentage and five ratings by topic.",
   "compat.topicsTitle": "Five topics",
