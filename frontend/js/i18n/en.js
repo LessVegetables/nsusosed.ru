@@ -381,6 +381,7 @@ export default {
   "join.title": "Do you have an invite?",
   "join.text": "Paste the link or the code your roommate sent.",
   "join.label": "Link or code",
+  "join.fromLink": "✓ Took the code from the link",
   "join.find": "Find the place",
   "join.noInvite": "No invite, but it's your place?",
   "join.listOwn": "List it yourself",

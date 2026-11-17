@@ -81,8 +81,16 @@
           <button type="button" data-value="seek_dorm" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
           <button type="button" data-value="seek_apt" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
           <button type="button" data-value="host" data-i18n="account.intent.host">Ищу соседа к себе</button>
-          <button type="button" data-value="join" data-i18n="account.intent.join">Меня пригласили в жильё</button>
+          <button type="button" data-value="join" aria-expanded="false" aria-controls="invite-form" data-i18n="account.intent.join">Меня пригласили в жильё</button>
         </div>
+        <form class="invite-form" id="invite-form" novalidate hidden>
+          <label class="field"><span data-i18n="join.label">Ссылка или код</span>
+            <input id="invite-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QM2XWP" aria-describedby="invite-hint invite-err">
+            <small id="invite-hint" aria-live="polite" data-i18n="join.text">Вставь ссылку или код, которые прислал сосед.</small>
+            <span class="error" id="invite-err" hidden></span>
+          </label>
+          <div><button class="btn" type="submit" data-i18n="join.find">Найти жильё</button></div>
+        </form>
       </section>
     </div>
   </main>

@@ -381,6 +381,7 @@ export default {
   "join.title": "你有邀请吗？",
   "join.text": "粘贴室友发给你的链接或邀请码。",
   "join.label": "链接或邀请码",
+  "join.fromLink": "✓ 已从链接中取出邀请码",
   "join.find": "查找住处",
   "join.noInvite": "没有邀请，但这是你的住处？",
   "join.listOwn": "自己发布",
