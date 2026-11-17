@@ -15,6 +15,7 @@ import { autosaver } from '../autosave.js';
 import { reportBug } from '../errors.js';
 import { renderFacultyPicker } from '../faculty.js';
 import { currentLang, t } from '../i18n.js';
+import { mountInviteField } from '../invite-field.js';
 import { initPage } from '../layout.js';
 import { homeFor } from '../routes.js';
 import { KEYS, session } from '../storage.js';
@@ -371,6 +372,7 @@ $('quiz').addEventListener('submit', async (e) => {
 
 for (const button of $('intent-opts').querySelectorAll('button')) {
   button.addEventListener('click', async () => {
+    if (button.dataset.value === 'join') { openInvite(button); return; }
     setBusy(button, true);
     try {
       user = await put('/me', { intent: button.dataset.value });
@@ -382,3 +384,33 @@ for (const button of $('intent-opts').querySelectorAll('button')) {
     }
   });
 }
+
+// "I was invited": the link or code goes in right here; the join page then shows the place.
+mountInviteField($('invite-code'), $('invite-hint'));
+
+function openInvite(button) {
+  button.setAttribute('aria-pressed', 'true');
+  button.setAttribute('aria-expanded', 'true');
+  $('invite-form').hidden = false;
+  $('invite-code').focus();
+}
+
+$('invite-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const code = $('invite-code').value.trim();
+  $('invite-code').setAttribute('aria-invalid', String(!code));
+  $('invite-err').textContent = code ? '' : t('error.field.REQUIRED');
+  $('invite-err').hidden = Boolean(code);
+  if (!code) { $('invite-code').focus(); return; }
+  setBusy(e.submitter, true);
+  try {
+    user = await put('/me', { intent: 'join' });
+  } catch (err) {
+    if (!(err instanceof ApiError)) throw err;
+    setBusy(e.submitter, false);
+    toast(t('error.title'), errorText(err), { error: true });
+    return;
+  }
+  session.set(KEYS.invite, code); // picked up by the join page
+  location.assign('/join');
+});

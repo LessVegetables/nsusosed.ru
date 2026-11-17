@@ -8,6 +8,7 @@ import { mountContacts } from '../contacts.js';
 import { renderFacultyPicker } from '../faculty.js';
 import { t } from '../i18n.js';
 import { mountLangSwitch } from '../lang-switch.js';
+import { mountInviteField } from '../invite-field.js';
 import { initPage } from '../layout.js';
 import { KEYS, local, session } from '../storage.js';
 import { el, errorText, saved, setBusy, toast } from '../ui.js';
@@ -49,7 +50,7 @@ async function save(action, onFieldErrors) {
 // ── Single-choice button groups (.opts) ─────────────────
 
 /** Picking a button saves it as `field`. */
-function choice(group, field) {
+function choice(group, field, onSaved = () => {}) {
   const buttons = [...group.querySelectorAll('button')];
   const set = (v) => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)));
   buttons.forEach((b) => b.addEventListener('click', async () => {
@@ -58,6 +59,7 @@ function choice(group, field) {
     set(value);
     await save(() => put('/me', { [field]: value }));
     set(user[field]); // back to the saved one if the save failed
+    onSaved();
   }));
   set(user[field]);
 }
@@ -128,7 +130,27 @@ $('profile').addEventListener('save', () => saveProfile.now());
 
 // ── What you're looking for ─────────────────────────────
 
-choice($('intent'), 'intent');
+// "I was invited" and not living anywhere on the site yet: the link or code goes in right
+// under the choice; the join page then shows the place.
+const renderInvite = () => { $('invite-box').hidden = user.intent !== 'join' || Boolean(user.home_id); };
+choice($('intent'), 'intent', () => {
+  renderInvite();
+  if (!$('invite-box').hidden) $('invite-code').focus();
+});
+renderInvite();
+mountInviteField($('invite-code'), $('invite-hint'));
+
+function findInvite() {
+  const code = $('invite-code').value.trim();
+  fieldError($('invite-code'), $('invite-err'), code ? '' : fieldReason('REQUIRED'));
+  if (!code) { $('invite-code').focus(); return; }
+  session.set(KEYS.invite, code); // picked up by the join page
+  location.assign('/join');
+}
+$('invite-go').addEventListener('click', findInvite);
+$('invite-code').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); findInvite(); }
+});
 choice($('gender'), 'gender');
 $('is-adult').checked = user.is_adult === true;
 $('is-adult').addEventListener('change', async () => {

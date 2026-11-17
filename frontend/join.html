@@ -28,7 +28,8 @@
         <h1 class="title" data-i18n="join.title">У тебя есть приглашение?</h1>
         <p data-i18n="join.text">Вставь ссылку или код, которые прислал сосед.</p>
         <label class="field"><span data-i18n="join.label">Ссылка или код</span>
-          <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QM2XWP" aria-describedby="code-err">
+          <input id="code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QM2XWP" aria-describedby="code-hint code-err">
+          <small id="code-hint" aria-live="polite" hidden></small>
           <span class="error" id="code-err" hidden></span>
         </label>
         <div><button class="btn" type="submit" data-i18n="join.find">Найти жильё</button></div>
