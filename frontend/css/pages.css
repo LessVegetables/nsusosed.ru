@@ -104,6 +104,10 @@
   }
   #intent { grid-template-columns: 1fr 1fr; }
   @media (max-width: 640px) { #intent { grid-template-columns: 1fr; } }
+  /* "I was invited": the link-or-code field that opens under the choice (questionnaire, account). */
+  .invite-form { display: grid; gap: 16px; width: 100%; }
+  fieldset > .invite-form { margin-top: 16px; }
+  #intent > .invite-form { grid-column: -2 / -1; } /* under the options, in the last column */
   /* A group of questions on one axis (the two bedtimes): the label beside its scale, the
      label column as wide as the longest label so the scales line up; on phones the label goes on top. */
   .qgroup { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 12px 14px; align-items: center; }
@@ -149,14 +153,66 @@
     }
   }
 
-  /* My home: same single column as the questionnaire. */
-  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
-  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
-  .hpage #status { gap: 10px; }
-  .hpage #status:empty { display: none; }
+  /* My home: the room page's tiles (.rpage, .bento below), with the form inside them.
+     js/pages/home.js. Before the kind is picked, one narrow box. */
+  .hkind { max-width: 760px; }
+  .hkind h2 { font-size: var(--fs-panel); }
   .hblock { display: grid; gap: 18px; }
+  .tile.hblock { gap: 18px; }
   .hblock > * { margin: 0; }
-  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock > h2, .hblock .row h2, .hblock .row h3 { margin: 0; font-size: var(--fs-panel); }
+  .hblock .row h3 { font-size: var(--fs-card); }
+  .hpage .t-title .emoji-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* The status word ("Draft", "Черновик") is longer than a number: one step smaller. */
+  .hpage #tile-status .big-pct { font-size: var(--fs-panel); overflow-wrap: anywhere; }
+  @media (max-width: 960px) { .hpage #tile-status .big-pct { font-size: var(--fs-card); } }
+  .hpage .t-cta > .btn { justify-self: stretch; justify-content: center; }
+  .hpage .t-cta .stack { display: grid; gap: 10px; }
+  .hpage .t-cta .stack > * { margin: 0; }
+  /* Photo tile: the photo shown large, what to do with it, then all of them in one scrolling
+     row ending with "+ Add". Empty: one big "add" area. Files can be dropped anywhere on it. */
+  /* minmax(0, 1fr): a long row of thumbnails scrolls instead of widening the page. */
+  .hphotos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+  .hphotos > * { margin: 0; }
+  .hphotos h2 { margin: 0; font-size: var(--fs-panel); }
+  .hphotos .main-wrap { position: relative; }
+  .hphotos .thumbs { margin-top: 0; }
+  /* Two buttons of one line each, always both there: the tile never changes height when
+     another photo is picked. Phones: one under the other. */
+  .hphotos .photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hphotos .photo-actions .btn { justify-content: center; padding-inline: 10px; white-space: nowrap; }
+  @media (max-width: 640px) { .hphotos .photo-actions { grid-template-columns: 1fr; } }
+  .hphotos .thumbs { align-items: start; }
+  .hphotos .thumbs .upload { flex: 0 0 calc((100% - 30px) / 4.4); aspect-ratio: 4 / 3; padding: 0; font-size: var(--fs-panel); line-height: 1; }
+  .upload-big, .photo-empty { aspect-ratio: 4 / 3; }
+  .upload-big span { display: grid; gap: 6px; }
+  .upload-big small { font-weight: var(--w-body); }
+  .photo-empty { display: grid; place-items: center; border: var(--line-w) dashed var(--edge); border-radius: var(--r-sm); }
+  .hphotos[data-drop] { outline: var(--line-w) dashed var(--primary); outline-offset: 4px; }
+  /* A new listing has no "next step" tile, so the photo tile spans two rows, not three. */
+  .bento.is-new .t-photo { grid-row: span 2; }
+  /* Answers one under another, slim: the costs and the sunlight. */
+  .hblock .opts.list { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .hblock .opts.list button { padding: 9px 14px; }
+  /* A room's photos: the gallery's thumbnail row, pressed = shown in this room. */
+  .room-thumbs { display: flex; gap: 10px; overflow-x: auto; margin-top: 8px; padding: 3px 3px 6px; align-items: start; }
+  .room-thumbs > * { flex: 0 0 calc((100% - 30px) / 4.4); }
+  .room-thumbs .upload { aspect-ratio: 4 / 3; padding: 0; font-size: var(--fs-panel); line-height: 1; }
+  .room-thumbs button:disabled { cursor: default; }
+  .taken-fields { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+  .hpublish .btn { justify-content: center; }
+  @media (max-width: 640px) {
+    .place-actions { flex-direction: column; align-items: stretch; }
+    .place-actions .btn { justify-content: center; }
+    .place-actions .linkbtn { align-self: center; min-height: 44px; }
+    .add-room .btn { display: flex; width: 100%; justify-content: center; }
+  }
+  /* Rooms: two to a row on wide screens (one room takes half), one on narrower ones. A card
+     measures itself: when it is too narrow for three answers in a row, they go one under another. */
+  .room-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 961px) { .room-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .room-card { container-type: inline-size; }
+  @container (max-width: 460px) { .room-card.hblock .opts.three { grid-template-columns: minmax(0, 1fr); } }
   .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
   .hblock fieldset > * { margin: 0; }
   .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
@@ -204,6 +260,11 @@
   }
   .feed-more { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 34px; }
   .feed-more:empty { display: none; }
+  /* "Show all listings": the rooms that don't fit, under their own heading. */
+  .feed-others { display: grid; gap: 14px; margin-top: 34px; }
+  .feed-others > * { margin: 0; }
+  .feed-others > .cards { margin-top: 10px; }
+  .feed-others:empty { display: none; }
   .card .top { overflow: hidden; }
   .card .cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .card .top > :not(.cover) { position: relative; }
@@ -294,4 +355,27 @@
   .solo .box { display: grid; gap: 16px; justify-items: start; }
   .solo h1 { margin: 0; }
   .solo p { margin: 0; }
+
+  /* Comparing with friends (/compare, and the link at the top of the questionnaire). */
+  .cpage { display: grid; gap: var(--gap); max-width: 900px; }
+  .cgroups { display: grid; gap: var(--gap); }
+  .cgroup, .cshare { display: grid; gap: 16px; }
+  .cgroup > *, .cshare > * { margin: 0; }
+  .cgroup-head { justify-content: space-between; align-items: baseline; }
+  .cgroup-head h2 { margin: 0; font-size: var(--fs-panel); overflow-wrap: anywhere; }
+  .cgroup .breakdown { margin-top: 0; }
+  .coverall { align-items: center; }
+  .cshare h2 { margin: 0; font-size: var(--fs-panel); }
+  .cshare-link { display: flex; gap: 12px; width: 100%; max-width: 640px; }
+  .cshare-link .field { flex: 1; min-width: 0; }
+  .cshare-link .btn { white-space: nowrap; align-self: end; }
+  @media (max-width: 640px) {
+    .cshare-link { flex-direction: column; }
+    .cshare-link .btn { align-self: stretch; justify-content: center; }
+  }
+  /* "Taking it together?": one row of its own at the top of the questionnaire, not a card. */
+  .together { margin: 4px 0 0; }
+  .together-ask { font-size: var(--fs-lead); font-weight: var(--w-heavy); line-height: 1.2; }
+  .together-mine { font-weight: var(--w-heavy); }
+  #intent > .intent-compare { grid-column: -2 / -1; } /* under the options, like the invite field */
 }

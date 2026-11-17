@@ -35,6 +35,17 @@
           <h1 class="title" data-i18n="quiz.title">Как ты живёшь</h1>
           <p class="lead" data-i18n="quiz.intro">20 вопросов про быт — около 3 минут. Здесь нет правильных ответов: мы ищем человека, с которым тебе будет удобно жить. Часть ответов видна в профиле, часть — только алгоритму (это отмечено значком 🔒). Ответы сохраняются сами: можно прерваться и вернуться позже.</p>
           <p class="hint"><a href="/compatibility" data-i18n="quiz.how">Как считается совместимость</a></p>
+          <!-- Taking it together: the link can go out before anyone has answered -->
+          <div class="row together" id="together">
+            <b class="together-ask" data-i18n="compare.quiz.ask">Проходите вдвоём?</b>
+            <button class="btn secondary" type="button" id="together-open" data-i18n="compare.quiz.copy">Скопировать ссылку для друга</button>
+            <a class="together-mine" href="/compare" id="together-mine" hidden data-i18n="compare.quiz.mine">Мои сравнения</a>
+          </div>
+          <div class="cshare-link" id="together-link" hidden>
+            <label class="field"><input id="together-url" readonly data-i18n-attr="aria-label:compare.share.title"></label>
+            <button class="btn secondary" type="button" id="together-copy" data-i18n="compare.share.copy">Скопировать</button>
+          </div>
+          <p class="note" id="together-joined" hidden></p>
         </header>
 
         <section class="box pad qblock" id="about" aria-labelledby="about-title">
@@ -81,8 +92,18 @@
           <button type="button" data-value="seek_dorm" data-i18n="account.intent.seek_dorm">Ищу место в общежитии</button>
           <button type="button" data-value="seek_apt" data-i18n="account.intent.seek_apt">Ищу комнату в квартире</button>
           <button type="button" data-value="host" data-i18n="account.intent.host">Ищу соседа к себе</button>
-          <button type="button" data-value="join" data-i18n="account.intent.join">Меня пригласили в жильё</button>
+          <button type="button" data-value="join" aria-expanded="false" aria-controls="invite-form" data-i18n="account.intent.join">Меня пригласили в жильё</button>
         </div>
+        <form class="invite-form" id="invite-form" novalidate hidden>
+          <label class="field"><span data-i18n="join.label">Ссылка или код</span>
+            <input id="invite-code" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="K7QM2XWP" aria-describedby="invite-hint invite-err">
+            <small id="invite-hint" aria-live="polite" data-i18n="join.text">Вставь ссылку или код, которые прислал сосед.</small>
+            <span class="error" id="invite-err" hidden></span>
+          </label>
+          <div><button class="btn" type="submit" data-i18n="join.find">Найти жильё</button></div>
+        </form>
+        <!-- Not looking for housing at all: a quiet way out, not a fifth big option -->
+        <p class="hint intent-compare"><button class="linkbtn" type="button" id="intent-compare" data-value="compare" data-i18n="quiz.intent.compare">Пока ничего, просто сравниться с друзьями</button></p>
       </section>
     </div>
   </main>

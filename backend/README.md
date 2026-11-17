@@ -57,7 +57,7 @@ The pilot's migrations start again at `001`; nothing is carried over from the MV
 | Path | What |
 |---|---|
 | `app/main.py` | The app, routers, the single error envelope |
-| `app/routers/` | `auth`, `users` (`/api/me…`), `questionnaire`, `homes` (homes, photos, residents, invites, emojis, address search), `feed` (feed, room page, contacts), `meta` |
+| `app/routers/` | `auth`, `users` (`/api/me…`), `questionnaire`, `homes` (homes, photos, residents, invites, emojis, address search), `feed` (feed, room page, contacts), `compare` (comparing with friends), `meta` |
 | `app/services/` | The logic behind each router |
 | `app/models/`, `alembic/versions/` | Tables and their migrations |
 | `app/questionnaires/vN/` | One questionnaire version: `questions.json`, `scoring.json` and the scorer |
@@ -70,7 +70,7 @@ The pilot's migrations start again at `001`; nothing is carried over from the MV
 - **Apartments**: only `district`, `lat`, `lon`, `radius_m`. The circle is produced in the host's browser; the server rejects a radius outside 300–500 m (so an exact point can't be stored) and coordinates outside the Novosibirsk area. There is no address column.
 - **Address search** (`POST /api/geo/search`) proxies OpenStreetMap's Nominatim. The query is not stored, and the HTTP client's request logging is turned off so it does not reach the log either.
 - **Questionnaire answers**: stored with their version. Hidden answers are returned only to their owner. Compatibility leaves the server only as `{percent, badges}`: a percent rounded to 5 and one of three levels per topic.
-- **Hard blocks** make a room look exactly like one that does not exist (404, absent from the feed).
+- **Hard blocks** make a room look exactly like one that does not exist (404, absent from the feed). Between people who compare by link they are skipped and the plain score is shown: a missing result would give the hidden answer behind it away.
 - **Contacts** belong to the user. They are returned by `GET /api/me` to their owner and by `POST /api/rooms/{id}/contacts` to a logged-in student with a completed questionnaire; nowhere else.
 - **Photos and avatars** are re-encoded: EXIF orientation applied, all metadata (GPS included) dropped, saved as JPEG under a random name in `MEDIA_DIR`. nginx serves `MEDIA_DIR` at `/media`; the names can't be guessed, but the files are public to anyone with the URL.
 - **Emojis** identify a listing for people; the unique index is on an order-independent key. They are never used as an identifier in code.
@@ -82,6 +82,10 @@ A home is a dorm room or an apartment with up to six rooms; seekers see rooms. W
 A home is visible to seekers once one of its residents has a phone, Telegram or VK, and it has a free place.
 
 Invite codes are eight characters, valid for `INVITE_TTL_DAYS` (7); only their hash is stored, so a code is shown once, when it is created. `/api/invites/preview` and `/join` accept the bare code or the whole link.
+
+## Comparing with friends
+
+`/api/compare`: a link (`/compare#code=…`) that anyone logged in can open to compare with whoever sent it, with no home involved: a couple, friends, people about to rent together. Up to 6 people per link, 20 comparisons per person. Opening the link joins right away, before the questionnaire, so the others see the progress. Members see each other's first name, photo and questionnaire progress as counts ("12 of 15"), never answers; once both people of a pair have finished, each sees `{percent, badges}` for the other and the other's visible answers next to their own (hidden ones never). With three or more, there is also a score for the whole group, computed like a room. `POST /api/compare` returns the person's link: one nobody has joined yet is reused, so the code is stored as is (it lets someone into a comparison, not into a home). The last member out deletes the group; groups emptied by an erased account are removed by the purge.
 
 ## Deleting an account
 

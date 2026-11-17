@@ -9,8 +9,9 @@ from app.database import Base
 LANGUAGES = ("ru", "en", "zh")
 GENDERS = ("m", "f")
 # What the person came for. One person can be both a host and a seeker; this is only
-# the page they land on after login.
-INTENTS = ("seek_dorm", "seek_apt", "host", "join")
+# the page they land on after login. "compare": not looking for housing, only comparing
+# with friends.
+INTENTS = ("seek_dorm", "seek_apt", "host", "join", "compare")
 
 
 def _in(column: str, values: tuple[str, ...]) -> str:

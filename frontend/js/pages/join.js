@@ -4,6 +4,7 @@
 
 import { ApiError, get, post } from '../api.js';
 import { t } from '../i18n.js';
+import { mountInviteField } from '../invite-field.js';
 import { initPage } from '../layout.js';
 import { KEYS, session } from '../storage.js';
 import { errorText, setBusy } from '../ui.js';
@@ -87,7 +88,9 @@ $('join').addEventListener('click', async () => {
   }
 });
 
+mountInviteField($('code'), $('code-hint'));
 if (pending) {
   $('code').value = pending;
+  $('code').dispatchEvent(new Event('input')); // only the code stays in the box
   preview(null);
 }

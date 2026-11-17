@@ -214,5 +214,7 @@ async def purge_deleted_accounts(db) -> int:
         await db.delete(user)
     if users:
         await db.flush()
+        from app.services.compare_service import drop_empty
+        await drop_empty(db)
         logger.info("Erased %d deleted accounts", len(users))
     return len(users)

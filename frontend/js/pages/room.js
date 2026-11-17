@@ -4,8 +4,8 @@
 // per-person compatibility, and the button that reveals the hosts' contacts.
 
 import { ApiError, get, post } from '../api.js';
-import { breakdown, chips } from '../compat.js';
-import { currentLang, t } from '../i18n.js';
+import { answerDiff, breakdown, chips } from '../compat.js';
+import { t } from '../i18n.js';
 import { initPage } from '../layout.js';
 import { addArea, addPin, createMap } from '../map.js';
 import { el, errorText, setBusy } from '../ui.js';
@@ -30,7 +30,6 @@ try {
   if (err.status === 401) location.replace('/login');
 }
 
-const tr = (texts) => texts[currentLang()] ?? texts.ru;
 const rub = (n) => `${n.toLocaleString('ru-RU')} ₽`;
 const genderLabel = (g) => ({ f: t('feed.gender.f'), m: t('feed.gender.m'), any: t('feed.gender.any') }[g]);
 
@@ -113,7 +112,7 @@ function contactPanel() {
 /** The summary tiles beside the photo: what it is, the score, the price (a dorm: the free
  *  places), and the contacts button. */
 function summary() {
-  const sub = [genderLabel(room.gender), room.sunlight && t(`home.sun.${room.sunlight}`)].filter(Boolean).join(' · ');
+  const sub = [genderLabel(room.gender), room.area_m2 && t('room.area', { n: room.area_m2 }), room.sunlight && t(`home.sun.${room.sunlight}`)].filter(Boolean).join(' · ');
   const flat = room.kind === 'apartment';
   // A dorm's free places are already the pink tile; an apartment's go here, with the internet.
   const line = flat && `${t('feed.places', { free: room.free_places, total: room.capacity })} · ${t('room.fact.internet')}: ${{ included: t('home.costs.internetIncluded'), split: t('home.costs.split'), none: t('home.costs.noInternet') }[room.internet_mode]}`;
@@ -130,68 +129,17 @@ function summary() {
   ];
 }
 
-/** How far apart two answers to one question are: 'far', 'near' or 'same'. Every visible question
- *  is a scale (its options run from one end to the other), so the distance is the step count. */
-function gap(q, mine, theirs) {
-  const steps = Math.abs(mine - theirs);
-  const share = steps / Math.max(1, q.options.length - 1);
-  return { share, level: steps === 0 ? 'same' : steps >= 2 && share >= 0.4 ? 'far' : 'near' };
-}
-
-/** One question where the answers differ: the scale with both marks on it, then both answers. */
-function diffRow(person, q, level) {
-  const mine = room.my_answers[q.id];
-  const theirs = person.answers[q.id];
-  const who = (i) => (i === mine ? 'me' : i === theirs ? 'them' : null);
-  return el('li', { class: 'cmp-row' },
-    el('p', { class: 'cmp-q' }, tr(q.text)),
-    el('div', { class: 'cmp-track', 'aria-hidden': 'true' }, ...q.options.map((_, i) => el('i', { 'data-who': who(i) }))),
-    el('p', { class: 'cmp-a' }, el('span', { class: 'cmp-who', 'data-who': 'them' }, person.first_name), tr(q.options[theirs])),
-    el('p', { class: 'cmp-a' }, el('span', { class: 'cmp-who', 'data-who': 'me' }, t('room.you')), tr(q.options[mine])),
-    level === 'near' && el('span', { class: 'sr-only' }, t('room.cmp.near')));
-}
-
-/** Visible answers compared with mine. The big differences sit open on the card, worst first;
- *  small ones and identical answers are folded away, the identical ones as one line each. */
-function compare(person) {
-  const items = quiz.questions
-    .filter((q) => !q.hidden && person.answers[q.id] != null && room.my_answers[q.id] != null)
-    .map((q) => ({ q, ...gap(q, room.my_answers[q.id], person.answers[q.id]) }))
-    .sort((a, b) => b.share - a.share);
-  if (!items.length) return null;
-  const of = (level) => items.filter((item) => item.level === level);
-  const [far, near, same] = [of('far'), of('near'), of('same')];
-  const group = (cls, label, list, row) => list.length > 0 && el('div', { class: 'cmp-group' },
-    el('p', { class: 'cmp-head' }, el('span', { class: `chip ${cls}` }, label), el('span', { class: 'meta' }, String(list.length))),
-    el('ul', { class: 'cmp' }, ...list.map(row)));
-  // At most three big differences sit open; any further ones lead the folded part.
-  const open = far.slice(0, 3);
-  const folded = far.slice(3);
-  const rest = folded.length + near.length + same.length;
-  return el('div', { class: 'cmp-wrap' },
-    open.length
-      ? group('mismatch', t('room.cmp.far'), open, ({ q }) => diffRow(person, q, 'far'))
-      : el('p', { class: 'note success' }, `✓ ${t('room.cmp.noFar')}`),
-    rest > 0 && el('details', { class: 'more' },
-      el('summary', {}, t('room.compare', { n: rest })),
-      group('mismatch', t('room.cmp.far'), folded, ({ q }) => diffRow(person, q, 'far')),
-      group('partial', t('room.cmp.near'), near, ({ q }) => diffRow(person, q, 'near')),
-      group('match', t('room.cmp.same'), same, ({ q }) => el('li', { class: 'cmp-row' },
-        el('p', { class: 'cmp-q' }, tr(q.text)),
-        el('p', { class: 'cmp-a' }, tr(q.options[person.answers[q.id]]))))));
-}
-
 function resident(person) {
   return el('li', { class: 'box pad resident-card', 'data-private': true },
     el('div', { class: 'row person-head' },
       person.avatar_url ? el('img', { class: 'avatar sm', src: person.avatar_url, alt: '' }) : el('span', { class: 'avatar sm', 'aria-hidden': 'true' }, person.first_name.slice(0, 1)),
       el('div', { class: 'person-name' },
         el('h3', {}, `${person.first_name} ${person.last_name}`),
-        room.kind === 'apartment' && el('p', { class: 'meta' }, person.in_this_room ? t('room.inThisRoom') : t('room.inOtherRoom'))),
+        room.kind === 'apartment' && el('p', { class: 'meta' }, { room: t('room.inThisRoom'), other_room: t('room.inOtherRoom'), apartment: t('room.inFlat') }[person.lives])),
       person.compatibility && el('span', { class: 'pct person-pct', title: t('room.personScore', { n: person.compatibility.percent }) }, `${person.compatibility.percent}%`)),
     person.bio && el('p', {}, person.bio),
     person.compatibility ? chips(person.compatibility) : !room.is_mine && el('p', { class: 'hint' }, t('room.personNoQuiz')),
-    !room.is_mine && compare(person));
+    !room.is_mine && answerDiff(quiz.questions, room.my_answers, person));
 }
 
 function render() {
@@ -208,7 +156,11 @@ function render() {
   document.title = `${room.emoji} ${title()} — nsusosed`;
   const hasPlace = room.lat != null && room.lon != null;
   const photo = gallery();
-  const about = room.description && el('section', { class: 'box pad rblock' }, el('h2', {}, t('home.about.title')), el('p', { class: 'prewrap' }, room.description));
+  // The room's own description first (an apartment's rooms differ), then the whole home's.
+  const about = (room.room_description || room.description) && el('section', { class: 'box pad rblock' },
+    el('h2', {}, t('home.about.title')),
+    room.room_description && el('p', { class: 'prewrap' }, room.room_description),
+    room.description && el('p', { class: 'prewrap' }, room.description));
   const where = hasPlace && el('section', { class: 'box pad rblock' },
     el('h2', {}, t('home.place.title')),
     el('p', { class: 'hint' }, room.radius_m ? t('room.place.area') : t('room.place.dorm')),

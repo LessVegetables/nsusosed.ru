@@ -34,7 +34,7 @@ async def feed(c, kind="dorm", **params) -> dict:
 
 
 def room(emoji, **changes) -> list[dict]:
-    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji} | changes]
+    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji, "sunlight": "sunny", "area_m2": 12} | changes]
 
 
 async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_place(make_client, login):
@@ -43,9 +43,10 @@ async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_
     r = await no_quiz.get("/api/feed", params={"kind": "dorm"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "QUESTIONNAIRE_REQUIRED"
 
-    host = await person(make_client, login, "h@g.nsu.ru", "Катя")
+    host = await person(make_client, login, "h@g.nsu.ru", "Катя", contact="@katya_nsu")
     home = await listed(host, dorm())
-    assert (await feed(seeker))["items"] == []                       # no way to reach the host yet
+    await host.put("/api/me/contacts", json={"contacts": []}, headers=ORIGIN)
+    assert (await feed(seeker)) == {"items": [], "others": []}                # no way to reach the host any more
     await host.put("/api/me/contacts", json={"contacts": [{"type": "telegram", "value": "@katya_nsu"}]}, headers=ORIGIN)
 
     items = (await feed(seeker))["items"]
@@ -54,12 +55,13 @@ async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_
     assert (item["building"], item["emoji"], item["free_places"], item["residents"]) == ("6", "🐶🍕🚀", 1, 1)
     assert item["compatibility"] == {"percent": 100, "badges": dict.fromkeys(("sleep", "order", "quiet", "air", "living"), "match")}
     assert "100б" not in str(items) and "room_label" not in str(items)
-    assert (await feed(host))["items"] == []                         # your own home isn't in your feed
+    assert (await feed(host)) == {"items": [], "others": []}                # your own home isn't in your feed
     assert (await feed(seeker, "apartment"))["items"] == []
 
     full = dorm(room_label=None, rooms=[home["rooms"][0] | {"free_places": 0}])
     await host.put(f"/api/homes/{home['id']}", json=full, headers=ORIGIN)
-    assert (await feed(seeker))["items"] == []
+    f = await feed(seeker)
+    assert f["items"] == [] and [i["free_places"] for i in f["others"]] == [0]   # a full room is under "show all"
 
 
 async def test_feed_is_sorted_by_compatibility_and_never_shows_exact_numbers(make_client, login):
@@ -83,7 +85,7 @@ async def test_a_hard_block_hides_the_room_everywhere(make_client, login):
     home = await listed(smoker, dorm())
     room_id = home["rooms"][0]["id"]
 
-    assert (await feed(sensitive))["items"] == []
+    assert (await feed(sensitive)) == {"items": [], "others": []}   # not even under "show all listings"
     # Not found, exactly like a room that doesn't exist: a 0% or a "blocked" would reveal the answer.
     r = await sensitive.get(f"/api/rooms/{room_id}")
     missing = await sensitive.get("/api/rooms/00000000-0000-0000-0000-000000000000")
@@ -94,12 +96,12 @@ async def test_a_hard_block_hides_the_room_everywhere(make_client, login):
     mate = await person(make_client, login, "m@g.nsu.ru")
     code = (await smoker.post(f"/api/homes/{home['id']}/invites", json={}, headers=ORIGIN)).json()["code"]
     await mate.post("/api/invites/join", json={"code": code}, headers=ORIGIN)
-    assert (await feed(sensitive))["items"] == []
+    assert (await feed(sensitive)) == {"items": [], "others": []}
     # Someone who isn't sensitive sees it.
     assert len((await feed(await person(make_client, login, "x@g.nsu.ru")))["items"]) == 1
 
 
-async def test_dorm_feed_is_limited_to_the_faculty_and_gender_until_asked(make_client, login):
+async def test_rooms_of_another_faculty_or_gender_are_listed_separately(make_client, login):
     seeker = await person(make_client, login, "s@g.nsu.ru", gender="f", faculty="mmf")
     await listed(await person(make_client, login, "a@g.nsu.ru", contact="@a_nsu"), dorm(rooms=room("🐶🍕🚀")))                      # dorm 6: ММФ
     await listed(await person(make_client, login, "b@g.nsu.ru", contact="@b_nsu"), dorm(building="4", rooms=room("🍎🍐🍊")))        # dorm 4: ЭФ
@@ -108,14 +110,8 @@ async def test_dorm_feed_is_limited_to_the_faculty_and_gender_until_asked(make_c
 
     f = await feed(seeker)
     assert sorted(i["emoji"] for i in f["items"]) == sorted(["🐶🍕🚀", "🦊🌵🎸"])
-    assert (f["hidden_by_faculty"], f["hidden_by_gender"]) == (1, 1)
-
-    f = await feed(seeker, whole_campus="true")
-    assert len(f["items"]) == 3 and f["hidden_by_faculty"] == 0
-    assert [i["outside_faculty"] for i in f["items"] if i["building"] == "4"] == [True]
-
-    f = await feed(seeker, any_gender="true")
-    assert "🐙🍋🎲" in [i["emoji"] for i in f["items"]] and f["hidden_by_gender"] == 0
+    others = {i["emoji"]: (i["outside_faculty"], i["wrong_gender"]) for i in f["others"]}
+    assert others == {"🍎🍐🍊": (True, False), "🐙🍋🎲": (False, True)}
 
 
 async def test_apartment_rooms_are_separate_listings_scored_against_the_whole_flat(make_client, login):
@@ -124,10 +120,11 @@ async def test_apartment_rooms_are_separate_listings_scored_against_the_whole_fl
     await listed(host, apartment())
     f = await feed(seeker, "apartment")
     # "Большая" is for anyone; "Маленькая" is for a woman.
-    assert [(i["room_name"], i["rent_rub"]) for i in f["items"]] == [("Большая", 14000)] and f["hidden_by_gender"] == 1
-    f = await feed(seeker, "apartment", any_gender="true")
-    assert len(f["items"]) == 2 and {i["compatibility"]["percent"] for i in f["items"]} == {100}
-    assert all(i["district"] == "Верхняя зона" and i["building"] is None for i in f["items"])
+    assert [(i["room_name"], i["rent_rub"]) for i in f["items"]] == [("Большая", 14000)]
+    assert [(i["room_name"], i["wrong_gender"]) for i in f["others"]] == [("Маленькая", True)]
+    rooms = f["items"] + f["others"]
+    assert {i["compatibility"]["percent"] for i in rooms} == {100}
+    assert all(i["district"] == "Верхняя зона" and i["building"] is None for i in rooms)
 
 
 async def test_room_page_shows_residents_visible_answers_only_and_the_map(make_client, login):
@@ -184,7 +181,7 @@ async def test_a_home_without_photos_stays_out_of_the_feed(make_client, login):
     seeker = await person(make_client, login, "s@g.nsu.ru")
     host = await person(make_client, login, "h@g.nsu.ru", contact="@nophoto_nsu")
     home = await listed(host, dorm(), photo=False)
-    assert (await feed(seeker))["items"] == []
+    assert (await feed(seeker)) == {"items": [], "others": []}
     assert (await seeker.get(f"/api/rooms/{home['rooms'][0]['id']}")).status_code == 404
     r = await host.post(f"/api/homes/{home['id']}/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
     assert r.status_code == 201, r.text
@@ -192,3 +189,37 @@ async def test_a_home_without_photos_stays_out_of_the_feed(make_client, login):
     assert len(items) == 1
     page = (await seeker.get(f"/api/rooms/{items[0]['room_id']}")).json()
     assert page["sunlight"] == "sunny"
+
+
+async def test_a_rooms_own_photos_and_details_come_first(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    host = await person(make_client, login, "h@g.nsu.ru", contact="@flat_nsu")
+    ids = []
+    for _ in range(2):
+        r = await host.post("/api/homes/new/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
+        ids.append(r.json()["id"])
+    rooms = apartment()["rooms"]
+    body = apartment(photo_ids=ids, rooms=[rooms[0], rooms[1] | {"photo_ids": [ids[1]], "area_m2": 9, "description": "Окно во двор"}])
+    home = (await host.post("/api/homes", json=body, headers=ORIGIN)).json()
+    items = {i["room_name"]: i for i in (await feed(seeker, "apartment"))["items"]}
+    assert items["Маленькая"]["cover_url"].endswith(".jpg") and items["Маленькая"]["cover_url"] != items["Большая"]["cover_url"]
+    page = (await seeker.get(f"/api/rooms/{home['rooms'][1]['id']}")).json()
+    assert [p["id"] for p in page["photos"]] == [ids[1], ids[0]]
+    assert (page["area_m2"], page["room_description"], page["sunlight"]) == (9, "Окно во двор", "shady")
+    big = (await seeker.get(f"/api/rooms/{home['rooms'][0]['id']}")).json()
+    assert [p["id"] for p in big["photos"]] == ids and big["area_m2"] == 12 and big["sunlight"] == "partial"
+
+
+async def test_the_room_page_says_where_each_resident_lives_and_scores_them_all(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    owner = await person(make_client, login, "o@g.nsu.ru", "Оля", contact="@olya_nsu")
+    home = await listed(owner, apartment())
+    big, small = [r["id"] for r in home["rooms"]]
+    page = (await seeker.get(f"/api/rooms/{small}")).json()
+    # The owner lives in the flat but in none of the listed rooms, and still counts.
+    olya = page["residents"][0]
+    assert (olya["lives"], olya["in_this_room"]) == ("apartment", False) and olya["compatibility"] is not None
+    me = home["residents"][0]
+    await owner.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"room_id": big}, headers=ORIGIN)
+    assert (await seeker.get(f"/api/rooms/{small}")).json()["residents"][0]["lives"] == "other_room"
+    assert (await seeker.get(f"/api/rooms/{big}")).json()["residents"][0]["lives"] == "room"

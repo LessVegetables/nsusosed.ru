@@ -4,25 +4,16 @@
 
 import { ApiError, del, get, post, put } from '../api.js';
 import { autosaver, saveOnEdit } from '../autosave.js';
+import { mountContacts } from '../contacts.js';
 import { renderFacultyPicker } from '../faculty.js';
 import { t } from '../i18n.js';
 import { mountLangSwitch } from '../lang-switch.js';
+import { mountInviteField } from '../invite-field.js';
 import { initPage } from '../layout.js';
 import { KEYS, local, session } from '../storage.js';
 import { el, errorText, saved, setBusy, toast } from '../ui.js';
 
 const $ = (id) => document.getElementById(id);
-
-// Primary ones first. `howto` = there are instructions for opening direct messages.
-const CONTACTS = [
-  { type: 'phone', primary: true, placeholder: '+7 913 123-45-67', inputmode: 'tel', autocomplete: 'tel' },
-  { type: 'telegram', primary: true, placeholder: '@username', howto: true },
-  { type: 'vk', primary: true, placeholder: 'vk.com/id…', howto: true },
-  { type: 'max', placeholder: '+7 913 123-45-67', howto: true },
-  { type: 'instagram', placeholder: '@username', howto: true },
-  { type: 'snapchat', placeholder: 'username', howto: true },
-  { type: 'wechat', placeholder: 'WeChat ID', howto: true },
-];
 
 let { user } = await initPage({ auth: 'required' });
 const meta = await get('/meta');
@@ -59,7 +50,7 @@ async function save(action, onFieldErrors) {
 // ── Single-choice button groups (.opts) ─────────────────
 
 /** Picking a button saves it as `field`. */
-function choice(group, field) {
+function choice(group, field, onSaved = () => {}) {
   const buttons = [...group.querySelectorAll('button')];
   const set = (v) => buttons.forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.value === v)));
   buttons.forEach((b) => b.addEventListener('click', async () => {
@@ -68,6 +59,7 @@ function choice(group, field) {
     set(value);
     await save(() => put('/me', { [field]: value }));
     set(user[field]); // back to the saved one if the save failed
+    onSaved();
   }));
   set(user[field]);
 }
@@ -138,7 +130,27 @@ $('profile').addEventListener('save', () => saveProfile.now());
 
 // ── What you're looking for ─────────────────────────────
 
-choice($('intent'), 'intent');
+// "I was invited" and not living anywhere on the site yet: the link or code goes in right
+// under the choice; the join page then shows the place.
+const renderInvite = () => { $('invite-box').hidden = user.intent !== 'join' || Boolean(user.home_id); };
+choice($('intent'), 'intent', () => {
+  renderInvite();
+  if (!$('invite-box').hidden) $('invite-code').focus();
+});
+renderInvite();
+mountInviteField($('invite-code'), $('invite-hint'));
+
+function findInvite() {
+  const code = $('invite-code').value.trim();
+  fieldError($('invite-code'), $('invite-err'), code ? '' : fieldReason('REQUIRED'));
+  if (!code) { $('invite-code').focus(); return; }
+  session.set(KEYS.invite, code); // picked up by the join page
+  location.assign('/join');
+}
+$('invite-go').addEventListener('click', findInvite);
+$('invite-code').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); findInvite(); }
+});
 choice($('gender'), 'gender');
 $('is-adult').checked = user.is_adult === true;
 $('is-adult').addEventListener('change', async () => {
@@ -155,71 +167,13 @@ $('faculty').addEventListener('change', async () => {
 });
 
 // ── Contacts ────────────────────────────────────────────
+// The same fields as on the home page while a place is being listed: js/contacts.js.
 
-const contactInputs = {};
-const savedContacts = () => Object.fromEntries(user.contacts.map((c) => [c.type, c.value]));
-
-function renderContacts() {
-  const stored = savedContacts();
-  $('contact-fields').replaceChildren(...CONTACTS.map((c) => {
-    const input = el('input', {
-      id: `contact-${c.type}`, placeholder: c.placeholder, inputmode: c.inputmode, autocomplete: c.autocomplete ?? 'off',
-      autocapitalize: 'none', spellcheck: 'false', maxlength: 100, 'aria-describedby': `contact-${c.type}-err`,
-    });
-    // Keep what is being typed when the language changes.
-    input.value = contactInputs[c.type]?.value ?? stored[c.type] ?? '';
-    contactInputs[c.type] = input;
-    saveOnEdit(input, saveContacts);
-    return el('div', {},
-      el('label', { class: 'field' },
-        el('span', {}, t(`contact.${c.type}`), c.primary && el('span', { class: 'tag fill-yellow' }, t('account.contacts.primary'))),
-        input,
-        el('span', { class: 'error', id: `contact-${c.type}-err`, hidden: true })),
-      c.howto && el('details', { class: 'more' },
-        el('summary', {}, t('account.contacts.howto')),
-        el('p', { class: 'note' }, t(`contact.${c.type}.howto`))));
-  }));
-}
-
-let sentContacts = null; // what the last attempt sent: the same list isn't sent twice
-
-const saveContacts = autosaver(async () => {
-  const sent = CONTACTS.map((c) => ({ type: c.type, value: contactInputs[c.type].value.trim() }));
-  const filled = sent.filter((c) => c.value);
-  const key = JSON.stringify(filled);
-  sentContacts ??= JSON.stringify(user.contacts.map((c) => ({ type: c.type, value: c.value })));
-  if (key === sentContacts) return;
-  sentContacts = key;
-  $('contacts-err').hidden = true;
-  sent.forEach((c) => fieldError(contactInputs[c.type], $(`contact-${c.type}-err`), ''));
-  const ok = await save(() => put('/me/contacts', { contacts: filled }), (fields) => {
-    let marked = false;
-    for (const [path, code] of Object.entries(fields)) {
-      const item = filled[Number(path.split('.')[1])];
-      if (item) {
-        fieldError(contactInputs[item.type], $(`contact-${item.type}-err`), fieldReason(code));
-        marked = true;
-      } else if (path === 'contacts') {
-        $('contacts-err').textContent = `✕ ${fieldReason(code)}`;
-        $('contacts-err').hidden = false;
-        marked = true;
-      }
-    }
-    return marked;
-  });
-  if (!ok) return;
-  // Show the values as the server normalized them (+7…, no @, no link prefix), except in a
-  // field that was edited since or is being typed in.
-  const stored = savedContacts();
-  for (const c of sent) {
-    const input = contactInputs[c.type];
-    if (input.value.trim() === c.value && document.activeElement !== input) input.value = stored[c.type] ?? '';
-  }
-  sentContacts = JSON.stringify(CONTACTS.map((c) => ({ type: c.type, value: contactInputs[c.type].value.trim() })).filter((c) => c.value));
-}, TYPING_PAUSE);
-
-renderContacts();
-$('contacts').addEventListener('save', () => saveContacts.now());
+const contacts = mountContacts({
+  fields: $('contact-fields'), error: $('contacts-err'),
+  getUser: () => user, setUser: (next) => { user = next; },
+});
+$('contacts').addEventListener('save', () => contacts.save.now());
 
 // ── Questionnaire status ────────────────────────────────
 
@@ -240,7 +194,7 @@ mountLangSwitch($('lang'), {
 
 document.addEventListener('langchange', () => {
   renderFaculties();
-  renderContacts();
+  contacts.render();
   renderAvatar();
   renderQuizStatus();
 });
