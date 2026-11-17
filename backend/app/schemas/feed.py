@@ -31,13 +31,16 @@ class FeedItem(BaseModel):
     compatibility: Optional[Compatibility] = None
     # Dorm outside the buildings this person's faculty is normally housed in.
     outside_faculty: bool = False
+    # The room is for another gender than this person's.
+    wrong_gender: bool = False
 
 
 class Feed(BaseModel):
+    # Rooms this person could move into.
     items: list[FeedItem]
-    # How many more rooms the two "show more" switches would add.
-    hidden_by_faculty: int
-    hidden_by_gender: int
+    # Every other listing they may see (full, another gender, outside their faculty), for
+    # "show all listings". Hard-blocked rooms are in neither list.
+    others: list[FeedItem]
 
 
 class RoomResident(BaseModel):
