@@ -5,5 +5,6 @@ from app.models.home import Home, HomePhoto, Invite, Membership, Room, RoomPhoto
 from app.models.session import Session
 from app.models.otp_code import OtpCode
 from app.models.auth_event import AuthEvent
+from app.models.compare import CompareGroup, CompareMember
 
-__all__ = ["User", "UserContact", "QuestionnaireResponse", "Home", "Room", "Membership", "HomePhoto", "RoomPhoto", "StagedPhoto", "Invite", "Session", "OtpCode", "AuthEvent"]
+__all__ = ["User", "UserContact", "QuestionnaireResponse", "Home", "Room", "Membership", "HomePhoto", "RoomPhoto", "StagedPhoto", "Invite", "Session", "OtpCode", "AuthEvent", "CompareGroup", "CompareMember"]

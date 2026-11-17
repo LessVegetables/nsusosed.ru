@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <meta name="robots" content="noindex, nofollow">
+  <title data-i18n="title.compare">Сравнение — nsusosed</title>
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="preload" href="/fonts/rubik-cyrillic.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/fonts.css">
+  <link rel="stylesheet" href="/css/nsusosed.css">
+  <link rel="stylesheet" href="/css/pages.css">
+  <script type="module" src="/js/pages/compare.js"></script>
+  <script defer src="/js/analytics.js"></script>
+  <script defer src="https://stat.gehrman.me/script.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5" data-exclude-hash="true" data-errors="true" data-release="dev" data-environment="development" data-before-send="nsusosedBeforeSend"></script>
+  <script defer src="https://stat.gehrman.me/recorder.js" data-website-id="f973f006-b658-4987-8813-7fb6acf879c5"></script>
+</head>
+<body>
+  <a class="skip btn secondary" href="#main" data-i18n="a11y.skip">Перейти к содержимому</a>
+  <header class="site-header"></header>
+
+  <main id="main" tabindex="-1">
+    <div class="wrap section cpage">
+      <header class="qintro">
+        <h1 class="title" data-i18n="compare.title">Сравнение с друзьями</h1>
+        <p class="lead" data-i18n="compare.lead">Отправь ссылку. Когда вы оба пройдёте анкету, здесь появится ваша совместимость. Ответы друг друга вы не увидите: только процент и оценки по темам.</p>
+      </header>
+
+      <!-- Comparisons someone has joined; the link to send is the last box -->
+      <div class="cgroups" id="groups" data-private></div>
+
+      <section class="box pad fill-yellow cshare" id="share" aria-labelledby="share-title">
+        <h2 id="share-title" data-i18n="compare.share.title">Ссылка для друга</h2>
+        <div class="cshare-link">
+          <label class="field"><input id="share-url" readonly data-private data-i18n-attr="aria-label:compare.share.title"></label>
+          <button class="btn dark" type="button" id="share-copy" data-i18n="compare.share.copy">Скопировать</button>
+        </div>
+        <p class="hint" data-i18n="compare.share.hint">По одной ссылке могут сравниться до 6 человек. Друг появится здесь, как только её откроет.</p>
+      </section>
+
+      <!-- For people who only came to compare: the site is about housing -->
+      <section class="box pad solo-panel" id="housing" hidden>
+        <h2 data-i18n="compare.housing.title">Ищешь жильё?</h2>
+        <p data-i18n="compare.housing.text">На nsusosed ищут соседей по общежитию и квартире, по той же анкете.</p>
+        <a class="btn secondary" href="/account#intent" data-i18n="compare.housing.cta">Выбрать, что ищу</a>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer"></footer>
+</body>
+</html>

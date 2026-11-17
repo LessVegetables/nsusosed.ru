@@ -32,7 +32,7 @@ on the same Wi-Fi open it.
 | `js/routes.js` | `homeFor(user)`: where a logged-in person belongs right now |
 | `js/map.js` | Leaflet maps and `obfuscate()`, the function that hides an apartment's location |
 | `js/autosave.js` | `autosaver()`: pages have no save buttons; a change is sent as soon as it is made |
-| `js/compat.js` | How a compatibility result is drawn (percent, badges) |
+| `js/compat.js` | How a compatibility result is drawn (percent, badges, answers side by side) |
 | `js/pages/*.js` | One script per page |
 | `vendor/leaflet/` | Leaflet 1.9.4, vendored (the CSP allows no script CDN) |
 | `tools/check_i18n.py` | Checks run before every commit and in CI |
@@ -76,11 +76,12 @@ for f in frontend/js/*.js frontend/js/pages/*.js; do node --input-type=module --
 |---|---|---|
 | `/` | everyone | Landing for new visitors; logged-in people go to their page; an expired session goes to `/login` |
 | `/login` | guests | Email → name (first login) → code |
-| `/questionnaire` | logged in | Facts, all 20 questions (a draft saved after every answer), "what are you looking for?" |
+| `/questionnaire` | logged in | Facts, all 20 questions (a draft saved after every answer), "what are you looking for?". At the top, "taking it together?" gives a link for a friend; people who came by a friend's link skip the last question |
 | `/feed` | logged in | Rooms with free places; dorm and apartment tabs |
 | `/room?id=…` | logged in | One room: photos, map, residents, compatibility, contacts |
 | `/home` | logged in | List or edit your place; residents, invites, photos |
 | `/join` | logged in | Join a place by invite link or code |
+| `/compare` | logged in | Compare with friends by link: progress while they answer, then the result and the answers side by side (as on `/room`). Opening a link joins before the questionnaire. Linked from `/account` and the top of `/questionnaire` |
 | `/account` | logged in | Profile, contacts, language, logout, delete |
 | `/compatibility`, `/privacy`, `/support` | everyone | How the score works; personal data; how to reach us |
 

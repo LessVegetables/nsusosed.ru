@@ -225,10 +225,14 @@ def overall(dimensions: dict[str, float]) -> float:
     return c["mean_share"] * mean + c["min_share"] * min(dimensions.values())
 
 
-def score_pair(a: Answers, b: Answers) -> Optional[PairScore]:
+def score_pair(a: Answers, b: Answers, *, ignore_blocks: bool = False) -> Optional[PairScore]:
     """Compatibility of two people who both completed this version (answers already passed
-    through for_scoring). None = hard block: the pair is not shown at all, not even as 0%."""
-    if blocked(a, b):
+    through for_scoring). None = hard block: the pair is not shown at all, not even as 0%.
+
+    ignore_blocks: people who chose to compare with each other (compare_service) get the plain
+    score. Hard blocks keep rooms out of the feed; a "no result" between friends would give
+    away the hidden answer behind it."""
+    if not ignore_blocks and blocked(a, b):
         return None
     frictions = {"sleep": _sleep(a, b), "order": _order(a, b), "quiet": _quiet(a, b),
                  "air": _air(a, b), "living": _living(a, b)}

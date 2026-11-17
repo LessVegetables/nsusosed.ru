@@ -50,7 +50,7 @@ class UserUpdate(BaseModel):
     gender: Optional[Literal["m", "f"]] = None
     faculty: Optional[str] = Field(default=None, max_length=20)
     is_adult: Optional[bool] = None
-    intent: Optional[Literal["seek_dorm", "seek_apt", "host", "join"]] = None
+    intent: Optional[Literal["seek_dorm", "seek_apt", "host", "join", "compare"]] = None
     bio: Optional[str] = Field(default=None, max_length=500)
 
     _clean = field_validator("first_name", "last_name", mode="before")(clean_name)
