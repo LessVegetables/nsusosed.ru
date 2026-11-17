@@ -34,7 +34,7 @@ async def feed(c, kind="dorm", **params) -> dict:
 
 
 def room(emoji, **changes) -> list[dict]:
-    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji} | changes]
+    return [{"gender": "f", "capacity": 2, "free_places": 1, "emoji": emoji, "sunlight": "sunny", "area_m2": 12} | changes]
 
 
 async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_place(make_client, login):
@@ -43,9 +43,10 @@ async def test_feed_needs_a_questionnaire_and_shows_reachable_rooms_with_a_free_
     r = await no_quiz.get("/api/feed", params={"kind": "dorm"})
     assert r.status_code == 409 and r.json()["error"]["code"] == "QUESTIONNAIRE_REQUIRED"
 
-    host = await person(make_client, login, "h@g.nsu.ru", "Катя")
+    host = await person(make_client, login, "h@g.nsu.ru", "Катя", contact="@katya_nsu")
     home = await listed(host, dorm())
-    assert (await feed(seeker))["items"] == []                       # no way to reach the host yet
+    await host.put("/api/me/contacts", json={"contacts": []}, headers=ORIGIN)
+    assert (await feed(seeker))["items"] == []                       # no way to reach the host any more
     await host.put("/api/me/contacts", json={"contacts": [{"type": "telegram", "value": "@katya_nsu"}]}, headers=ORIGIN)
 
     items = (await feed(seeker))["items"]
@@ -192,3 +193,37 @@ async def test_a_home_without_photos_stays_out_of_the_feed(make_client, login):
     assert len(items) == 1
     page = (await seeker.get(f"/api/rooms/{items[0]['room_id']}")).json()
     assert page["sunlight"] == "sunny"
+
+
+async def test_a_rooms_own_photos_and_details_come_first(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    host = await person(make_client, login, "h@g.nsu.ru", contact="@flat_nsu")
+    ids = []
+    for _ in range(2):
+        r = await host.post("/api/homes/new/photos", headers=ORIGIN, files={"file": ("a.png", picture((800, 600)), "image/png")})
+        ids.append(r.json()["id"])
+    rooms = apartment()["rooms"]
+    body = apartment(photo_ids=ids, rooms=[rooms[0], rooms[1] | {"photo_ids": [ids[1]], "area_m2": 9, "description": "Окно во двор"}])
+    home = (await host.post("/api/homes", json=body, headers=ORIGIN)).json()
+    items = {i["room_name"]: i for i in (await feed(seeker, "apartment"))["items"]}
+    assert items["Маленькая"]["cover_url"].endswith(".jpg") and items["Маленькая"]["cover_url"] != items["Большая"]["cover_url"]
+    page = (await seeker.get(f"/api/rooms/{home['rooms'][1]['id']}")).json()
+    assert [p["id"] for p in page["photos"]] == [ids[1], ids[0]]
+    assert (page["area_m2"], page["room_description"], page["sunlight"]) == (9, "Окно во двор", "shady")
+    big = (await seeker.get(f"/api/rooms/{home['rooms'][0]['id']}")).json()
+    assert [p["id"] for p in big["photos"]] == ids and big["area_m2"] == 12 and big["sunlight"] == "partial"
+
+
+async def test_the_room_page_says_where_each_resident_lives_and_scores_them_all(make_client, login):
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    owner = await person(make_client, login, "o@g.nsu.ru", "Оля", contact="@olya_nsu")
+    home = await listed(owner, apartment())
+    big, small = [r["id"] for r in home["rooms"]]
+    page = (await seeker.get(f"/api/rooms/{small}")).json()
+    # The owner lives in the flat but in none of the listed rooms, and still counts.
+    olya = page["residents"][0]
+    assert (olya["lives"], olya["in_this_room"]) == ("apartment", False) and olya["compatibility"] is not None
+    me = home["residents"][0]
+    await owner.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"room_id": big}, headers=ORIGIN)
+    assert (await seeker.get(f"/api/rooms/{small}")).json()["residents"][0]["lives"] == "other_room"
+    assert (await seeker.get(f"/api/rooms/{big}")).json()["residents"][0]["lives"] == "room"

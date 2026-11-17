@@ -47,6 +47,9 @@ class RoomResident(BaseModel):
     avatar_url: Optional[str] = None
     bio: str
     in_this_room: bool
+    # Where they live: "room" (this one), "other_room" (another listed room) or "apartment"
+    # (in the flat, in none of its listed rooms). Everyone counts for compatibility.
+    lives: str = "room"
     # Their visible answers only ({question id: option index}); hidden ones never leave the server.
     answers: dict[str, int]
     compatibility: Optional[Compatibility] = None
@@ -69,8 +72,10 @@ class RoomPage(BaseModel):
     lat: Optional[float] = None
     lon: Optional[float] = None
     radius_m: Optional[int] = None   # 0 = an exact point (dorm building); otherwise the approximate area
-    description: str
-    sunlight: Optional[str] = None
+    description: str                 # the home's
+    sunlight: Optional[str] = None   # the room's (an apartment's rooms differ)
+    area_m2: Optional[int] = None
+    room_description: str = ""
     emoji: str
     room_name: str
     gender: str

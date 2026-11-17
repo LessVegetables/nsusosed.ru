@@ -55,6 +55,12 @@ def _active(home: Home) -> list[Membership]:
     return [m for m in home.memberships if m.user.deleted_at is None]
 
 
+def _room_photos(home: Home, room: Room) -> list:
+    """The room's own photos first, then the rest of the home's."""
+    own = list(room.photos)
+    return own + [p for p in home.photos if p not in own]
+
+
 def _shown(home: Home) -> bool:
     """Seekers see a home once a host can be reached and it has at least one photo."""
     return bool(home.photos) and any(c.type in PRIMARY_TYPES for m in _active(home) for c in m.user.contacts)
@@ -128,7 +134,7 @@ async def get_feed(db, user: User, kind: str, whole_campus: bool, any_gender: bo
                 room_id=room.id, kind=home.kind, building=home.building, district=home.district, emoji=room.emoji,
                 room_name=room.name, gender=room.gender, capacity=room.capacity, free_places=room.free_places,
                 rent_rub=room.rent_rub,
-                cover_url=image_service.home_photo_url(home.id, home.photos[0].file_name) if home.photos else None,
+                cover_url=image_service.home_photo_url(home.id, _room_photos(home, room)[0].file_name) if home.photos else None,
                 residents=len(members), compatibility=scored.public, outside_faculty=outside)
             items.append((scored.room if scored.room is not None else -1.0, item))
     items.sort(key=lambda pair: -pair[0])
@@ -168,17 +174,19 @@ async def get_room(db, user: User, room_id) -> RoomPage:
         residents.append(RoomResident(
             user_id=m.user_id, first_name=m.user.first_name, last_name=m.user.last_name,
             avatar_url=image_service.avatar_url(m.user.avatar_file), bio=m.user.bio, in_this_room=m.room_id == room.id,
+            lives="room" if m.room_id == room.id or home.kind == "dorm" else "other_room" if m.room_id else "apartment",
             answers=_visible(raw) if complete else {}, compatibility=scored.per_resident.get(m.user_id)))
     residents.sort(key=lambda r: not r.in_this_room)
     return RoomPage(
         room_id=room.id, home_id=home.id, kind=home.kind, building=home.building, district=home.district,
         lat=dorm["lat"] if dorm else home.lat, lon=dorm["lon"] if dorm else home.lon,
         radius_m=0 if home.kind == "dorm" else home.radius_m,
-        description=home.description, sunlight=home.sunlight, emoji=room.emoji, room_name=room.name, gender=room.gender,
+        description=home.description, sunlight=room.sunlight, area_m2=room.area_m2, room_description=room.description,
+        emoji=room.emoji, room_name=room.name, gender=room.gender,
         capacity=room.capacity, free_places=room.free_places, rent_rub=room.rent_rub,
         utilities_mode=home.utilities_mode, utilities_rub=home.utilities_rub, internet_mode=home.internet_mode,
         photos=[PhotoOut(id=p.id, url=image_service.home_photo_url(home.id, p.file_name), width=p.width, height=p.height)
-                for p in home.photos],
+                for p in _room_photos(home, room)],
         residents=residents,
         other_rooms=[OtherRoom(room_id=r.id, emoji=r.emoji, room_name=r.name, free_places=r.free_places, rent_rub=r.rent_rub)
                      for r in home.rooms if r.id != room.id],

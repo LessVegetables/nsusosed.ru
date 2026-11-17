@@ -22,7 +22,6 @@ class Home(Base):
     __tablename__ = "homes"
     __table_args__ = (
         CheckConstraint("kind IN ('dorm', 'apartment')", name="ck_homes_kind"),
-        CheckConstraint("sunlight IN ('sunny', 'partial', 'shady')", name="ck_homes_sunlight"),
         # A dorm room can be listed once. room_label never leaves the server.
         Index("uq_homes_dorm_room", "building", "room_label", unique=True, postgresql_where=text("kind = 'dorm'")),
     )
@@ -30,9 +29,6 @@ class Home(Base):
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     kind: Mapped[str] = mapped_column(String(10), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    # How much sun gets in: sunny | partial | shady. Required in the form; NULL only for homes
-    # listed before the question existed.
-    sunlight: Mapped[str | None] = mapped_column(String(10), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Dorm: building id from config/dorms.json (shown) and the room: "200", "100b" (Б), "100m" (М)
@@ -64,6 +60,8 @@ class Room(Base):
     __table_args__ = (
         CheckConstraint("gender IN ('m', 'f', 'any')", name="ck_rooms_gender"),
         CheckConstraint("capacity BETWEEN 1 AND 6 AND free_places BETWEEN 0 AND capacity", name="ck_rooms_places"),
+        CheckConstraint("sunlight IN ('sunny', 'partial', 'shady')", name="ck_rooms_sunlight"),
+        CheckConstraint("area_m2 BETWEEN 3 AND 200", name="ck_rooms_area"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -77,8 +75,16 @@ class Room(Base):
     # Three emojis people use to tell listings apart. A label, never a key.
     emoji: Mapped[str] = mapped_column(String(40), nullable=False)
     emoji_key: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)  # order-independent
+    area_m2: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    # How much sun gets in: sunny | partial | shady. Required in the form; NULL only for rooms
+    # listed before the question existed.
+    sunlight: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
     home: Mapped["Home"] = relationship(back_populates="rooms")
+    # Which of the home's photos show this room, in the home's order.
+    photos: Mapped[list["HomePhoto"]] = relationship(secondary="room_photos", order_by="HomePhoto.position",
+                                                     lazy="selectin")
 
 
 class Membership(Base):
@@ -129,3 +135,28 @@ class HomePhoto(Base):
     height: Mapped[int] = mapped_column(Integer, nullable=False)
 
     home: Mapped["Home"] = relationship(back_populates="photos")
+
+
+class RoomPhoto(Base):
+    """A home photo that shows this room."""
+
+    __tablename__ = "room_photos"
+
+    room_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("rooms.id", ondelete="CASCADE"), primary_key=True)
+    photo_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("home_photos.id", ondelete="CASCADE"),
+                                                primary_key=True, index=True)
+
+
+class StagedPhoto(Base):
+    """A photo uploaded while the listing form is still being filled in, before the home
+    exists. Creating the home turns it into a HomePhoto with the same id; unclaimed ones are
+    swept after a week (image_service.sweep_orphans)."""
+
+    __tablename__ = "staged_photos"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    file_name: Mapped[str] = mapped_column(String(64), nullable=False)
+    width: Mapped[int] = mapped_column(Integer, nullable=False)
+    height: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())

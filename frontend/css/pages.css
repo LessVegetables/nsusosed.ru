@@ -149,14 +149,61 @@
     }
   }
 
-  /* My home: same single column as the questionnaire. */
-  .hpage { max-width: 760px; display: grid; gap: var(--gap); }
-  .hpage form, .hpage #status { display: grid; gap: var(--gap); }
-  .hpage #status { gap: 10px; }
-  .hpage #status:empty { display: none; }
+  /* My home: the room page's tiles (.rpage, .bento below), with the form inside them.
+     js/pages/home.js. Before the kind is picked, one narrow box. */
+  .hkind { max-width: 760px; }
+  .hkind h2 { font-size: var(--fs-panel); }
   .hblock { display: grid; gap: 18px; }
+  .tile.hblock { gap: 18px; }
   .hblock > * { margin: 0; }
-  .hblock > h2, .hblock .row h2 { margin: 0; font-size: var(--fs-panel); }
+  .hblock > h2, .hblock .row h2, .hblock .row h3 { margin: 0; font-size: var(--fs-panel); }
+  .hblock .row h3 { font-size: var(--fs-card); }
+  .hpage .t-title .emoji-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  /* The status word ("Draft", "Черновик") is longer than a number: one step smaller. */
+  .hpage #tile-status .big-pct { font-size: var(--fs-panel); overflow-wrap: anywhere; }
+  @media (max-width: 960px) { .hpage #tile-status .big-pct { font-size: var(--fs-card); } }
+  .hpage .t-cta > .btn { justify-self: stretch; justify-content: center; }
+  .hpage .t-cta .stack { display: grid; gap: 10px; }
+  .hpage .t-cta .stack > * { margin: 0; }
+  /* Photo tile: the photo shown large, what to do with it, then all of them in one scrolling
+     row ending with "+ Add". Empty: one big "add" area. Files can be dropped anywhere on it. */
+  /* minmax(0, 1fr): a long row of thumbnails scrolls instead of widening the page. */
+  .hphotos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-content: start; }
+  .hphotos > * { margin: 0; }
+  .hphotos h2 { margin: 0; font-size: var(--fs-panel); }
+  .hphotos .main-wrap { position: relative; }
+  .hphotos .thumbs { margin-top: 0; }
+  /* Two buttons of one line each, always both there: the tile never changes height when
+     another photo is picked. Phones: one under the other. */
+  .hphotos .photo-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .hphotos .photo-actions .btn { justify-content: center; padding-inline: 10px; white-space: nowrap; }
+  @media (max-width: 640px) { .hphotos .photo-actions { grid-template-columns: 1fr; } }
+  .hphotos .thumbs { align-items: start; }
+  .hphotos .thumbs .upload { flex: 0 0 calc((100% - 30px) / 4.4); aspect-ratio: 4 / 3; padding: 0; font-size: var(--fs-panel); line-height: 1; }
+  .upload-big, .photo-empty { aspect-ratio: 4 / 3; }
+  .upload-big span { display: grid; gap: 6px; }
+  .upload-big small { font-weight: var(--w-body); }
+  .photo-empty { display: grid; place-items: center; border: var(--line-w) dashed var(--edge); border-radius: var(--r-sm); }
+  .hphotos[data-drop] { outline: var(--line-w) dashed var(--primary); outline-offset: 4px; }
+  /* A new listing has no "next step" tile, so the photo tile spans two rows, not three. */
+  .bento.is-new .t-photo { grid-row: span 2; }
+  /* Answers one under another, slim: the costs and the sunlight. */
+  .hblock .opts.list { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .hblock .opts.list button { padding: 9px 14px; }
+  /* A room's photos: the gallery's thumbnail row, pressed = shown in this room. */
+  .room-thumbs { display: flex; gap: 10px; overflow-x: auto; margin-top: 8px; padding: 3px 3px 6px; align-items: start; }
+  .room-thumbs > * { flex: 0 0 calc((100% - 30px) / 4.4); }
+  .room-thumbs .upload { aspect-ratio: 4 / 3; padding: 0; font-size: var(--fs-panel); line-height: 1; }
+  .room-thumbs button:disabled { cursor: default; }
+  .taken-fields { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); }
+  .hpublish .btn { justify-content: center; }
+  @media (max-width: 640px) {
+    .place-actions { flex-direction: column; align-items: stretch; }
+    .place-actions .btn { justify-content: center; }
+    .place-actions .linkbtn { align-self: center; min-height: 44px; }
+    .add-room .btn { display: flex; width: 100%; justify-content: center; }
+  }
+  .room-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); align-items: start; }
   .hblock fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 10px; }
   .hblock fieldset > * { margin: 0; }
   .hblock legend { padding: 0; margin-bottom: 10px; font-weight: var(--w-heavy); }
