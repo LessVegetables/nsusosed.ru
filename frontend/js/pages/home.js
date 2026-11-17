@@ -27,6 +27,7 @@
 
 import { ApiError, del, get, post, put } from '../api.js';
 import { autosaver } from '../autosave.js';
+import { hasPrimary, mountContacts } from '../contacts.js';
 import { reportBug } from '../errors.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
@@ -38,8 +39,7 @@ const $ = (id) => document.getElementById(id);
 const MAX_ROOMS = 6;
 const MAX_PHOTOS = 10;
 
-const { user } = await initPage({ auth: 'required' });
-void user;
+let { user } = await initPage({ auth: 'required' });
 const [meta, mine] = await Promise.all([get('/meta'), get('/homes/mine')]);
 
 let home = mine.home;   // as the server knows it; null until created
@@ -711,6 +711,23 @@ function aboutTile() {
     field(t('home.about.label'), textArea(state, 'description', { rows: 5, placeholder: t('home.about.hint') }), { path: 'description' }));
 }
 
+// ── Contacts (a new place only) ─────────────────────────
+// A listing is shown once a host can be reached, so it can't be listed without a phone,
+// Telegram or VK. The same fields as on the account page (js/contacts.js).
+
+const contactFields = el('div', { class: 'stack' });
+const contactError = el('p', { class: 'note error', role: 'alert', hidden: true });
+const contacts = mountContacts({ fields: contactFields, error: contactError, getUser: () => user, setUser: (next) => { user = next; } });
+
+function contactsTile() {
+  return el('section', { class: 'box pad tile t-wide hblock', id: 'tile-contacts', 'data-private': true },
+    el('h2', {}, t('account.contacts.title')),
+    el('p', { class: 'hint' }, t('account.contacts.hint')),
+    contactError,
+    contactFields,
+    el('p', { class: 'hint' }, t('account.contacts.meta')));
+}
+
 // ── Residents and rights ────────────────────────────────
 
 const RIGHTS = ['can_edit', 'can_photos', 'can_invites', 'can_residents'];
@@ -719,9 +736,10 @@ const rightLabel = (name) => ({
   can_invites: t('home.rights.can_invites'), can_residents: t('home.rights.can_residents'),
 }[name]);
 
+/** null: in the apartment, in none of its listed rooms. */
 const roomName = (id) => {
   const index = home.rooms.findIndex((r) => r.id === id);
-  return index < 0 ? '' : `${home.rooms[index].emoji} ${home.rooms[index].name || t('home.room.titleN', { n: index + 1 })}`;
+  return index < 0 ? t('home.residents.flatOnly') : `${home.rooms[index].emoji} ${home.rooms[index].name || t('home.room.titleN', { n: index + 1 })}`;
 };
 
 async function homeAction(action) {
@@ -754,11 +772,14 @@ function residentCard(person) {
     }))
     : el('p', { class: 'hint' }, RIGHTS.filter((name) => person.permissions[name]).map(rightLabel).join(' · ') || t('home.rights.none'));
   let room = null;
-  if (home.kind === 'apartment' && home.rooms.length > 1) {
+  // An apartment's host may live in one of its rooms or just in the flat (an owner letting the rooms).
+  if (home.kind === 'apartment') {
     if (manage || person.is_you) {
-      const picker = el('select', { 'aria-label': t('home.residents.room') }, ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
+      const picker = el('select', { 'aria-label': t('home.residents.room') },
+        el('option', { value: '' }, t('home.residents.flatOnly')),
+        ...home.rooms.map((r) => el('option', { value: r.id }, roomName(r.id))));
       picker.value = person.room_id ?? '';
-      picker.addEventListener('change', () => update({ room_id: picker.value }));
+      picker.addEventListener('change', () => update({ room_id: picker.value || null }));
       room = el('label', { class: 'field' }, el('span', {}, t('home.residents.room')), picker);
     } else {
       room = el('p', { class: 'meta' }, roomName(person.room_id));
@@ -911,6 +932,7 @@ function render() {
     home && residentsTile(),
     home && invitesTile(),
     home && leaveTile(),
+    !home && (contacts.render(), contactsTile()),
     !home && el('div', { class: 'tile t-wide hpublish' }, el('button', { class: 'btn', type: 'submit' }, t('home.publish'))),
   ].filter(Boolean)));
   mountMap();
@@ -985,7 +1007,9 @@ function missing() {
       need(`rooms.${i}.rent_rub`, String(room.rent_rub).trim());
     }
     const area = number(room.area_m2);
-    if (area != null && (area < 3 || area > 200)) out[`rooms.${i}.area_m2`] = 'AREA_RANGE';
+    if (area == null) out[`rooms.${i}.area_m2`] = 'REQUIRED';
+    else if (area < 3 || area > 200) out[`rooms.${i}.area_m2`] = 'AREA_RANGE';
+    if (state.kind === 'apartment') need(`rooms.${i}.description`, room.description.trim());
     need(`rooms.${i}.emoji`, room.emoji.trim());
   });
   return out;
@@ -1010,7 +1034,15 @@ $('home-form').addEventListener('submit', async (e) => {
   takenRoomId = null;
   errors = missing();
   if (Object.keys(errors).length) { showErrors(); return; }
+  // Contacts typed a moment ago may not be saved yet.
   creating = true;
+  await contacts.save.now();
+  if (!hasPrimary(user)) {
+    creating = false;
+    contacts.showError('NEED_CONTACT');
+    $('tile-contacts')?.scrollIntoView({ block: 'center' });
+    return;
+  }
   if (button) setBusy(button, true);
   try {
     home = await serial(() => post('/homes', payload()));
@@ -1018,8 +1050,15 @@ $('home-form').addEventListener('submit', async (e) => {
     creating = false;
     if (!(err instanceof ApiError)) throw err;
     if (err.status === 401) { location.replace('/login'); return; }
-    errors = err.fields ?? {};
+    const { contacts: contactCode, ...fields } = err.fields ?? {};
+    errors = fields;
     if (err.code === 'ROOM_TAKEN') takenRoomId = err.data?.room_id ?? null;
+    if (contactCode) {
+      render();
+      contacts.showError(contactCode);
+      $('tile-contacts')?.scrollIntoView({ block: 'center' });
+      return;
+    }
     showErrors();
     if (!document.querySelector(FORM_ERROR)) toast(t('error.title'), errorText(err), { error: true });
     return;
@@ -1031,7 +1070,8 @@ $('home-form').addEventListener('submit', async (e) => {
   place.point = null;
   shown = 0;
   render();
-  toast(t('home.created'), t('home.createdText'));
+  // Listed but not shown yet (e.g. no free place): the status tile says why.
+  toast(t('home.created'), home.visible ? t('home.createdText') : t('home.createdHidden'));
   window.scrollTo(0, 0);
 });
 

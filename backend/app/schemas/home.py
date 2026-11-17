@@ -94,6 +94,8 @@ class HomeIn(BaseModel):
         for i, room in enumerate(self.rooms):
             if room.sunlight is None:
                 errors[f"rooms.{i}.sunlight"] = "REQUIRED"
+            if room.area_m2 is None:
+                errors[f"rooms.{i}.area_m2"] = "REQUIRED"
         if not self.description:
             errors["description"] = "REQUIRED"
         if self.kind == "dorm":
@@ -138,6 +140,8 @@ class HomeIn(BaseModel):
                     errors[f"rooms.{i}.rent_rub"] = "REQUIRED"
                 if not room.name:
                     errors[f"rooms.{i}.name"] = "REQUIRED"
+                if not room.description:
+                    errors[f"rooms.{i}.description"] = "REQUIRED"
             self.building = self.room_label = None
         keys = [emoji_util.normalize(r.emoji)[1] for r in self.rooms]
         for i, key in enumerate(keys):
@@ -191,7 +195,7 @@ class Resident(BaseModel):
 
 class ResidentUpdate(BaseModel):
     """Only the fields that were sent change. Rights need can_residents; anyone may set
-    their own room."""
+    their own room. room_id null: lives in the apartment, in none of its listed rooms."""
 
     room_id: Optional[UUID] = None
     can_edit: Optional[bool] = None

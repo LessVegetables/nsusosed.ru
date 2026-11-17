@@ -47,6 +47,9 @@ class RoomResident(BaseModel):
     avatar_url: Optional[str] = None
     bio: str
     in_this_room: bool
+    # Where they live: "room" (this one), "other_room" (another listed room) or "apartment"
+    # (in the flat, in none of its listed rooms). Everyone counts for compatibility.
+    lives: str = "room"
     # Their visible answers only ({question id: option index}); hidden ones never leave the server.
     answers: dict[str, int]
     compatibility: Optional[Compatibility] = None

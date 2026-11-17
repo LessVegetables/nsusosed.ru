@@ -8,6 +8,9 @@ from tests.test_homes import ORIGIN, apartment, dorm, fields
 async def member(make_client, login, email, name="Иван"):
     c = make_client()
     await login(c, email, first_name=name)
+    handle = "@" + email.split("@")[0].replace(".", "_") + "_nsu"
+    r = await c.put("/api/me/contacts", json={"contacts": [{"type": "telegram", "value": handle}]}, headers=ORIGIN)
+    assert r.status_code == 200, r.text
     return c
 
 
@@ -87,11 +90,13 @@ async def test_apartment_invite_puts_the_person_in_the_chosen_room_and_they_can_
     inv = await invite(owner, home["id"], room_id=small)
     joined = (await join(mate, inv["code"])).json()
     me = next(r for r in joined["residents"] if r["is_you"])
-    assert me["room_id"] == small and [r["residents"] for r in joined["rooms"]] == [1, 1]
+    assert me["room_id"] == small and [r["residents"] for r in joined["rooms"]] == [0, 1]
 
-    # Anyone may change their own room; nothing else about themselves.
+    # Anyone may change their own room, or live in the flat in none of its rooms (null).
     r = await mate.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"room_id": big}, headers=ORIGIN)
-    assert [x["residents"] for x in r.json()["rooms"]] == [2, 0]
+    assert [x["residents"] for x in r.json()["rooms"]] == [1, 0]
+    r = await mate.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"room_id": None}, headers=ORIGIN)
+    assert [x["residents"] for x in r.json()["rooms"]] == [0, 0]
     r = await mate.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"can_edit": True}, headers=ORIGIN)
     assert r.status_code == 403
     assert await fields(await invite_raw(owner, home["id"], "00000000-0000-0000-0000-000000000000")) == {"room_id": "UNKNOWN_ROOM"}

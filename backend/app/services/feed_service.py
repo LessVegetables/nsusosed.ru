@@ -174,6 +174,7 @@ async def get_room(db, user: User, room_id) -> RoomPage:
         residents.append(RoomResident(
             user_id=m.user_id, first_name=m.user.first_name, last_name=m.user.last_name,
             avatar_url=image_service.avatar_url(m.user.avatar_file), bio=m.user.bio, in_this_room=m.room_id == room.id,
+            lives="room" if m.room_id == room.id or home.kind == "dorm" else "other_room" if m.room_id else "apartment",
             answers=_visible(raw) if complete else {}, compatibility=scored.per_resident.get(m.user_id)))
     residents.sort(key=lambda r: not r.in_this_room)
     return RoomPage(

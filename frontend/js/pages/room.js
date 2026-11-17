@@ -187,7 +187,7 @@ function resident(person) {
       person.avatar_url ? el('img', { class: 'avatar sm', src: person.avatar_url, alt: '' }) : el('span', { class: 'avatar sm', 'aria-hidden': 'true' }, person.first_name.slice(0, 1)),
       el('div', { class: 'person-name' },
         el('h3', {}, `${person.first_name} ${person.last_name}`),
-        room.kind === 'apartment' && el('p', { class: 'meta' }, person.in_this_room ? t('room.inThisRoom') : t('room.inOtherRoom'))),
+        room.kind === 'apartment' && el('p', { class: 'meta' }, { room: t('room.inThisRoom'), other_room: t('room.inOtherRoom'), apartment: t('room.inFlat') }[person.lives])),
       person.compatibility && el('span', { class: 'pct person-pct', title: t('room.personScore', { n: person.compatibility.percent }) }, `${person.compatibility.percent}%`)),
     person.bio && el('p', {}, person.bio),
     person.compatibility ? chips(person.compatibility) : !room.is_mine && el('p', { class: 'hint' }, t('room.personNoQuiz')),

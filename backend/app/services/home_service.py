@@ -155,6 +155,10 @@ async def _check_emojis_free(db, rooms: list[RoomIn], except_home_id=None) -> No
 async def create_home(db, user: User, body: HomeIn) -> HomeOut:
     if await get_membership(db, user.id) is not None:
         raise already_in_home()
+    # Seekers see a home only once a host can be reached: listing it without a way to do
+    # that would only hide it.
+    if not any(c.type in PRIMARY_TYPES for c in user.contacts):
+        raise validation_error("Добавьте телефон, Telegram или VK.", {"contacts": "NEED_PRIMARY"})
     if body.kind == "dorm":
         if body.room_label is None:
             raise validation_error("Укажите комнату.", {"room_label": "REQUIRED"})
@@ -177,8 +181,9 @@ async def create_home(db, user: User, body: HomeIn) -> HomeOut:
         home.rooms.append(room)
     db.add(home)
     await db.flush()  # rooms first: the membership points at one
-    # Whoever lists the home lives in it and may do everything.
-    membership = Membership(user_id=user.id, room_id=home.rooms[0].id, **ALL_PERMISSIONS)
+    # Whoever lists the home lives in it and may do everything. In an apartment they may live
+    # in none of the rooms they list (an owner letting the others), so no room until they pick one.
+    membership = Membership(user_id=user.id, room_id=home.rooms[0].id if home.kind == "dorm" else None, **ALL_PERMISSIONS)
     membership.user = user
     home.memberships.append(membership)
     await db.flush()
@@ -344,14 +349,17 @@ async def update_resident(db, user: User, home_id, target_id, body: ResidentUpda
     target = next((m for m in _active_members(home) if m.user_id == target_id), None)
     if target is None:
         raise not_found("Этот человек не живёт в этом жилье.")
-    changes = body.model_dump(exclude_unset=True, exclude_none=True)
-    rights = {k: v for k, v in changes.items() if k.startswith("can_")}
+    changes = body.model_dump(exclude_unset=True)
+    rights = {k: v for k, v in changes.items() if k.startswith("can_") and v is not None}
     if rights and not me.can_residents:
         raise no_permission()
     if "room_id" in changes:
         if target is not me and not me.can_residents:
             raise no_permission()
-        if changes["room_id"] not in {r.id for r in home.rooms}:
+        # null: in the apartment but in none of its listed rooms. A dorm home is its one room.
+        if changes["room_id"] is None and home.kind == "dorm":
+            raise validation_error("В общежитии живут в комнате.", {"room_id": "UNKNOWN_ROOM"})
+        if changes["room_id"] is not None and changes["room_id"] not in {r.id for r in home.rooms}:
             raise validation_error("Комната не найдена.", {"room_id": "UNKNOWN_ROOM"})
         target.room_id = changes["room_id"]
     for name, value in rights.items():
