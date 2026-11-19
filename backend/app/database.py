@@ -14,6 +14,9 @@ class Base(DeclarativeBase):
     pass
 
 
+# Routes take it as Depends(get_db, scope="function"): the commit then happens before the response
+# is sent. With the default scope it happens after, so the next request (the /api/me right after
+# logging in) could still see the old data, and a failed commit would follow a 200.
 async def get_db() -> AsyncSession:
     async with async_session_factory() as session:
         try:

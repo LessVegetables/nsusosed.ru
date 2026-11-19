@@ -11,12 +11,12 @@ router = APIRouter(prefix="/api", tags=["questionnaire"])
 
 
 @router.get("/questionnaire", response_model=QuestionnaireOut)
-async def api_get_questionnaire(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def api_get_questionnaire(user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")):
     """The current questionnaire and the person's own answers to it."""
     return await get_questionnaire(db, user)
 
 
 @router.put("/questionnaire", response_model=QuestionnaireOut)
 async def api_save_answers(body: AnswersIn, user: User = Depends(require_user),
-                           db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+                           db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin)):
     return await save_answers(db, user, body)

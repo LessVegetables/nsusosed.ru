@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["homes"])
 
 
 @router.get("/homes/mine")
-async def api_my_home(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)) -> dict:
+async def api_my_home(user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")) -> dict:
     """The home this person lives in, or {"home": null}."""
     return {"home": await home_service.get_mine(db, user)}
 
@@ -25,37 +25,37 @@ async def api_my_home(user: User = Depends(require_user), db: AsyncSession = Dep
 # The path matches nginx's upload location (deploy/nginx), which allows large bodies.
 
 @router.get("/homes/new/photos", response_model=list[StagedPhotoOut])
-async def api_list_staged(user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def api_list_staged(user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")):
     return await home_service.list_staged(db, user)
 
 
 @router.post("/homes/new/photos", response_model=StagedPhotoOut, status_code=201)
-async def api_add_staged(file: UploadFile, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_add_staged(file: UploadFile, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                          _o: None = Depends(check_origin_upload)):
     return await home_service.add_staged(db, user, await read_upload(file))
 
 
 @router.delete("/homes/new/photos/{photo_id}", status_code=204)
-async def api_delete_staged(photo_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_delete_staged(photo_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                             _o: None = Depends(check_origin_no_body)):
     await home_service.delete_staged(db, user, photo_id)
     return Response(status_code=204)
 
 
 @router.post("/homes", response_model=HomeOut, status_code=201)
-async def api_create_home(body: HomeIn, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_create_home(body: HomeIn, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                           _o: None = Depends(check_origin)):
     return await home_service.create_home(db, user, body)
 
 
 @router.put("/homes/{home_id}", response_model=HomeOut)
 async def api_update_home(home_id: UUID, body: HomeIn, user: User = Depends(require_user),
-                          db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+                          db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin)):
     return await home_service.update_home(db, user, home_id, body)
 
 
 @router.delete("/homes/mine/membership", status_code=204)
-async def api_leave_home(user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_leave_home(user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                          _o: None = Depends(check_origin_no_body)):
     """Leave the home. If nobody is left in it, the home and its photos are deleted."""
     await home_service.leave_home(db, user)
@@ -64,69 +64,69 @@ async def api_leave_home(user: User = Depends(require_user), db: AsyncSession = 
 
 @router.post("/homes/{home_id}/photos", response_model=HomeOut, status_code=201)
 async def api_add_photo(home_id: UUID, file: UploadFile, user: User = Depends(require_user),
-                        db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin_upload)):
+                        db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin_upload)):
     return await home_service.add_photo(db, user, home_id, await read_upload(file))
 
 
 @router.delete("/homes/{home_id}/photos/{photo_id}", response_model=HomeOut)
 async def api_delete_photo(home_id: UUID, photo_id: UUID, user: User = Depends(require_user),
-                           db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin_no_body)):
+                           db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin_no_body)):
     return await home_service.delete_photo(db, user, home_id, photo_id)
 
 
 @router.put("/homes/{home_id}/photos/order", response_model=HomeOut)
 async def api_reorder_photos(home_id: UUID, body: PhotoOrder, user: User = Depends(require_user),
-                             db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+                             db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin)):
     return await home_service.reorder_photos(db, user, home_id, body.photo_ids)
 
 
 @router.put("/homes/{home_id}/residents/{user_id}", response_model=HomeOut)
 async def api_update_resident(home_id: UUID, user_id: UUID, body: ResidentUpdate, user: User = Depends(require_user),
-                              db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+                              db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin)):
     """Change a host's rights or room. Your own room needs no special right."""
     return await home_service.update_resident(db, user, home_id, user_id, body)
 
 
 @router.delete("/homes/{home_id}/residents/{user_id}", response_model=HomeOut)
 async def api_remove_resident(home_id: UUID, user_id: UUID, user: User = Depends(require_user),
-                              db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin_no_body)):
+                              db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin_no_body)):
     return await home_service.remove_resident(db, user, home_id, user_id)
 
 
 @router.get("/homes/{home_id}/invites", response_model=list[InviteOut])
-async def api_list_invites(home_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def api_list_invites(home_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")):
     return await home_service.list_invites(db, user, home_id)
 
 
 @router.post("/homes/{home_id}/invites", response_model=InviteOut, status_code=201)
 async def api_create_invite(home_id: UUID, body: InviteIn, user: User = Depends(require_user),
-                            db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin)):
+                            db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin)):
     """A new invite link. The code is in this response only."""
     return await home_service.create_invite(db, user, home_id, body.room_id)
 
 
 @router.delete("/homes/{home_id}/invites/{invite_id}", status_code=204)
 async def api_revoke_invite(home_id: UUID, invite_id: UUID, user: User = Depends(require_user),
-                            db: AsyncSession = Depends(get_db), _o: None = Depends(check_origin_no_body)):
+                            db: AsyncSession = Depends(get_db, scope="function"), _o: None = Depends(check_origin_no_body)):
     await home_service.revoke_invite(db, user, home_id, invite_id)
     return Response(status_code=204)
 
 
 @router.post("/invites/preview", response_model=InvitePreview)
-async def api_preview_invite(body: InviteCode, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_preview_invite(body: InviteCode, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                              _o: None = Depends(check_origin)):
     """What an invite leads to, before joining. Takes the code or the whole link."""
     return await home_service.preview_invite(db, body.code)
 
 
 @router.post("/invites/join", response_model=HomeOut)
-async def api_join(body: InviteCode, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_join(body: InviteCode, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                    _o: None = Depends(check_origin)):
     return await home_service.join_by_invite(db, user, body.code)
 
 
 @router.post("/emoji/roll")
-async def api_roll_emoji(body: EmojiRoll, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_roll_emoji(body: EmojiRoll, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                          _o: None = Depends(check_origin)) -> dict:
     """Random emoji triples that no listing uses yet."""
     return {"emojis": await home_service.roll_emojis(db, body.count)}

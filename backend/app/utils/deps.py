@@ -9,7 +9,7 @@ from app.utils.errors import AppError, auth_required, forbidden
 from app.utils.session import get_current_session, set_session_cookie
 
 
-async def require_user(request: Request, response: Response, db: AsyncSession = Depends(get_db)) -> User:
+async def require_user(request: Request, response: Response, db: AsyncSession = Depends(get_db, scope="function")) -> User:
     from app.config import settings
     session = await get_current_session(db, request)
     if session is None:
