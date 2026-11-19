@@ -67,6 +67,8 @@ export async function initPage({ auth = 'optional', onLangPick } = {}) {
     reportBug(err, { where: 'initPage' });
   }
   if (!user && auth === 'required') {
+    // Back to this page after logging in (routes.js). Not the hash: it can hold a code.
+    session.set(KEYS.back, location.pathname.replace(/\.html$/, '') + location.search);
     location.replace('/login');
     return new Promise(() => {}); // the page is going away
   }

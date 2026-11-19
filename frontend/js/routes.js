@@ -9,6 +9,14 @@
 
 import { KEYS, session } from './storage.js';
 
+/** Right after logging in: back to the page the guest opened, otherwise their own page.
+ *  The page itself sends them on if it needs the questionnaire first. */
+export function afterLogin(user) {
+  const back = session.get(KEYS.back);
+  session.remove(KEYS.back);
+  return back?.startsWith('/') && !back.startsWith('//') && back !== '/login' ? back : homeFor(user);
+}
+
 export function homeFor(user) {
   if (session.get(KEYS.compare)) return '/compare';
   // The questionnaire comes first even with an invite in hand: residents are what seekers

@@ -24,4 +24,6 @@ export const KEYS = {
   compare: 'compare',     // session: a compare code waiting for the person to log in
   compared: 'compared',   // session: came by a friend's compare link (the friend's first name)
   together: 'together',   // session: "take it together" was picked on the landing page
+  back: 'back',           // session: the page a guest opened before being sent to log in
+  afterQuiz: 'afterQuiz', // session: went to the questionnaire from the compare page
 };
