@@ -15,6 +15,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -83,7 +84,9 @@ def site(tmp_path_factory) -> Site:
         "AUTH_IP_MAX_REQUESTS": "100000",
     }
     subprocess.run([sys.executable, "-m", "alembic", "upgrade", "head"], cwd=BACKEND, env=env, check=True)
-    asyncio.run(_wipe(DATABASE_URL))
+    # Playwright's sync API keeps an event loop running in this thread, so the wipe gets its own.
+    with ThreadPoolExecutor(1) as pool:
+        pool.submit(asyncio.run, _wipe(DATABASE_URL)).result()
 
     api_log, site_log = tmp / "api.log", tmp / "site.log"
     with open(api_log, "w") as a, open(site_log, "w") as s:

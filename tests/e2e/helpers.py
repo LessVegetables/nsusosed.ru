@@ -35,9 +35,9 @@ def new_email(name: str = "e2e") -> str:
     return f"{name}.{uuid.uuid4().hex[:10]}@g.nsu.ru"
 
 
-def path_of(page: Page) -> str:
-    """The address without the origin: "/feed?kind=dorm"."""
-    return re.sub(r"^https?://[^/]+", "", page.url)
+def expect_path(page: Page, path: str) -> None:
+    """The page ends up at `path` (query included). Waits: pages send people on by themselves."""
+    expect(page).to_have_url(re.compile(r"^https?://[^/]+" + re.escape(path) + "$"))
 
 
 def log_in(page: Page, site: Site, email: str, first: str = "Ann", last: str = "Test") -> None:

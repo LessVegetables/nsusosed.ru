@@ -4,7 +4,7 @@ import re
 
 from playwright.sync_api import Page, expect
 
-from helpers import Site, answer_everything, api, finish_questionnaire, log_in, log_out, new_email, path_of
+from helpers import Site, answer_everything, api, expect_path, finish_questionnaire, log_in, log_out, new_email
 
 
 def returning_person(page: Page, site: Site, intent: str) -> str:
@@ -23,14 +23,14 @@ def returning_person(page: Page, site: Site, intent: str) -> str:
 def test_new_person_from_the_login_page_starts_with_the_questionnaire(page: Page, site: Site):
     page.goto("/login")
     log_in(page, site, new_email())
-    assert path_of(page) == "/questionnaire"
+    expect_path(page, "/questionnaire")
 
 
 def test_returning_person_from_the_login_page_goes_to_their_page(page: Page, site: Site):
     email = returning_person(page, site, "seek_apt")
     page.goto("/login")
     log_in(page, site, email)
-    assert path_of(page) == "/feed?kind=apartment"
+    expect_path(page, "/feed?kind=apartment")
 
 
 # ── Back to the page that was opened ────────────────────
@@ -38,14 +38,14 @@ def test_returning_person_from_the_login_page_goes_to_their_page(page: Page, sit
 def test_guest_on_a_private_page_comes_back_to_it(page: Page, site: Site):
     page.goto("/account")
     log_in(page, site, new_email())
-    assert path_of(page) == "/account"
+    expect_path(page, "/account")
 
 
 def test_the_query_survives_the_login_detour(page: Page, site: Site):
     email = returning_person(page, site, "seek_dorm")
     page.goto("/feed?kind=apartment")
     log_in(page, site, email)
-    assert path_of(page) == "/feed?kind=apartment"
+    expect_path(page, "/feed?kind=apartment")
 
 
 def test_a_remembered_page_is_used_once(page: Page, site: Site):
@@ -55,7 +55,7 @@ def test_a_remembered_page_is_used_once(page: Page, site: Site):
     log_out(page)
     page.goto("/login")
     log_in(page, site, email)
-    assert path_of(page) == "/questionnaire"
+    expect_path(page, "/questionnaire")
 
 
 # ── Compare ─────────────────────────────────────────────
@@ -63,7 +63,7 @@ def test_a_remembered_page_is_used_once(page: Page, site: Site):
 def test_guest_on_compare_comes_back_takes_the_questionnaire_and_returns(page: Page, site: Site):
     page.goto("/compare")
     log_in(page, site, new_email())
-    assert path_of(page) == "/compare"
+    expect_path(page, "/compare")
 
     cta = page.locator("#quiz-cta")
     expect(cta).to_be_visible()
@@ -71,7 +71,7 @@ def test_guest_on_compare_comes_back_takes_the_questionnaire_and_returns(page: P
     cta.locator("a").click()
 
     finish_questionnaire(page)
-    assert path_of(page) == "/compare"
+    expect_path(page, "/compare")
     expect(page.locator("#share-url")).to_have_value(re.compile(r"/compare#code="))
     expect(cta).to_be_hidden()
     assert api(page, "GET", "/me")["intent"] == "compare"
@@ -81,7 +81,7 @@ def test_compare_page_has_no_questionnaire_button_once_it_is_done(page: Page, si
     email = returning_person(page, site, "seek_dorm")
     page.goto("/compare")
     log_in(page, site, email)
-    assert path_of(page) == "/compare"
+    expect_path(page, "/compare")
     expect(page.locator("#share-url")).to_have_value(re.compile(r"/compare#code="))
     expect(page.locator("#quiz-cta")).to_be_hidden()
 
@@ -99,7 +99,7 @@ def test_friends_compare_link_joins_then_questionnaire_then_back(page: Page, new
     petya.goto(url)
     log_in(petya, site, new_email("petya"), first="Petya")
     # Joined straight away, then off to the questionnaire, which says who asked.
-    assert path_of(petya) == "/questionnaire"
+    expect_path(petya, "/questionnaire")
     expect(petya.locator("#together-joined")).to_contain_text("Masha")
     assert "code" not in petya.url, "the code is kept out of the address bar"
 
@@ -108,7 +108,7 @@ def test_friends_compare_link_joins_then_questionnaire_then_back(page: Page, new
     expect(page.locator("#groups")).to_contain_text("Petya")
 
     finish_questionnaire(petya)
-    assert path_of(petya) == "/compare"
+    expect_path(petya, "/compare")
     expect(petya.locator("#groups")).to_contain_text("Masha")
     assert api(petya, "GET", "/me")["intent"] == "compare"
 
@@ -128,7 +128,7 @@ def test_invite_link_waits_for_the_questionnaire_then_joins(page: Page, new_page
     guest = new_page()
     guest.goto(invite["url"])
     log_in(guest, site, new_email("mate"))
-    assert path_of(guest) == "/questionnaire", "the questionnaire comes first, the invite waits"
+    expect_path(guest, "/questionnaire")  # the questionnaire comes first; the invite waits
     finish_questionnaire(guest)
-    assert path_of(guest) == "/join"
+    expect_path(guest, "/join")
     assert api(guest, "GET", "/me")["intent"] == "join"
