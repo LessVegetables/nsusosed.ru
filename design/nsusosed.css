@@ -530,6 +530,9 @@
   /* --- Footer: yellow band. --- */
   .site-footer { margin-top: 40px; padding: 22px 0 40px; background: var(--primary); color: var(--on-fill); border-top: var(--border); }
   .site-footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; font-weight: var(--w-bold); }
+  /* The language switch for guests on phones, where the tab bar takes the header (the landing). */
+  .footer-lang { display: none; }
+  @media (max-width: 640px) { .footer-lang { display: block; width: 100%; } }
 
   /* --- Auth: two columns (email step, code step). --- */
   .auth { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
@@ -611,6 +614,8 @@
     .tabbar a { display: grid; place-items: center; min-width: 0; min-height: 56px; padding: 6px 2px; border-left: var(--border-thin); text-align: center; text-decoration: none; font-size: var(--fs-label); font-weight: var(--w-heavy); line-height: 1.1; overflow-wrap: anywhere; }
     .tabbar a[aria-current="page"] { background: var(--primary); color: var(--on-fill); }
     .tabbar a:focus-visible { outline-offset: -6px; }
+    /* A guest's header actions (language, Log in): the tab bar has Log in, the footer the language. */
+    .site-header:has(.tabbar) .wrap > .row { display: none; }
   }
 
   /* --- Responsive --- */

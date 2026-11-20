@@ -5,6 +5,7 @@
 //         'optional' — public page that looks different when logged in
 //         'required' — sends guests to /login
 //   onLangPick: puts the RU / EN / 中文 switch in a guest's header; called after each pick
+//   guestNav: shows a guest the sections too (the landing); they lead to /login and back
 // It resolves to { user } (null for a guest) after the page is translated and shown.
 
 import { ApiError, get } from './api.js';
@@ -17,30 +18,34 @@ import { el, toast } from './ui.js';
 
 /** The header. Logged in: logo, then the sections centered (Account last); on phones the logo
  *  shrinks to the icon and the sections become a tab bar inside the header. A guest gets the
- *  language switch on the pages that offer one (landing, login), otherwise "Log in", on the right. */
-function header(user, onLangPick) {
+ *  language switch on the pages that offer one (landing, login), otherwise "Log in", on the right.
+ *  With guestNav (the landing) a guest also sees the sections, with "Log in" in place of Account;
+ *  the pages behind them send guests to /login and back. On phones the language switch moves to
+ *  the footer there: the tab bar fills the header. */
+function header(user, { onLangPick, guestNav }) {
   const here = location.pathname.replace(/\.html$/, '');
   const current = (href) => (here === href ? 'page' : null);
   const logo = el('a', { class: 'logo', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('span', {}, 'nsu'), 'sosed');
-  if (!user) {
-    const action = onLangPick ? mountLangSwitch(el('div'), { onPick: onLangPick })
-      : el('a', { class: 'btn', href: '/login', i18n: 'nav.login' });
-    return el('div', { class: 'wrap' }, logo, action);
+  const login = (attrs = { class: 'btn' }) => el('a', { ...attrs, href: '/login', i18n: 'nav.login' });
+  if (!user && !guestNav) {
+    return el('div', { class: 'wrap' }, logo, onLangPick ? mountLangSwitch(el('div'), { onPick: onLangPick }) : login());
   }
   // Each nav gets its own labels: the tab bar's are short enough for a phone.
   const link = (href, label) => el('a', { href, ...label, 'aria-current': current(href) });
+  const nav = (cls, home, last) => el('nav', { class: cls, 'data-i18n-attr': 'aria-label:nav.label' },
+    link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: home }), link('/questionnaire', { i18n: 'nav.questionnaire' }), last);
   return el('div', { class: 'wrap' },
     logo,
     el('a', { class: 'logo-icon', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('img', { src: '/img/logo-icon.svg', alt: '' })),
-    el('nav', { class: 'site-nav', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.myHome' }),
-      link('/questionnaire', { i18n: 'nav.questionnaire' }), link('/account', { i18n: 'nav.account' })),
-    el('nav', { class: 'tabbar', 'data-i18n-attr': 'aria-label:nav.label' }, link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: 'nav.homeShort' }),
-      link('/questionnaire', { i18n: 'nav.questionnaire' }), link('/account', { i18n: 'nav.account' })));
+    nav('site-nav', 'nav.myHome', user && link('/account', { i18n: 'nav.account' })),
+    nav('tabbar', 'nav.homeShort', user ? link('/account', { i18n: 'nav.account' }) : login({})),
+    !user && el('div', { class: 'row' }, onLangPick && mountLangSwitch(el('div'), { onPick: onLangPick }), login()));
 }
 
-function footer(user) {
+function footer(user, { onLangPick, guestNav }) {
   return el('div', { class: 'wrap' },
     el('span', { i18n: 'footer.tagline' }),
+    !user && guestNav && onLangPick && el('div', { class: 'footer-lang' }, mountLangSwitch(el('div'), { onPick: onLangPick })),
     el('nav', { class: 'row', 'data-i18n-attr': 'aria-label:footer.label' },
       // The language lives in the account; the footer only points there.
       user && el('a', { href: '/account#language', i18n: 'footer.language' }),
@@ -58,7 +63,7 @@ async function whoAmI(auth) {
   }
 }
 
-export async function initPage({ auth = 'optional', onLangPick } = {}) {
+export async function initPage({ auth = 'optional', onLangPick, guestNav = false } = {}) {
   const langReady = setLang(detectLang());
   let user = null;
   try {
@@ -82,8 +87,8 @@ export async function initPage({ auth = 'optional', onLangPick } = {}) {
     }
   }
 
-  document.querySelector('.site-header')?.replaceChildren(header(user, onLangPick));
-  document.querySelector('.site-footer')?.replaceChildren(footer(user));
+  document.querySelector('.site-header')?.replaceChildren(header(user, { onLangPick, guestNav }));
+  document.querySelector('.site-footer')?.replaceChildren(footer(user, { onLangPick, guestNav }));
   translate();
   document.documentElement.dataset.ready = '';
 
