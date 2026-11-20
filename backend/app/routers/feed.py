@@ -13,18 +13,18 @@ router = APIRouter(prefix="/api", tags=["feed"])
 
 
 @router.get("/feed", response_model=Feed)
-async def api_feed(kind: Literal["dorm", "apartment"], user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def api_feed(kind: Literal["dorm", "apartment"], user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")):
     """Rooms this person could move into, best match first, and every other visible listing
     (full, another gender, a dorm outside their faculty) in a separate list."""
     return await feed_service.get_feed(db, user, kind)
 
 
 @router.get("/rooms/{room_id}", response_model=RoomPage)
-async def api_room(room_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db)):
+async def api_room(room_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function")):
     return await feed_service.get_room(db, user, room_id)
 
 
 @router.post("/rooms/{room_id}/contacts", response_model=RoomContacts)
-async def api_room_contacts(room_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db),
+async def api_room_contacts(room_id: UUID, user: User = Depends(require_user), db: AsyncSession = Depends(get_db, scope="function"),
                             _o: None = Depends(check_origin_no_body)):
     return await feed_service.get_contacts(db, user, room_id)

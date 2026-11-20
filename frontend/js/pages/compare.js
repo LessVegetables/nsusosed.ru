@@ -47,6 +47,11 @@ if (pending) {
 }
 
 $('housing').hidden = user.intent !== 'compare';
+$('quiz-cta').hidden = user.questionnaire_complete;
+// Off to the questionnaire from here: it sends them back here when done.
+$('main').addEventListener('click', (e) => {
+  if (e.target.closest('a[href="/questionnaire"]')) session.set(KEYS.afterQuiz, '1');
+});
 
 let groups = [];
 let link = null;

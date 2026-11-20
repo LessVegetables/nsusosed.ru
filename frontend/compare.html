@@ -28,6 +28,13 @@
         <p class="lead" data-i18n="compare.lead">Отправь ссылку. Когда вы оба пройдёте анкету, здесь появится ваша совместимость. Ответы друг друга вы не увидите: только процент и оценки по темам.</p>
       </header>
 
+      <!-- Hasn't finished the questionnaire: the result needs it -->
+      <section class="box pad fill-blue solo-panel" id="quiz-cta" aria-labelledby="quiz-cta-title" hidden>
+        <h2 id="quiz-cta-title" data-i18n="compare.start.title">Сначала анкета</h2>
+        <p data-i18n="compare.start.text">Совместимость считается по ответам. Ссылку можно отправить уже сейчас: прогресс друга появится здесь.</p>
+        <a class="btn" href="/questionnaire" data-i18n="compare.start.cta">Пройти анкету</a>
+      </section>
+
       <!-- Comparisons someone has joined; the link to send is the last box -->
       <div class="cgroups" id="groups" data-private></div>
 

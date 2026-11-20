@@ -183,7 +183,7 @@ All in `nsusosed.css`, all shown in the specimen. States come from ARIA attribut
 | Chips | `.chips > .chip.match / .partial / .mismatch` | One per questionnaire topic on a match card |
 | Note | `.note`, `.note.error`, `.note.success` | Dashed. Start with ⚠, ✕ or ✓ |
 | Headline highlight | `<mark class="highlight">` | Yellow tilted block behind a key phrase |
-| Header | `.site-header > .wrap > .logo + .site-nav + .btn` | Sticky. Logo left, nav centered, action right. Current page: `aria-current="page"`. Logged in: `.logo + .logo-icon + .site-nav + .tabbar`, Account is the last nav item |
+| Header | `.site-header > .wrap > .logo + .site-nav + .btn` | Sticky. Logo left, nav centered, action right. Current page: `aria-current="page"`. Logged in: `.logo + .logo-icon + .site-nav + .tabbar`, Account is the last nav item. Guest on the landing: the same plus `.row` (language switch + Log in) on the right; Log in replaces Account in the tab bar, and on phones the language switch moves to the footer (`.footer-lang`) |
 | Ticker | `.ticker > div > span…` | Repeat items twice for a seamless loop; `aria-hidden="true"` |
 | Tabs | `.tabs[role=tablist] > [role=tab][aria-selected]` | Selected: black with yellow text, pressed in |
 | Checkbox | `<label class="check"><input type="checkbox"><span>…</span></label>` | Yellow with ✓ when checked |

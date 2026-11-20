@@ -1,0 +1,8 @@
+{
+  "//": "No npm dependencies: this only marks the frontend's .js files as ES modules for Node's test runner.",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'tests/frontend/*.test.js'"
+  }
+}

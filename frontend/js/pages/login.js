@@ -4,7 +4,7 @@
 import { ApiError, get, post } from '../api.js';
 import { currentLang, t } from '../i18n.js';
 import { initPage } from '../layout.js';
-import { homeFor } from '../routes.js';
+import { afterLogin } from '../routes.js';
 import { KEYS, local, session } from '../storage.js';
 import { errorText, setBusy } from '../ui.js';
 
@@ -16,7 +16,7 @@ const { user } = await initPage({
   auth: 'optional',
   onLangPick: (code) => { session.set(KEYS.lang, code); renderCodeStep(); },
 });
-if (user) location.replace(homeFor(user));
+if (user) location.replace(afterLogin(user));
 
 const steps = { email: $('step-email'), name: $('step-name'), code: $('step-code') };
 const cells = [...$('code').querySelectorAll('input')];
@@ -180,7 +180,7 @@ steps.code.addEventListener('submit', async (e) => {
     local.set(KEYS.seenLogin, '1');
     session.remove(KEYS.lang);
     if (res.account_restored) session.set(KEYS.flash, 'flash.restored');
-    location.replace(homeFor(await get('/me')));
+    location.replace(afterLogin(await get('/me')));
   } catch (err) {
     if (!(err instanceof ApiError)) throw err;
     setBusy(button, false);

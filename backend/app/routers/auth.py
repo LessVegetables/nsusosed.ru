@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 async def api_request_code(
     body: RequestCodeRequest,
     request: Request,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _o: None = Depends(check_origin),
 ):
     """Запросить код подтверждения на email."""
@@ -28,7 +28,7 @@ async def api_verify_code(
     body: VerifyCodeRequest,
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(get_db, scope="function"),
     _o: None = Depends(check_origin),
 ):
     """Проверить код и войти (создать сессию)."""
@@ -36,7 +36,9 @@ async def api_verify_code(
 
 
 @router.post("/logout", status_code=204)
-async def api_logout(request: Request, response: Response, db: AsyncSession = Depends(get_db),
+async def api_logout(request: Request, db: AsyncSession = Depends(get_db, scope="function"),
                      _o: None = Depends(check_origin_no_body)):
-    await logout(db, request, response)
-    return Response(status_code=204)
+    # The cookie is cleared on the response that is sent: a new Response would drop it.
+    sent = Response(status_code=204)
+    await logout(db, request, sent)
+    return sent

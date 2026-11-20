@@ -232,3 +232,7 @@ venv/
 
 # Listing photos in local development (MEDIA_DIR=media)
 backend/media/
+
+# Browser tests: Playwright's browsers (when kept in the repo) and traces of failed runs
+.playwright/
+test-results/

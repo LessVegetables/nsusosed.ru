@@ -52,6 +52,7 @@ FastAPI + PostgreSQL, plain HTML/CSS/JS with no framework and no build step, ngi
 |---|---|
 | [`backend/`](backend/README.md) | The API, migrations, tests |
 | [`frontend/`](frontend/README.md) | The site |
+| [`tests/`](tests/README.md) | Frontend unit tests and browser (end-to-end) tests |
 | [`design/`](design/README.md) | The design system ("D · Neo-brutalism") and its specimen page |
 | [`deploy/`](deploy/README.md) | Server setup and the release flow (`main` → PR → `deploy`) |
 

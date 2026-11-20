@@ -357,6 +357,16 @@ async function finish() {
     location.assign('/compare');
     return;
   }
+  // Came from the compare page: back there (and if they haven't said what they're here for,
+  // comparing is it; the compare page offers housing).
+  if (session.get(KEYS.afterQuiz)) {
+    session.remove(KEYS.afterQuiz);
+    if (!user.intent) {
+      try { user = await put('/me', { intent: 'compare' }); } catch (err) { reportBug(err, { where: 'intent' }); }
+    }
+    location.assign('/compare');
+    return;
+  }
   // Someone who came by invite link doesn't need to be asked what they are here for.
   if (!user.intent && session.get(KEYS.invite)) {
     try { user = await put('/me', { intent: 'join' }); } catch (err) { reportBug(err, { where: 'intent' }); /* the join page works without it */ }
