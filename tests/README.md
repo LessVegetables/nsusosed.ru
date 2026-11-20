@@ -21,18 +21,22 @@ node --test 'tests/frontend/*.test.js'
 
 ## Browser tests
 
-Once, into the backend's venv:
+They need Playwright and a Chromium (about 700 MB together), so they get a venv of their own,
+which can live anywhere (an external disk, say): the backend's venv stays small and works without it.
+`E2E` below is that folder. Once:
 
 ```
-backend/.venv/bin/pip install -r tests/e2e/requirements.txt
-backend/.venv/bin/python -m playwright install chromium
+python3.12 -m venv "$E2E/venv"
+"$E2E/venv/bin/pip" install -r tests/e2e/requirements.txt
+PLAYWRIGHT_BROWSERS_PATH="$E2E/ms-playwright" "$E2E/venv/bin/python" -m playwright install chromium
 createdb nsusosed_e2e
 ```
 
 Then:
 
 ```
-E2E_DATABASE_URL="postgresql+asyncpg://localhost/nsusosed_e2e" backend/.venv/bin/python -m pytest tests/e2e
+PLAYWRIGHT_BROWSERS_PATH="$E2E/ms-playwright" E2E_DATABASE_URL="postgresql+asyncpg://localhost/nsusosed_e2e" \
+  "$E2E/venv/bin/python" -m pytest tests/e2e
 ```
 
 - The run starts its own API and `frontend/dev_server.py` on free ports, so whatever you have running on
@@ -42,5 +46,5 @@ E2E_DATABASE_URL="postgresql+asyncpg://localhost/nsusosed_e2e" backend/.venv/bin
 - Add `--headed --slowmo 300` to watch, `--tracing retain-on-failure` to keep a trace of what failed
   (open it with `python -m playwright show-trace test-results/…/trace.zip`). In CI the traces of failed
   tests are attached to the run as `playwright-traces`.
-- `PLAYWRIGHT_BROWSERS_PATH=.playwright` keeps the browser inside the repo (git ignores it) instead of
-  `~/Library/Caches/ms-playwright`.
+- Without `PLAYWRIGHT_BROWSERS_PATH` the browser goes to `~/Library/Caches/ms-playwright`; `.playwright` (inside
+  the repo) is ignored by git too.
