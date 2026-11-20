@@ -42,7 +42,7 @@ def expect_path(page: Page, path: str) -> None:
 
 def log_in(page: Page, site: Site, email: str, first: str = "Ann", last: str = "Test") -> None:
     """Go through the login page that is open now: email, name (first login only), code."""
-    expect(page).to_have_url(re.compile(r"/login$"))
+    expect(page).to_have_url(re.compile(r"/login(\?.*)?$"))  # campaign tags may come along
     seen = len(site._codes(email))
     page.locator("#email").fill(email)
     page.locator("#privacy").check()
@@ -57,7 +57,7 @@ def log_in(page: Page, site: Site, email: str, first: str = "Ann", last: str = "
     page.locator("#code input").first.wait_for(state="visible")
     page.locator("#code input").first.press_sequentially(code)
     # The last digit sends the code; the page then leaves /login.
-    page.wait_for_url(lambda url: not url.endswith("/login"))
+    page.wait_for_url(lambda url: "/login" not in url)
 
 
 def api(page: Page, method: str, path: str, body: dict | None = None):
