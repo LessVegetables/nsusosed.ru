@@ -11,6 +11,7 @@ import { ApiError, get } from './api.js';
 import { reportBug } from './errors.js';
 import { detectLang, setLang, t, translate } from './i18n.js';
 import { mountLangSwitch } from './lang-switch.js';
+import { withCampaign } from './routes.js';
 import { KEYS, local, session } from './storage.js';
 import { el, toast } from './ui.js';
 
@@ -69,7 +70,7 @@ export async function initPage({ auth = 'optional', onLangPick } = {}) {
   if (!user && auth === 'required') {
     // Back to this page after logging in (routes.js). Not the hash: it can hold a code.
     session.set(KEYS.back, location.pathname.replace(/\.html$/, '') + location.search);
-    location.replace('/login');
+    location.replace(withCampaign('/login', location.search));
     return new Promise(() => {}); // the page is going away
   }
   await langReady;

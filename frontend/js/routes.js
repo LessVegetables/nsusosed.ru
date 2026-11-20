@@ -9,6 +9,17 @@
 
 import { KEYS, session } from './storage.js';
 
+/** `path` with the campaign tags (utm_*) of `search` added, for redirects made while a page loads.
+ *  Analytics counts a page view only once the page has loaded, and a redirect usually comes
+ *  first: without the tags, a scan of a poster's QR code would count as a plain visit. */
+export function withCampaign(path, search) {
+  const tags = [...new URLSearchParams(search)].filter(([key]) => key.startsWith('utm_'));
+  if (!tags.length) return path;
+  const url = new URL(path, 'https://x');
+  for (const [key, value] of tags) if (!url.searchParams.has(key)) url.searchParams.append(key, value);
+  return url.pathname + url.search;
+}
+
 /** Right after logging in: back to the page the guest opened, otherwise their own page.
  *  The page itself sends them on if it needs the questionnaire first. */
 export function afterLogin(user) {

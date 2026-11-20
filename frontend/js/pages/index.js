@@ -6,7 +6,7 @@
 import { ApiError, get } from '../api.js';
 import { reportBug } from '../errors.js';
 import { initPage } from '../layout.js';
-import { homeFor } from '../routes.js';
+import { homeFor, withCampaign } from '../routes.js';
 import { KEYS, local, session } from '../storage.js';
 
 async function destination() {
@@ -22,7 +22,7 @@ async function destination() {
 
 const go = await destination();
 if (go) {
-  location.replace(go);
+  location.replace(withCampaign(go, location.search));
 } else {
   // A guest's pick lasts for this tab; the login page passes it on to the account.
   await initPage({ auth: 'none', onLangPick: (code) => session.set(KEYS.lang, code) });

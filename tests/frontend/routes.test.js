@@ -2,7 +2,7 @@
 import { resetStorage, stores } from './env.js';
 import { beforeEach, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
-import { afterLogin, homeFor } from '../../frontend/js/routes.js';
+import { afterLogin, homeFor, withCampaign } from '../../frontend/js/routes.js';
 import { KEYS } from '../../frontend/js/storage.js';
 
 const session = () => stores.sessionStorage;
@@ -68,5 +68,18 @@ describe('afterLogin', () => {
       session().setItem(KEYS.back, bad);
       assert.equal(afterLogin(newUser), '/questionnaire', bad);
     }
+  });
+});
+
+describe('withCampaign', () => {
+  test('carries utm tags and nothing else', () => {
+    assert.equal(withCampaign('/login', '?utm_source=poster&utm_content=test-a&x=1'), '/login?utm_source=poster&utm_content=test-a');
+  });
+  test('keeps the path untouched without tags', () => {
+    assert.equal(withCampaign('/login', ''), '/login');
+    assert.equal(withCampaign('/feed?kind=dorm', '?x=1'), '/feed?kind=dorm');
+  });
+  test("adds to a path's own query", () => {
+    assert.equal(withCampaign('/feed?kind=dorm', '?utm_source=poster'), '/feed?kind=dorm&utm_source=poster');
   });
 });
