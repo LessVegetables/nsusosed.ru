@@ -89,8 +89,11 @@ def finish_questionnaire(page: Page, gender: str = "f") -> None:
     expect(page).to_have_url(re.compile(r"/questionnaire$"))
     answer_everything(page, gender)
     page.reload()
+    # The questions are drawn in the same step that wires up "Done": clicking any earlier sends
+    # the form the plain HTML way (to /questionnaire?) and the page goes nowhere.
+    page.locator("#blocks [data-question]").first.wait_for()
     page.locator("#quiz button[type=submit]").click()
-    page.wait_for_url(lambda url: not url.endswith("/questionnaire"))
+    page.wait_for_url(lambda url: "/questionnaire" not in url)
 
 
 def log_out(page: Page) -> None:
