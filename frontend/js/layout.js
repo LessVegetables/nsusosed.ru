@@ -33,12 +33,12 @@ function header(user, { onLangPick, guestNav }) {
   // Each nav gets its own labels: the tab bar's are short enough for a phone.
   const link = (href, label) => el('a', { href, ...label, 'aria-current': current(href) });
   const nav = (cls, home, last) => el('nav', { class: cls, 'data-i18n-attr': 'aria-label:nav.label' },
-    link('/feed', { i18n: 'nav.feed' }), link('/home', { i18n: home }), link('/questionnaire', { i18n: 'nav.questionnaire' }), last);
+    link('/feed', { i18n: 'nav.feed' }), link('/home', home), link('/questionnaire', { i18n: 'nav.questionnaire' }), last);
   return el('div', { class: 'wrap' },
     logo,
     el('a', { class: 'logo-icon', href: '/', 'data-i18n-attr': 'aria-label:nav.home' }, el('img', { src: '/img/logo-icon.svg', alt: '' })),
-    nav('site-nav', 'nav.myHome', user && link('/account', { i18n: 'nav.account' })),
-    nav('tabbar', 'nav.homeShort', user ? link('/account', { i18n: 'nav.account' }) : login({})),
+    nav('site-nav', { i18n: 'nav.myHome' }, user && link('/account', { i18n: 'nav.account' })),
+    nav('tabbar', { i18n: 'nav.homeShort' }, user ? link('/account', { i18n: 'nav.account' }) : login({})),
     !user && el('div', { class: 'row' }, onLangPick && mountLangSwitch(el('div'), { onPick: onLangPick }), login()));
 }
 
