@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     # Closed beta: only these addresses may log in (comma- or space-separated). Empty = open to
     # every allowed domain. Checked on every request, so removing someone logs them out.
     beta_emails: str = ""
+    # Admin panel at /api/admin (app/admin.py): these site accounts may open it (comma- or
+    # space-separated). Empty = the panel isn't mounted at all.
+    admin_emails: str = ""
+    # Signs the panel's CSRF and flash cookies. Empty = a random key per start (fine for one worker).
+    admin_secret_key: str = ""
     # 90 days, sliding: every visit in the second half of the term renews it.
     session_ttl_seconds: int = 7_776_000
     max_sessions_per_user: int = 5
@@ -80,6 +85,10 @@ class Settings(BaseSettings):
     @property
     def beta_allowlist(self) -> frozenset[str]:
         return frozenset(e.strip().lower() for e in re.split(r"[,\s]+", self.beta_emails) if e.strip())
+
+    @property
+    def admin_allowlist(self) -> frozenset[str]:
+        return frozenset(e.strip().lower() for e in re.split(r"[,\s]+", self.admin_emails) if e.strip())
 
     def beta_allows(self, email: str) -> bool:
         """Closed beta: is this (normalized) address let in? Always true when the list is empty."""

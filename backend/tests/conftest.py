@@ -19,6 +19,8 @@ os.environ.setdefault("EMAIL_MODE", "log")
 os.environ.update(OTP_MAX_REQUESTS_PER_HOUR="5", OTP_RESEND_COOLDOWN_SECONDS="60",
                   OTP_MAX_FAILED_VERIFIES_PER_HOUR="10", AUTH_IP_MAX_REQUESTS="20", AUTH_IP_WINDOW_SECONDS="600")
 os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
+# The admin panel is only mounted when someone may use it (app/admin.py).
+os.environ["ADMIN_EMAILS"] = "admin@g.nsu.ru"
 os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="nsusosed-media-"))
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 if TEST_DATABASE_URL:
