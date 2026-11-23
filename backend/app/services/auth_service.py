@@ -93,8 +93,8 @@ async def verify_code(
         raise invalid_code()
 
     await rl.record(db, "verify_ok", email, ip)
-    # The site is 18+ only: the consent checkbox this code was requested with says
-    # "I'm 18 or older and I agree to the policy".
+    # The site is 18+ only: the checkbox this code was requested with says "I'm 18 or older
+    # and I accept the user agreement and the personal data policy".
 
     if user is None:
         user = User(

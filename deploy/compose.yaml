@@ -20,7 +20,7 @@ name: nsusosed
 x-logging: &logging
   driver: journald
   options:
-    tag: "nsusosed-{{.Name}}"
+    tag: "{{.Name}}"   # journalctl -t nsusosed-api-1
 
 services:
   db:
