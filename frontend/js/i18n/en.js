@@ -627,7 +627,7 @@ export default {
   "agreement.s8.notoffer": "A listing on the site is not an offer. Its price, places and terms bind neither the person who posted it nor the person who responds. You agree on the final terms yourselves, or you don't.",
   "agreement.s8.verify": "The service only checks that the email address was issued by NSU. It doesn't check whether profiles, questionnaires and listings are true, who these people really are, or what state a home is in. An NSU email doesn't mean a person acts in good faith.",
   "agreement.s8.users": "Whoever posts a profile, questionnaire or listing is responsible for its content. The service is not responsible for what users do off the site (at meetings, when viewing a place, when living together) or for the arrangements they make with each other.",
-  "agreement.s8.own": "The service is provided \"as is\" and is responsible only for its own culpable breaches (for example, if by its mistake someone sees data they shouldn't), to the extent the law allows.",
+  "agreement.s8.own": "The service is provided \"as is\" and is responsible only for its own culpable breaches (for example, if a bug on the site exposes hidden questionnaire answers or email addresses, or data leaks from our server), to the extent the law allows.",
   "agreement.s8.safety": "Be careful. Meet in a public place first, don't go to view a place alone (or at least tell a friend), and don't send money in advance. If something is wrong, write to support; if you are threatened, call 112.",
   "agreement.s9.title": "9. Personal data",
   "agreement.s9.text": "Data is processed under Federal Law No. 152-FZ of 27.07.2006 \"On Personal Data\" and",

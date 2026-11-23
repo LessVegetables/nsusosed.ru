@@ -12,6 +12,17 @@ Things we decided to do later. Not ordered. Remove an item when it's done.
 - **Open the login.** Empty `BETA_EMAILS` in `/etc/nsusosed.env` and redeploy. The code can stay: an empty
   list means open.
 
+## Safety
+
+- **Safety note on every "Показать контакты".** Each time someone clicks it (`room.getContacts`,
+  `frontend/js/pages/room.js`), show the safety note from `/agreement` section 8 (`agreement.s8.safety`):
+  meet in a public place first, don't view a place alone or tell a friend, don't send money in advance,
+  write to support if something's wrong, call 112 if threatened. Every time, not once.
+- **A matching note for hosts when they publish a home.** The button is «Добавить» (`home.publish`,
+  `frontend/js/pages/home.js`). The note is the host's side of the same advice: meet someone in a public
+  place before inviting them over, don't be alone at the first viewing, take no deposit before you've met.
+  Needs its own text in all three languages.
+
 ## Content to verify
 
 - **"How to open your DMs" instructions** (account page, `contact.*.howto` in `frontend/js/i18n/*.js`).
