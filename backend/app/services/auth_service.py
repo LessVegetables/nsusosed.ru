@@ -212,6 +212,8 @@ async def housekeeping(db) -> None:
     await cleanup_expired_otps(db)
     await rl.cleanup_old_events(db)
     await rl.cleanup_email_log(db)
+    from app.services.feed_service import cleanup_contact_reveals
+    await cleanup_contact_reveals(db)
     await purge_deleted_accounts(db)
 
 

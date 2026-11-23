@@ -26,7 +26,7 @@ from starlette_admin.exceptions import FormValidationError
 from starlette_admin.flash import flash
 from app.config import settings
 from app.database import async_session_factory
-from app.models import (AuthEvent, CompareGroup, EmailLog, CompareMember, Home, HomePhoto, Invite, Membership, OtpCode,
+from app.models import (AuthEvent, CompareGroup, ContactReveal, EmailLog, CompareMember, Home, HomePhoto, Invite, Membership, OtpCode,
                         QuestionnaireResponse, Room, Session, StagedPhoto, User, UserContact)
 from app.utils.session import get_current_session
 
@@ -169,5 +169,6 @@ def mount_admin(app: FastAPI) -> None:
     admin.add_view(ReadOnlyView(OtpCode, icon="fa fa-hashtag"))
     admin.add_view(ReadOnlyView(AuthEvent, icon="fa fa-clock-rotate-left"))
     admin.add_view(ReadOnlyView(EmailLog, icon="fa fa-paper-plane"))
+    admin.add_view(ReadOnlyView(ContactReveal, icon="fa fa-eye"))
     admin.add_view(ReadOnlyView(StagedPhoto, icon="fa fa-hourglass-half"))
     admin.mount_to(app)
