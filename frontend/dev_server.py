@@ -39,6 +39,15 @@ def production_csp() -> str | None:
         return None
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """Hand redirects to the browser, as nginx does, instead of following them here."""
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+
+NO_REDIRECTS = urllib.request.build_opener(_NoRedirect)
+
+
 class Handler(BaseHTTPRequestHandler):
     api = "http://127.0.0.1:8000"
     csp = None #production_csp()
@@ -89,9 +98,13 @@ class Handler(BaseHTTPRequestHandler):
         body = self.rfile.read(length) if length else None
         headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP_BY_HOP}
         headers["X-Forwarded-For"] = self.client_address[0]
+        # Like nginx's proxy_set_header Host $host: URLs the backend builds (the admin panel's
+        # redirects) then point at this server, not at :8000.
+        if self.headers.get("Host"):
+            headers["Host"] = self.headers["Host"]
         req = urllib.request.Request(self.api + self.path, data=body, headers=headers, method=self.command)
         try:
-            with urllib.request.urlopen(req, timeout=60) as res:
+            with NO_REDIRECTS.open(req, timeout=60) as res:
                 self.relay(res.status, res.headers, res.read())
         except urllib.error.HTTPError as err:
             self.relay(err.code, err.headers, err.read())

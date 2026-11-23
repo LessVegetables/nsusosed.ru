@@ -7,6 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from sqlalchemy.exc import IntegrityError
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from app.admin import mount_admin
 from app.routers import auth, compare, feed, homes, meta, questionnaire, users
 from app.utils.errors import AppError, FieldErrors, make_error_response
 
@@ -43,6 +44,7 @@ app.include_router(questionnaire.router)
 app.include_router(homes.router)
 app.include_router(feed.router)
 app.include_router(compare.router)
+mount_admin(app)
 
 
 @app.get("/health")
