@@ -103,7 +103,7 @@ async def test_saving_a_form_keeps_unset_columns_null(make_client, login, db):
     page = await _admin_edit_page(c, login, db)
     form = await _edit_form(c, page)
     assert "csrftoken" in form
-    assert "is_adult" not in form  # NULL = not asked yet; a checkbox would make it False
+    assert "is_adult" not in form  # set by logging in (18+ only), never by hand
     form["bio"] = "edited"
     r = await c.post(page, data=form, headers={"origin": "https://testserver"})
     assert r.status_code in (302, 303), r.text[-2000:]
@@ -111,7 +111,7 @@ async def test_saving_a_form_keeps_unset_columns_null(make_client, login, db):
         row = (await conn.execute(text("SELECT gender, faculty, intent, avatar_file, is_adult, bio, "
                                        "privacy_accepted_at = created_at OR true FROM users WHERE email = :e"),
                                   {"e": ADMIN})).one()
-    assert tuple(row) == (None, None, None, None, None, "edited", True)
+    assert tuple(row) == (None, None, None, None, True, "edited", True)
 
 
 async def test_constraint_violation_is_a_form_error_not_a_500(make_client, login, db):

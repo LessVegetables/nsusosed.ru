@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import logging
 import uuid
 from contextlib import asynccontextmanager
@@ -19,20 +20,32 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     from app.database import async_session_factory
-    from app.services.auth_service import purge_deleted_accounts
-    try:
-        async with async_session_factory() as db:
-            await purge_deleted_accounts(db)
-            await db.commit()
-    except Exception:
-        logger.exception("Purging deleted accounts failed")
+    from app.services.auth_service import housekeeping
+
+    async def tidy() -> None:
+        try:
+            async with async_session_factory() as db:
+                await housekeeping(db)
+                await db.commit()
+        except Exception:
+            logger.exception("Housekeeping failed")
+
+    async def every_hour() -> None:
+        # Retention periods on /privacy must hold even if nobody logs in for days.
+        while True:
+            await asyncio.sleep(3600)
+            await tidy()
+
+    await tidy()
     try:
         from app.services.image_service import sweep_orphans
         async with async_session_factory() as db:
             await sweep_orphans(db)
     except Exception:
         logger.exception("Media sweep failed")
+    ticker = asyncio.create_task(every_hour())
     yield
+    ticker.cancel()
 
 
 app = FastAPI(title="nsusosed API", version="1.0.0", lifespan=lifespan)

@@ -238,6 +238,15 @@ sudo visudo -f /etc/sudoers.d/nsusosed-deploy    # paste sudoers/nsusosed-deploy
 sudo -l -U gh_deploy                              # should list the one command
 ```
 
+**Log retention.** `/privacy` says server logs are kept up to a month. The containers log to the journal (`compose.yaml`), and the journal deletes entries after a month:
+
+```bash
+sudo install -D -m 644 -o root -g root journald/retention.conf /etc/systemd/journald.conf.d/retention.conf
+sudo systemctl restart systemd-journald
+```
+
+nginx's own logs are rotated by `/etc/logrotate.d/nginx`. Check that it rotates `daily` and that `rotate` is 30 or less (Ubuntu's default is `daily` / `rotate 14`).
+
 The workflow prints a yellow warning when the server's copy of one of these files is out of date. When that happens, repeat its `install` line:
 
 - `compose.yaml`

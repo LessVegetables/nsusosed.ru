@@ -14,11 +14,13 @@
 
 name: nsusosed
 
+# Logs go to the host's journal, which deletes them by age: /privacy promises server logs
+# are kept up to a month, and json-file could only limit them by size. The age limit is
+# set on the host (journald/retention.conf, deploy/README.md step 6).
 x-logging: &logging
-  driver: json-file
+  driver: journald
   options:
-    max-size: "10m"
-    max-file: "5"
+    tag: "nsusosed-{{.Name}}"
 
 services:
   db:

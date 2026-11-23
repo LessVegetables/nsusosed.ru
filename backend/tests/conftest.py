@@ -31,7 +31,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-TABLES = ["compare_members", "compare_groups", "auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "staged_photos", "room_photos", "home_photos", "memberships", "rooms", "homes", "users"]
+TABLES = ["compare_members", "compare_groups", "auth_events", "email_log", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "staged_photos", "room_photos", "home_photos", "memberships", "rooms", "homes", "users"]
 
 
 @pytest.fixture(scope="session")
@@ -57,10 +57,11 @@ def codes(monkeypatch) -> dict:
     """Перехватывает письма с кодами: {email: code}."""
     sent: dict = {}
 
-    async def fake_send(email: str, code: str, lang: str = "ru") -> bool:
+    async def fake_send(email: str, code: str, lang: str = "ru"):
+        from app.services.email_service import SendResult
         sent[email] = code
         sent["lang:" + email] = lang
-        return True
+        return SendResult("sent", message_id="test")
 
     monkeypatch.setattr("app.services.auth_service.send_otp_email", fake_send)
     return sent

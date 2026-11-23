@@ -82,7 +82,6 @@
   @media (min-width: 641px) { .qstrip-bar[data-away] { opacity: 0; visibility: hidden; } }
   @media (prefers-reduced-motion: reduce) { .qstrip-bar { transition: none; } }
   .qpage :is(fieldset, .qrow, #f-faculty) { scroll-margin-top: calc(var(--sticky-h, 0px) + 16px); }
-  .qblock fieldset:disabled > :is(legend, .hint) { opacity: .5; }
   .qpage form, .qpage #blocks { display: grid; gap: var(--gap); }
   .qintro { display: grid; gap: 12px; justify-items: start; }
   .qintro > * { margin: 0; }
@@ -349,6 +348,9 @@
   .doc { max-width: 760px; }
   .doc h2 { margin: 32px 0 8px; font-size: var(--fs-card); }
   .doc li { margin-bottom: 8px; }
+  /* The short version on top of the full text */
+  .doc-short { margin: 24px 0 32px; }
+  .doc-short ul { margin: 12px 0; }
 
   /* 404 and other one-box pages */
   .solo { max-width: 560px; margin: 0 auto; }

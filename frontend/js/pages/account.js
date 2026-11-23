@@ -152,11 +152,6 @@ $('invite-code').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') { e.preventDefault(); findInvite(); }
 });
 choice($('gender'), 'gender');
-$('is-adult').checked = user.is_adult === true;
-$('is-adult').addEventListener('change', async () => {
-  await save(() => put('/me', { is_adult: $('is-adult').checked }));
-  $('is-adult').checked = user.is_adult === true;
-});
 
 function renderFaculties() {
   renderFacultyPicker($('faculty'), meta.faculties, user.faculty);

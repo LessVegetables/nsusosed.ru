@@ -13,11 +13,14 @@ from sqlalchemy import delete, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.models.auth_event import AuthEvent
+from app.models.email_log import EmailLog
 from app.utils.errors import rate_limited
 
 HOUR = 3600
 # Должно быть не меньше самого длинного окна лимитов (час).
 EVENTS_RETENTION = timedelta(days=1)
+# /privacy promises 3 days for the email-send log.
+EMAIL_LOG_RETENTION = timedelta(days=3)
 
 
 def client_ip(request: Request) -> Optional[str]:
@@ -84,6 +87,19 @@ async def cleanup_old_events(db: AsyncSession) -> int:
         delete(AuthEvent).where(AuthEvent.created_at < datetime.now(timezone.utc) - EVENTS_RETENTION)
     )
     return result.rowcount
+
+
+async def cleanup_email_log(db: AsyncSession) -> int:
+    result = await db.execute(
+        delete(EmailLog).where(EmailLog.created_at < datetime.now(timezone.utc) - EMAIL_LOG_RETENTION)
+    )
+    return result.rowcount
+
+
+async def record_email(db: AsyncSession, email: str, result) -> None:
+    db.add(EmailLog(email=email, status=result.status, message_id=result.message_id, error=result.error,
+                    created_at=datetime.now(timezone.utc)))
+    await db.flush()
 
 
 async def record(db: AsyncSession, kind: str, email: str, ip: Optional[str]) -> None:

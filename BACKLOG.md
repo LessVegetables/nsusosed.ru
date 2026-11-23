@@ -21,14 +21,14 @@ Things we decided to do later. Not ordered. Remove an item when it's done.
 - **Dorms and faculties** (`backend/app/config/dorms.json`, `faculties.json`). Filled in from nsu.ru on
   2026-11-10, but that page is known to be not fully accurate. Get the real faculty → dorm mapping and the
   full dorm list before launch. Coordinates are still empty (stage 3).
-- **Privacy policy** (`frontend/privacy.html`). Written as if the whole pilot is built. Still marked as a
-  draft: the final legal text needs a review before launch.
 
 ## Known gaps
 
 - **Umami session recorder vs. the CSP.** `stat.gehrman.me/recorder.js` tries to apply inline styles, which
   the strict CSP blocks, so the console fills with "Applying inline style violates…" errors. Harmless to the
   site, but recordings may be incomplete. Either drop the recorder or relax `style-src-attr` for it.
+- **Under-18 code is now dead.** The site is 18+ only (login sets `is_adult`), so the `adult_only`
+  questions, the "minor" branch in scoring and `ABOUT_REQUIRED` never run. Remove them when convenient.
 - **Dorm coordinates** in `dorms.json` were looked up by address in OpenStreetMap and not checked by a
   person. 8/1 and 8/2 share one address, so they share one point. Check each pin on a room page.
 

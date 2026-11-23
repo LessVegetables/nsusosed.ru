@@ -49,7 +49,8 @@ class UserUpdate(BaseModel):
     language: Optional[Language] = None
     gender: Optional[Literal["m", "f"]] = None
     faculty: Optional[str] = Field(default=None, max_length=20)
-    is_adult: Optional[bool] = None
+    # The site is 18+ only (confirmed at login), so the only value left to set is True.
+    is_adult: Optional[Literal[True]] = None
     intent: Optional[Literal["seek_dorm", "seek_apt", "host", "join", "compare"]] = None
     bio: Optional[str] = Field(default=None, max_length=500)
 

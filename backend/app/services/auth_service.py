@@ -46,8 +46,14 @@ async def request_code(db, body: RequestCodeRequest, request: Request) -> Reques
     code = await create_otp(db, email, privacy_accepted_at=datetime.now(timezone.utc))
 
     sent = await send_otp_email(email, code, body.language or "ru")
-    if not sent:
+    if not sent.ok:
+        # The code and the rate-limit event are dropped as before (no email went out), but the
+        # failure itself is kept in email_log: it is what that table is for.
+        await db.rollback()
+        await rl.record_email(db, email, sent)
+        await db.commit()
         raise AppError(503, "EMAIL_SEND_FAILED", "Не удалось отправить код. Попробуйте позже.")
+    await rl.record_email(db, email, sent)
 
     local, domain = email.rsplit("@", 1)
     masked = f"{local[0]}***@{domain}" if len(local) > 1 else f"*@{domain}"
@@ -87,6 +93,8 @@ async def verify_code(
         raise invalid_code()
 
     await rl.record(db, "verify_ok", email, ip)
+    # The site is 18+ only: the consent checkbox this code was requested with says
+    # "I'm 18 or older and I agree to the policy".
 
     if user is None:
         user = User(
@@ -96,10 +104,13 @@ async def verify_code(
             language=body.language or "ru",
             privacy_version=1,
             privacy_accepted_at=otp.privacy_accepted_at or datetime.now(timezone.utc),
+            is_adult=True,
         )
         db.add(user)
-    elif body.language is not None:
-        user.language = body.language
+    else:
+        user.is_adult = True
+        if body.language is not None:
+            user.language = body.language
 
     # Logging in during the grace period cancels the deletion.
     account_restored = user.deleted_at is not None
@@ -109,11 +120,8 @@ async def verify_code(
 
     token = await create_session(db, user.id, request)
 
-    # Housekeeping on the way (all three tables are indexed by time).
-    await cleanup_expired_sessions(db)
-    await cleanup_expired_otps(db)
-    await rl.cleanup_old_events(db)
-    await purge_deleted_accounts(db)
+    # Housekeeping on the way (also run hourly in the background, see main.py).
+    await housekeeping(db)
     set_session_cookie(response, token)
 
     return AuthResponse(user_id=user.id, first_name=user.first_name, is_new=is_new,
@@ -198,9 +206,18 @@ async def delete_me(db, user: User, response: Response) -> None:
     clear_session_cookie(response)
 
 
+async def housekeeping(db) -> None:
+    """Delete what has outlived its retention (the periods /privacy names). All indexed by time."""
+    await cleanup_expired_sessions(db)
+    await cleanup_expired_otps(db)
+    await rl.cleanup_old_events(db)
+    await rl.cleanup_email_log(db)
+    await purge_deleted_accounts(db)
+
+
 async def purge_deleted_accounts(db) -> int:
     """Account deletion, step 2: erase accounts whose grace period has run out.
-    Called on every login and at startup."""
+    Part of housekeeping: on every login, at startup and hourly."""
     cutoff = datetime.now(timezone.utc) - timedelta(days=settings.account_deletion_grace_days)
     result = await db.execute(
         select(User).where(User.deleted_at.is_not(None), User.deleted_at < cutoff).with_for_update(skip_locked=True))
