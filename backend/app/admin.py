@@ -4,12 +4,17 @@ Off unless ADMIN_EMAILS is set. There is no separate admin login: you log in on 
 usual, and the panel lets you in if your email is on ADMIN_EMAILS. It lives under /api/ so the
 frontend dev server and nginx proxy it like the rest of the API, and the session cookie reaches it.
 
+Production also needs ADMIN_SECRET_KEY (config.py) and the /api/admin/ location in
+deploy/nginx/nsusosed.ru.conf: the site's CSP forbids the inline scripts these pages use.
+
 Edits made here go straight to the database and skip the services: no validation beyond the
 database's own constraints, and deleting a photo row leaves its file on disk until the next
 startup sweep (image_service.sweep_orphans).
 """
 from __future__ import annotations
 from fastapi import FastAPI
+from sqlalchemy import Boolean, inspect as sa_inspect
+from sqlalchemy.exc import IntegrityError
 from starlette.requests import Request
 from starlette.responses import PlainTextResponse, RedirectResponse, Response
 from starlette.routing import Route
@@ -17,6 +22,8 @@ from starlette.status import HTTP_303_SEE_OTHER
 from starlette.templating import Jinja2Templates
 from starlette_admin.auth import AdminUser, BaseAuthProvider, login_not_required
 from starlette_admin.contrib.sqla import Admin, ModelView
+from starlette_admin.exceptions import FormValidationError
+from starlette_admin.flash import flash
 from app.config import settings
 from app.database import async_session_factory
 from app.models import (AuthEvent, CompareGroup, CompareMember, Home, HomePhoto, Invite, Membership, OtpCode,
@@ -74,7 +81,38 @@ class View(ModelView):
     def _init_fields(self) -> None:
         # Hiding with exclude_fields_from_* still offers the field in "Columns" and exports.
         self.fields = [f for f in self.fields if f.name not in HIDDEN]
+        # A checkbox can only say yes or no, so saving any form would turn NULL ("not asked
+        # yet", e.g. users.is_adult) into False. Such columns are shown but never edited here.
+        tristate = [c.key for c in self._columns_of_model() if c.nullable and isinstance(c.type, Boolean)]
+        self.exclude_fields_from_edit = [*self.exclude_fields_from_edit, *tristate]
+        self.exclude_fields_from_create = [*self.exclude_fields_from_create, *tristate]
         super()._init_fields()
+
+    def _columns_of_model(self):
+        return sa_inspect(self.model).columns
+
+    def _blank_to_none(self, data: dict) -> dict:
+        # Empty inputs arrive as "". In a nullable column that means "not set": NULL, not ''.
+        cols = self._columns_of_model()
+        return {k: None if v == "" and k in cols and cols[k].nullable else v for k, v in data.items()}
+
+    async def create(self, request: Request, data: dict):
+        return await super().create(request, self._blank_to_none(data))
+
+    async def edit(self, request: Request, pk, data: dict):
+        return await super().edit(request, pk, self._blank_to_none(data))
+
+    async def handle_exception(self, request: Request, exc: Exception) -> None:
+        # A database constraint said no: show it on the form instead of a 500 page.
+        if isinstance(exc, IntegrityError):
+            pg = getattr(exc.orig, "__cause__", None)  # asyncpg's error: names the constraint or column
+            constraint = getattr(pg, "constraint_name", None) or ""
+            column = getattr(pg, "column_name", None) or ""
+            message = f"The database refused this ({constraint or column or 'constraint'})."
+            fields = [f.name for f in self.get_fields_list(request) if f.name == column or f.name in constraint]
+            flash(request, message, "error")
+            raise FormValidationError({name: message for name in fields})
+        await super().handle_exception(request, exc)
 
 
 class UserView(View):

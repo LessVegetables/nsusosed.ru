@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     # Admin panel at /api/admin (app/admin.py): these site accounts may open it (comma- or
     # space-separated). Empty = the panel isn't mounted at all.
     admin_emails: str = ""
-    # Signs the panel's CSRF and flash cookies. Empty = a random key per start (fine for one worker).
+    # Signs the panel's CSRF and flash cookies. Required over https: production runs two workers,
+    # and with a random key each, a form signed by one is refused by the other. Local http may
+    # leave it empty (a random key per start).
     admin_secret_key: str = ""
     # 90 days, sliding: every visit in the second half of the term renews it.
     session_ttl_seconds: int = 7_776_000
@@ -68,6 +70,15 @@ class Settings(BaseSettings):
             raise ValueError(
                 "EMAIL_MODE=postbox requires POSTBOX_ACCESS_KEY_ID, POSTBOX_SECRET_ACCESS_KEY "
                 "and POSTBOX_SENDER_EMAIL (set EMAIL_MODE=log for local development)"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def check_admin_settings(self) -> "Settings":
+        if self.admin_emails.strip() and self.public_origin.startswith("https://") and len(self.admin_secret_key) < 32:
+            raise ValueError(
+                "ADMIN_EMAILS over https requires ADMIN_SECRET_KEY, at least 32 characters "
+                "(python3 -c 'import secrets; print(secrets.token_hex(32))')"
             )
         return self
 
