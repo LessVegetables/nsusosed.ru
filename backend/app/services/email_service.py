@@ -8,12 +8,27 @@ https://yandex.cloud/ru/docs/postbox/aws-compatible-api/api-ref/send-email
 from __future__ import annotations
 import json
 import logging
+from dataclasses import dataclass
 from datetime import datetime, timezone
 import httpx
 from app.config import settings
 from app.utils.sigv4 import sign_headers
 
 logger = logging.getLogger("nsusosed.email")
+
+
+@dataclass
+class SendResult:
+    """What happened to one email. The address and the details go to the email_log table
+    (kept 3 days), never to the general log (kept up to a month)."""
+
+    status: str  # sent | failed | logged
+    message_id: str | None = None
+    error: str | None = None
+
+    @property
+    def ok(self) -> bool:
+        return self.status != "failed"
 
 
 def _minutes_ru(n: int) -> str:
@@ -98,7 +113,7 @@ def otp_email(code: str, lang: str = "ru") -> tuple[str, str, str]:
     return subject, text, html
 
 
-async def send_otp_email(to_email: str, code: str, lang: str = "ru") -> bool:
+async def send_otp_email(to_email: str, code: str, lang: str = "ru") -> SendResult:
     """
     Отправить код подтверждения через Postbox API.
     При EMAIL_MODE=log код пишется в лог (только для разработки).
@@ -108,7 +123,7 @@ async def send_otp_email(to_email: str, code: str, lang: str = "ru") -> bool:
     # ── Тестовый режим ──────────────────────────────────
     if settings.email_mode == "log":
         logger.warning("[EMAIL TEST MODE] To: %s | Code: %s", to_email, code)
-        return True
+        return SendResult("logged")
 
     url = settings.postbox_endpoint.rstrip("/") + "/v2/email/outbound-emails"
     payload = {
@@ -135,21 +150,22 @@ async def send_otp_email(to_email: str, code: str, lang: str = "ru") -> bool:
         now=datetime.now(timezone.utc),
     )
 
+    # The general log gets no address and no Postbox response text (it may quote the address):
+    # those go to email_log with the result.
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             resp = await client.post(url, content=body, headers=headers)
             if resp.is_success:
-                logger.info("OTP email sent to %s, MessageId %s", to_email, _message_id(resp))
-                return True
-            logger.error("Postbox API error %s: %s", resp.status_code, resp.text)
-            return False
+                return SendResult("sent", message_id=_message_id(resp))
+            logger.error("Postbox API error %s (details in email_log)", resp.status_code)
+            return SendResult("failed", error=f"HTTP {resp.status_code}: {resp.text}"[:1000])
     except httpx.HTTPError as e:
-        logger.exception("Postbox HTTP error: %s", e)
-        return False
+        logger.error("Postbox HTTP error %s (details in email_log)", type(e).__name__)
+        return SendResult("failed", error=f"{type(e).__name__}: {e}"[:1000])
 
 
 def _message_id(resp: httpx.Response) -> str:
     try:
-        return str(resp.json().get("MessageId", "?"))
+        return str(resp.json().get("MessageId", "?"))[:200]
     except ValueError:
         return "?"

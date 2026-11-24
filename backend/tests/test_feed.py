@@ -223,3 +223,43 @@ async def test_the_room_page_says_where_each_resident_lives_and_scores_them_all(
     await owner.put(f"/api/homes/{home['id']}/residents/{me['user_id']}", json={"room_id": big}, headers=ORIGIN)
     assert (await seeker.get(f"/api/rooms/{small}")).json()["residents"][0]["lives"] == "other_room"
     assert (await seeker.get(f"/api/rooms/{big}")).json()["residents"][0]["lives"] == "room"
+
+
+async def reveals(db) -> list[tuple]:
+    from sqlalchemy import text
+    async with db.connect() as conn:
+        return [tuple(r) for r in (await conn.execute(text(
+            "SELECT viewer_id IS NOT NULL, viewer_email, host_emails FROM contact_reveals ORDER BY created_at"))).all()]
+
+
+async def test_every_contact_reveal_is_logged_and_outlives_the_accounts(db, make_client, login):
+    from sqlalchemy import text
+    from tests.test_account_deletion import age_deletion, delete_account
+    seeker = await person(make_client, login, "s@g.nsu.ru")
+    host = await person(make_client, login, "h@g.nsu.ru", "Катя", contact="https://t.me/katya_nsu")
+    room_id = (await listed(host, dorm()))["rooms"][0]["id"]
+
+    assert (await seeker.post(f"/api/rooms/{room_id}/contacts", headers=ORIGIN)).status_code == 200
+    assert (await host.post(f"/api/rooms/{room_id}/contacts", headers=ORIGIN)).status_code == 200  # own home: not logged
+    assert await reveals(db) == [(True, "s@g.nsu.ru", ["h@g.nsu.ru"])]
+
+    # Both accounts erased (the home goes with its last resident): the record stays, with the emails.
+    await delete_account(seeker)
+    await delete_account(host)
+    await age_deletion(db, "s@g.nsu.ru", 15)
+    await age_deletion(db, "h@g.nsu.ru", 15)
+    await login(make_client(), "other@g.nsu.ru")  # login runs housekeeping
+    async with db.connect() as conn:
+        assert (await conn.execute(text("SELECT count(*) FROM users WHERE email IN ('s@g.nsu.ru', 'h@g.nsu.ru')"))).scalar() == 0
+        assert (await conn.execute(text("SELECT count(*) FROM homes"))).scalar() == 0
+    assert await reveals(db) == [(False, "s@g.nsu.ru", ["h@g.nsu.ru"])]
+
+    # After 3 years it goes.
+    async with db.begin() as conn:
+        await conn.execute(text("UPDATE contact_reveals SET created_at = created_at - interval '3 years 2 days'"))
+    from app.services.feed_service import cleanup_contact_reveals
+    from app.database import async_session_factory
+    async with async_session_factory() as s:
+        assert await cleanup_contact_reveals(s) == 1
+        await s.commit()
+    assert await reveals(db) == []

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <!-- Behind the login or not a real page: keep it out of search results. Public pages are in sitemap.xml. -->
   <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.questionnaire">Анкета — nsusosed</title>
   <meta name="color-scheme" content="light dark">
@@ -57,14 +57,6 @@
               <button type="button" data-value="m" aria-pressed="false" data-i18n="account.gender.m">Мужской</button>
             </div>
             <p class="hint" data-i18n="account.gender.hint">Комнаты в общежитиях раздельные: показываем те, куда тебя могут поселить.</p>
-          </fieldset>
-          <fieldset id="f-adult">
-            <legend data-i18n="quiz.adult.label">Тебе есть 18?</legend>
-            <div class="opts" id="adult">
-              <button type="button" data-value="yes" aria-pressed="false" data-i18n="quiz.adult.yes">Да, есть</button>
-              <button type="button" data-value="no" aria-pressed="false" data-i18n="quiz.adult.no">Ещё нет</button>
-            </div>
-            <p class="hint" data-i18n="account.adult.hint">Дату рождения не спрашиваем. Младше 18 — не покажем вопросы о никотине.</p>
           </fieldset>
           <div id="f-faculty">
             <label class="field"><span data-i18n="account.faculty.label">Факультет</span>

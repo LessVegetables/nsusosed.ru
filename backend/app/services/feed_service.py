@@ -11,10 +11,12 @@ Who sees what:
 
 from __future__ import annotations
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import Optional
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from app import questionnaires
 from app.config import DORMS
+from app.models.contact_reveal import ContactReveal
 from app.models.home import Home, Membership, Room
 from app.models.questionnaire import QuestionnaireResponse
 from app.models.user import User
@@ -197,10 +199,26 @@ async def get_room(db, user: User, room_id) -> RoomPage:
 async def get_contacts(db, user: User, room_id) -> RoomContacts:
     """The hosts' contact methods. A deliberate, separate request (a POST) so that a bot
     check can be put in front of it later; it needs a completed questionnaire."""
-    home, _, is_mine, _, _, my_raw = await _room_for(db, user, room_id)
+    home, room, is_mine, _, _, my_raw = await _room_for(db, user, room_id)
     if not is_mine and not questionnaires.current().is_complete(my_raw, user.is_adult):
         raise _questionnaire_required()
+    hosts = [m for m in _active(home) if m.user.contacts]
+    if not is_mine and hosts:
+        # Who got whose contacts: kept 3 years for complaints and the authorities (/privacy).
+        db.add(ContactReveal(viewer_id=user.id, viewer_email=user.email, home_id=home.id, room_id=room.id,
+                             host_emails=[m.user.email for m in hosts], created_at=datetime.now(timezone.utc)))
+        await db.flush()
     return RoomContacts(hosts=[
         HostContacts(first_name=m.user.first_name,
                      contacts=[Contact(type=c.type, value=c.value, url=contact_url(c.type, c.value)) for c in m.user.contacts])
-        for m in _active(home) if m.user.contacts])
+        for m in hosts])
+
+
+# /privacy: the contact-reveal log is kept 3 years, also after the accounts are deleted.
+CONTACT_REVEAL_RETENTION = timedelta(days=3 * 365 + 1)
+
+
+async def cleanup_contact_reveals(db) -> int:
+    result = await db.execute(
+        delete(ContactReveal).where(ContactReveal.created_at < datetime.now(timezone.utc) - CONTACT_REVEAL_RETENTION))
+    return result.rowcount

@@ -19,6 +19,8 @@ os.environ.setdefault("EMAIL_MODE", "log")
 os.environ.update(OTP_MAX_REQUESTS_PER_HOUR="5", OTP_RESEND_COOLDOWN_SECONDS="60",
                   OTP_MAX_FAILED_VERIFIES_PER_HOUR="10", AUTH_IP_MAX_REQUESTS="20", AUTH_IP_WINDOW_SECONDS="600")
 os.environ.setdefault("PUBLIC_ORIGIN", "https://testserver")
+# The admin panel is only mounted when someone may use it (app/admin.py).
+os.environ.update(ADMIN_EMAILS="admin@g.nsu.ru", ADMIN_SECRET_KEY="test-" + "0" * 32)
 os.environ.setdefault("MEDIA_DIR", tempfile.mkdtemp(prefix="nsusosed-media-"))
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 if TEST_DATABASE_URL:
@@ -29,7 +31,7 @@ import pytest  # noqa: E402
 from sqlalchemy import text  # noqa: E402
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
-TABLES = ["compare_members", "compare_groups", "auth_events", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "staged_photos", "room_photos", "home_photos", "memberships", "rooms", "homes", "users"]
+TABLES = ["compare_members", "compare_groups", "auth_events", "email_log", "contact_reveals", "otp_codes", "sessions", "user_contacts", "questionnaire_responses", "invites", "staged_photos", "room_photos", "home_photos", "memberships", "rooms", "homes", "users"]
 
 
 @pytest.fixture(scope="session")
@@ -55,10 +57,11 @@ def codes(monkeypatch) -> dict:
     """Перехватывает письма с кодами: {email: code}."""
     sent: dict = {}
 
-    async def fake_send(email: str, code: str, lang: str = "ru") -> bool:
+    async def fake_send(email: str, code: str, lang: str = "ru"):
+        from app.services.email_service import SendResult
         sent[email] = code
         sent["lang:" + email] = lang
-        return True
+        return SendResult("sent", message_id="test")
 
     monkeypatch.setattr("app.services.auth_service.send_otp_email", fake_send)
     return sent

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The public pages. Everything else is behind the login and carries noindex. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://nsusosed.ru/</loc></url>
+  <url><loc>https://nsusosed.ru/compatibility</loc></url>
+  <url><loc>https://nsusosed.ru/rules</loc></url>
+  <url><loc>https://nsusosed.ru/support</loc></url>
+  <url><loc>https://nsusosed.ru/privacy</loc></url>
+  <url><loc>https://nsusosed.ru/agreement</loc></url>
+</urlset>

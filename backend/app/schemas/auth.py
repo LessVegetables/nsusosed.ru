@@ -14,6 +14,7 @@ def clean_name(v):
 
 class RequestCodeRequest(BaseModel):
     email: str = Field(..., max_length=254)
+    # The login checkbox: 18 or older, and accepts /agreement (with /rules) and /privacy.
     privacy_accepted: bool
     # Language of the email; the page's current language.
     language: Optional[Language] = None

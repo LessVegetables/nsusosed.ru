@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <!-- Closed beta: keep out of search engines. Remove at launch (BACKLOG.md, "SEO"). -->
+  <!-- Behind the login or not a real page: keep it out of search results. Public pages are in sitemap.xml. -->
   <meta name="robots" content="noindex, nofollow">
   <title data-i18n="title.account">Аккаунт — nsusosed</title>
   <meta name="color-scheme" content="light dark">
@@ -84,10 +84,6 @@
             <span class="short-select"><select id="faculty"></select><span class="short-select-label" aria-hidden="true"></span></span>
             <small data-i18n="account.faculty.hint">От факультета зависит, в каких общежитиях селят.</small>
           </label>
-          <div>
-            <label class="check"><input type="checkbox" id="is-adult"><span data-i18n="account.adult.label">Мне есть 18</span></label>
-            <p class="hint" data-i18n="account.adult.hint">Дату рождения не спрашиваем. Младше 18 — не покажем вопросы о никотине.</p>
-          </div>
         </form>
 
         <form class="box pad" id="contacts" novalidate data-private>

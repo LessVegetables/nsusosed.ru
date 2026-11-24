@@ -34,7 +34,6 @@ const onboarding = !quiz.complete || !user.intent;
 const answers = { ...quiz.answers };
 const about = {
   gender: user.gender,
-  adult: user.is_adult == null ? null : user.is_adult ? 'yes' : 'no',
   faculty: user.faculty ?? '',
 };
 const byId = Object.fromEntries(quiz.questions.map((q) => [q.id, q]));
@@ -43,13 +42,7 @@ const tr = (texts) => texts[currentLang()] ?? texts.ru;
 
 // ── Which questions are asked right now ─────────────────
 
-/** An 18+ question for someone who said they're under 18: never asked. */
-const underage = (q) => q.adult_only && about.adult === 'no';
-/** Of those, the ones that would be on the page anyway stay there grayed out; follow-ups stay hidden. */
-const grayed = (q) => underage(q) && !q.show_if;
-
 function applies(q) {
-  if (underage(q)) return false;
   if (q.show_if) {
     const chosen = [answers[q.show_if.question]].flat();
     return chosen.some((c) => q.show_if.any_of.includes(c));
@@ -94,8 +87,8 @@ const phone = matchMedia('(max-width: 640px) and (pointer: coarse)');
 
 /** Everything still to be answered on the page, in order: the facts, then the questions. */
 function steps() {
-  return [$('f-gender'), $('f-adult'), $('f-faculty'), ...$('blocks').querySelectorAll('[data-question]')]
-    .filter((node) => !node.hidden && !node.disabled);
+  return [$('f-gender'), $('f-faculty'), ...$('blocks').querySelectorAll('[data-question]')]
+    .filter((node) => !node.hidden);
 }
 
 /** Scroll so `node` starts `share` of the way down the screen (never under the sticky header). */
@@ -138,7 +131,6 @@ function questionNode(q) {
       !q.required && el('span', { class: 'tag' }, t('quiz.optional'))),
     q.hint && el('p', { class: 'hint' }, tr(q.hint)),
     el('div', { class: 'opts', 'data-choice': q.type, 'data-row': shortOptions(q) || null }, ...options),
-    q.adult_only && !q.show_if && el('p', { class: 'note', 'data-underage': '', hidden: true }, `⚠ ${t('quiz.underage')}`),
     el('p', { class: 'note error', hidden: true }, `✕ ${t('quiz.unanswered')}`));
 }
 
@@ -192,17 +184,14 @@ function render() {
 function refresh() {
   for (const node of document.querySelectorAll('[data-question]')) {
     const q = byId[node.dataset.question];
-    node.hidden = !applies(q) && !grayed(q);
-    node.disabled = grayed(q);
+    node.hidden = !applies(q);
     const chosen = [answers[q.id]].flat();
     for (const button of node.querySelectorAll('button[data-index]')) {
       button.setAttribute('aria-pressed', String(chosen.includes(Number(button.dataset.index))));
     }
-    const notice = node.querySelector('[data-underage]');
-    if (notice) notice.hidden = !grayed(q);
     node.querySelector('.note.error').hidden = !(showGaps && q.required && applies(q) && !answered(q));
   }
-  for (const [group, value] of [['gender', about.gender], ['adult', about.adult]]) {
+  for (const [group, value] of [['gender', about.gender]]) {
     for (const button of $(group).querySelectorAll('button')) {
       button.setAttribute('aria-pressed', String(button.dataset.value === value));
     }
@@ -263,7 +252,7 @@ new IntersectionObserver(([entry]) => {
 }).observe($('qbar'));
 trackStickyHeight();
 
-for (const [group, key] of [['gender', 'gender'], ['adult', 'adult']]) {
+for (const [group, key] of [['gender', 'gender']]) {
   for (const button of $(group).querySelectorAll('button')) {
     button.addEventListener('click', () => {
       about[key] = button.dataset.value;
@@ -300,11 +289,8 @@ async function save() {
   try {
     const facts = {};
     if (about.gender && about.gender !== user.gender) facts.gender = about.gender;
-    if (about.adult && (about.adult === 'yes') !== user.is_adult) facts.is_adult = about.adult === 'yes';
     if (about.faculty && about.faculty !== user.faculty) facts.faculty = about.faculty;
     if (Object.keys(facts).length) user = await put('/me', facts);
-    // Which questions are asked depends on "are you 18?": until then the answers wait on the page.
-    if (user.is_adult == null) return true;
     const body = draft();
     if (JSON.stringify(body) === savedDraft) return true;
     const saved = await put('/questionnaire', { version: quiz.version, answers: body, replace: true });
@@ -334,7 +320,6 @@ function firstGap() {
   refresh();
   const gaps = [];
   if (!about.gender) gaps.push(complain($('f-gender')));
-  if (!about.adult) gaps.push(complain($('f-adult')));
   if (!about.faculty) gaps.push(complain($('f-faculty')));
   gaps.push(...requiredNow().filter((q) => !answered(q)).map((q) => $(`q-${q.id}`)));
   return gaps[0] ?? null;

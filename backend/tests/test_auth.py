@@ -137,3 +137,49 @@ async def test_per_ip_limit(make_client):
     other = make_client(ip="10.200.0.2")
     r = await other.post("/api/auth/request-code", json={"email": "other@g.nsu.ru", "privacy_accepted": True})
     assert r.status_code == 200
+
+
+async def email_log(db, email: str) -> list[tuple]:
+    async with db.connect() as conn:
+        return [tuple(r) for r in (await conn.execute(
+            text("SELECT status, message_id, error FROM email_log WHERE email = :e ORDER BY created_at"),
+            {"e": email})).all()]
+
+
+async def test_every_code_email_is_logged_and_kept_three_days(db, make_client, codes):
+    c = make_client()
+    r = await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
+    assert r.status_code == 200
+    assert await email_log(db, EMAIL) == [("sent", "test", None)]
+
+    async with db.begin() as conn:
+        await conn.execute(text("UPDATE email_log SET created_at = created_at - interval '3 days 1 minute'"))
+    r = await c.post("/api/auth/verify-code", json={"email": EMAIL, "code": codes[EMAIL]} | NAME)
+    assert r.status_code == 200
+    assert await email_log(db, EMAIL) == []  # housekeeping on login dropped the old row
+
+
+async def test_a_failed_send_is_logged_but_the_code_is_not_kept(db, make_client, monkeypatch):
+    from app.services.email_service import SendResult
+
+    async def failing(email, code, lang="ru"):
+        return SendResult("failed", error="HTTP 403: SignatureDoesNotMatch")
+
+    monkeypatch.setattr("app.services.auth_service.send_otp_email", failing)
+    c = make_client()
+    r = await c.post("/api/auth/request-code", json={"email": EMAIL, "privacy_accepted": True})
+    assert r.status_code == 503 and r.json()["error"]["code"] == "EMAIL_SEND_FAILED"
+    assert await email_log(db, EMAIL) == [("failed", None, "HTTP 403: SignatureDoesNotMatch")]
+    async with db.connect() as conn:
+        assert (await conn.execute(text("SELECT count(*) FROM otp_codes WHERE email = :e"), {"e": EMAIL})).scalar() == 0
+        assert (await conn.execute(text("SELECT count(*) FROM auth_events WHERE email = :e"), {"e": EMAIL})).scalar() == 0
+
+
+async def test_logging_in_again_confirms_18(db, make_client, login):
+    c = make_client()
+    await login(c, EMAIL)
+    async with db.begin() as conn:
+        await conn.execute(text("UPDATE users SET is_adult = NULL WHERE email = :e"), {"e": EMAIL})
+    await age_auth_events(db, EMAIL, 61)  # past the resend cooldown
+    await login(c, EMAIL)
+    assert (await c.get("/api/me")).json()["is_adult"] is True

@@ -10,13 +10,13 @@ async def save(c, answers, version=1):
     return await c.put("/api/questionnaire", json={"version": version, "answers": answers}, headers=ORIGIN)
 
 
-async def test_the_18_question_comes_first(make_client, login):
+async def test_logging_in_confirms_18_so_the_questionnaire_opens_at_once(make_client, login):
     c = make_client()
     await login(c, "s@g.nsu.ru")
     q = (await c.get("/api/questionnaire")).json()
     assert q["version"] == 1 and len(q["questions"]) == 20 and q["answers"] == {} and q["complete"] is False
-    r = await save(c, {"A1": 1})
-    assert r.status_code == 409 and r.json()["error"]["code"] == "ABOUT_REQUIRED"
+    assert (await c.get("/api/me")).json()["is_adult"] is True
+    assert (await save(c, {"A1": 1})).status_code == 200
 
 
 async def test_partial_saves_add_up_to_a_complete_questionnaire(make_client, login):
@@ -77,16 +77,12 @@ async def test_bad_answers_and_an_old_version_are_refused(make_client, login):
     assert r.status_code == 409 and r.json()["error"]["code"] == "QUESTIONNAIRE_OUTDATED"
 
 
-async def test_under_18_never_stores_nicotine_answers(make_client, login):
+async def test_the_site_is_18_plus_so_is_adult_cannot_be_unset(make_client, login):
     c = make_client()
     await login(c, "s@g.nsu.ru")
-    await c.put("/api/me", json={"is_adult": False}, headers=ORIGIN)
-    r = await save(c, BASE | {"E1": [2], "E2": 0})
-    assert r.json()["complete"] is True and "E1" not in r.json()["answers"] and "E2" not in r.json()["answers"]
-    # Marked as 18+ later: one more required question appears.
-    await c.put("/api/me", json={"is_adult": True}, headers=ORIGIN)
-    q = (await c.get("/api/questionnaire")).json()
-    assert q["complete"] is False and q["missing"] == ["E1"]
+    r = await c.put("/api/me", json={"is_adult": False}, headers=ORIGIN)
+    assert r.status_code == 422
+    assert (await c.get("/api/me")).json()["is_adult"] is True
 
 
 async def test_answers_to_an_older_version_do_not_count(db, make_client, login):

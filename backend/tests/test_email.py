@@ -49,7 +49,8 @@ async def test_send_otp_email_request(monkeypatch):
         return httpx.Response(200, json={"MessageId": "m-1"})
 
     _postbox_mode(monkeypatch, handler)
-    assert await email_service.send_otp_email("ivan@g.nsu.ru", "123456") is True
+    result = await email_service.send_otp_email("ivan@g.nsu.ru", "123456")
+    assert (result.ok, result.status, result.message_id) == (True, "sent", "m-1")
 
     req = seen["request"]
     assert req.method == "POST"
@@ -80,4 +81,5 @@ async def test_send_otp_email_request(monkeypatch):
 
 async def test_send_otp_email_postbox_error(monkeypatch):
     _postbox_mode(monkeypatch, lambda request: httpx.Response(403, text="SignatureDoesNotMatch"))
-    assert await email_service.send_otp_email("ivan@g.nsu.ru", "123456") is False
+    result = await email_service.send_otp_email("ivan@g.nsu.ru", "123456")
+    assert (result.ok, result.status) == (False, "failed") and "SignatureDoesNotMatch" in result.error
