@@ -1,0 +1,9 @@
+# Public pages are listed in the sitemap. Pages behind the login carry
+# <meta name="robots" content="noindex">, so they stay crawlable here
+# (a blocked page can't show its noindex to the crawler).
+User-agent: *
+Disallow: /api/
+Disallow: /media/
+Disallow: /utm/
+
+Sitemap: https://nsusosed.ru/sitemap.xml

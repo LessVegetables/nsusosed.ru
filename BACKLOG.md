@@ -2,15 +2,13 @@
 
 Things we decided to do later. Not ordered. Remove an item when it's done.
 
-## When the closed beta ends
+## SEO
 
-- **Let search engines in, and work on SEO.** Every page has `<meta name="robots" content="noindex,
-  nofollow">` for the beta (grep `name="robots"` in `frontend/*.html`). Remove it at launch, then do SEO
-  properly: titles and descriptions per page and language, Open Graph tags for link previews in
-  messengers, `hreflang` for RU/EN/ZH, a `robots.txt` and a sitemap of the public pages (`/`,
-  `/compatibility`, `/privacy`). Everything else is behind the login.
-- **Open the login.** Empty `BETA_EMAILS` in `/etc/nsusosed.env` and redeploy. The code can stay: an empty
-  list means open.
+- **Work on SEO.** Search engines are let in since launch: the public pages (`/`, `/compatibility`,
+  `/rules`, `/support`, `/privacy`, `/agreement`) have no robots meta and are in `frontend/sitemap.xml`;
+  the pages behind the login, `/login` and the 404 keep `noindex`. Still to do: titles and descriptions
+  per page and language, Open Graph tags for link previews in messengers, `hreflang` for RU/EN/ZH. Add
+  any new public page to `sitemap.xml`.
 
 ## Safety
 
@@ -29,9 +27,8 @@ Things we decided to do later. Not ordered. Remove an item when it's done.
   The Telegram, VK, Instagram, Snapchat and WeChat menu paths were written from memory; the Max one is
   deliberately vague because its settings weren't known. Check each against the real app, in all three
   languages, and fix the wording.
-- **Dorms and faculties** (`backend/app/config/dorms.json`, `faculties.json`). Filled in from nsu.ru on
-  2026-11-10, but that page is known to be not fully accurate. Get the real faculty → dorm mapping and the
-  full dorm list before launch. Coordinates are still empty (stage 3).
+- **Dorm coordinates** (`backend/app/config/dorms.json`) are still empty (stage 3). The dorm list and
+  faculty → dorm mapping were checked before launch.
 
 ## Known gaps
 
