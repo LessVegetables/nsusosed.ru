@@ -90,7 +90,8 @@ function contactPanel() {
       el('p', {}, el('b', {}, host.first_name)),
       ...host.contacts.map((c) => el('p', {}, `${t(`contact.${c.type}`)}: `,
         c.url ? el('a', { href: c.url, target: c.type === 'phone' ? null : '_blank', rel: 'noopener' }, c.value) : c.value)))),
-    el('p', { class: 'hint' }, t('room.contactsHint')));
+    el('p', { class: 'hint' }, t('room.contactsHint')),
+    contacts.hosts.some((host) => host.contacts.some((c) => c.type === 'instagram')) && el('p', { class: 'hint' }, t('account.contacts.meta')));
   }
   if (!room.can_get_contacts) {
     return el('p', { class: 'note' }, `⚠ ${t('room.needQuiz')} `, el('a', { href: '/questionnaire' }, t('account.quiz.open')));
