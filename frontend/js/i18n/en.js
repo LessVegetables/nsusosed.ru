@@ -158,7 +158,7 @@ export default {
   "privacy.short.1": "You log in with your NSU email. We keep what you entered yourself: your first and last name, profile, questionnaire answers, home and contacts.",
   "privacy.short.2": "If you live in a home listed on the site, NSU students who view it see your first and last name, photo, bio and your visible questionnaire answers. While you're only looking for a place, only the people you compare with through a link can see you.",
   "privacy.short.3": "Answers marked 🔒 are shown to no one on the site: they are only used to calculate compatibility.",
-  "privacy.short.4": "Your contacts are shown only if you live in a listed home: a student who has completed the questionnaire sees them after clicking \"Show contacts\". We record who opened whose contacts and when, and keep that record for 3 years, for complaints and police requests. Conversations happen off the site; we don't see them.",
+  "privacy.short.4": "Your contacts are shown only if you live in a listed home: a student who has completed the questionnaire sees them after clicking \"Show contacts\". We record who opened whose contacts and when, and keep that record for 3 years. Conversations happen off the site; we don't see them.",
   "privacy.short.5": "We don't store an apartment's address: only the district and an approximate area on the map. A dorm room number is never shown on the site. Location data is removed from photos.",
   "privacy.short.6": "The data is stored on servers in Russia. We don't sell it or share it for advertising.",
   "privacy.short.7": "You can delete your account at any time on the Account page: it is hidden right away and erased for good after 14 days. Only the record of contacts shown remains, for 3 years.",
