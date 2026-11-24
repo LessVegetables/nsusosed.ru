@@ -12,6 +12,10 @@
   main { flex: 1; }
   .site-footer { margin-top: 0; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); }
   .site-footer a { font-weight: var(--w-bold); }
+  /* Disclaimer and sign-off: their own row under the tagline and links. */
+  .footer-note { flex-basis: 100%; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px 8px; }
+  /* The tagline is one long line; on a phone it must fit the width. */
+  @media (max-width: 640px) { .site-footer .wrap > [data-i18n="footer.tagline"] { font-size: var(--fs-small); } }
 
   /* Landing */
   .hero { display: grid; gap: var(--gap); align-content: start; padding-top: var(--gap); }

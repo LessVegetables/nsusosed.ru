@@ -52,7 +52,10 @@ function footer(user, { onLangPick, guestNav }) {
       el('a', { href: '/support', i18n: 'footer.support' }),
       el('a', { href: '/agreement', i18n: 'footer.agreement' }),
       el('a', { href: '/rules', i18n: 'footer.rules' }),
-      el('a', { href: '/privacy', i18n: 'footer.privacy' })));
+      el('a', { href: '/privacy', i18n: 'footer.privacy' })),
+    el('div', { class: 'footer-note' },
+      el('span', { i18n: 'footer.unaffiliated' }),
+      el('span', { i18n: 'footer.byStudents' })));
 }
 
 async function whoAmI(auth) {
