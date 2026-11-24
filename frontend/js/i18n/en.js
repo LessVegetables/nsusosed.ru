@@ -670,7 +670,7 @@ export default {
   "rules.s5.lead": "You talk off the site, but the same rules apply:",
   "rules.s5.kind": "write the way you'd like people to write to you;",
   "rules.s5.stop": "don't insult, humiliate, threaten or harass anyone, or keep writing after someone has asked you to stop;",
-  "rules.s5.bias": "don't bully anyone over their looks, gender, nationality, religion, orientation or anything else.",
+  "rules.s5.bias": "don't bully anyone over their looks, gender, nationality, religion or anything else.",
   "rules.s5.no": "\"No\" is a normal answer. A compatibility percent doesn't oblige anyone to anything.",
   "rules.s6.title": "6. Other people's data",
   "rules.s6.why": "you get residents' contacts and details to arrange living together, and for nothing else;",
